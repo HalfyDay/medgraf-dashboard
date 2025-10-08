@@ -112,7 +112,7 @@ export default function CheckupsSheet({
   };
 
   return (
-    <SheetFrame open={open} onClose={onClose} title={title} headerTitle={title}>
+    <SheetFrame open={open} onClose={onClose} title={title}>
       {/* Верхняя цветная карточка (вместо изображения) */}
       <div className="px-4 pt-3">
         <div
