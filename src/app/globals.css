@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+body {
+  @apply bg-background text-text antialiased;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.header-wave {
+  background: linear-gradient(135deg, #338FE6, #5BC37D);
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 0 100%);
+}
+
+.card-rounded {
+  @apply bg-white rounded-2xl shadow-soft p-6;
+}
+
+/* 1. Ключевые кадры для анимации фонового градиента */
+@keyframes gradient-animation {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 2. Утилита для плавного градиента */
+.animated-gradient {
+  background: linear-gradient(90deg, #0066CC, #28A745, #0066CC);
+  background-size: 200% 200%;
+  animation: gradient-animation 5s ease infinite;
+}
+
+/* скрыть горизонтальный скроллбар (при этом скролл останется) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Убираем синюю вспышку при тапе на iOS/Android */
+html, body, a, button, input, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Опционально: утилита для точечного применения */
+.no-tap { -webkit-tap-highlight-color: transparent; }
+
+/* Сохраняем доступность фокуса с клавиатуры */
+:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }

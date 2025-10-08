@@ -1,0 +1,216 @@
+"use client";
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+
+
+
+export default function BottomNav() {
+  const pathname = usePathname();
+  const items = useMemo(
+    () => [
+      { href: "/home",        icon: "/main.svg",    iconActive: "/highlighted_main.svg",    label: "Главная" },
+      { href: "/card",        icon: "/records.svg", iconActive: "/highlighted_records.svg", label: "Медкарта"  },
+      { href: "/profile",     icon: "/profile.svg", iconActive: "/highlighted_profile.svg", label: "Профиль" },
+    ],
+    []
+  );
+
+  // ==== НАСТРОЙКИ (меняй здесь) ===========================================
+  const FULL_HEIGHT = 70;        // высота панели в нормальном состоянии
+  const COMPACT_HEIGHT = 36;     // высота панели в компактном состоянии
+  const WIDTH_COMPACT_FACTOR = 0.45; // ширина панели в compact от доступной (0.60 = 60%)
+  const WIDTH_MIN_PX = 150;      // мин. ширина панели в compact
+
+  const SLOT_WIDTH_FULL = 96;    // ширина "слота" под иконку (расстояние между кнопками)
+  const SLOT_WIDTH_COMPACT = 35; // ширина слота в compact (иконки ближе друг к другу)
+
+  const ICON_SIZE_FULL = 60;     // размер иконки в нормальном состоянии
+  const ICON_SIZE_COMPACT = 44;  // размер иконки в compact
+
+  const GAP_FULL = 10;           // расстояние между слотами (дополнительно к ширине слота)
+  const GAP_COMPACT = 5;        // расстояние между слотами в compact
+  // =======================================================================
+
+  // измеряем доступную ширину контейнера (<= 520)
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [baseW, setBaseW] = useState(0);
+  const router = useRouter();
+  useEffect(() => {
+    items.forEach(i => router.prefetch?.(i.href));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    // contentRect.width указывает контентную ширину без бордеров — нам это и нужно
+    const rect = el.getBoundingClientRect();
+    setBaseW(Math.round(rect.width));
+  }, []);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+
+    const apply = (w: number) => setBaseW(Math.round(w));
+
+    const ro = new ResizeObserver(([entry]) => {
+      apply(entry.contentRect.width);
+    });
+
+    ro.observe(el);
+
+    // на случай, если браузер не отправил первый колбэк мгновенно
+    apply(el.getBoundingClientRect().width);
+
+    return () => ro.disconnect();
+  }, []);
+
+  // compact behavior
+  const [compact, setCompact] = useState(false);
+  const lastY = useRef(0);
+  const lockUntil = useRef(0);
+
+  useEffect(() => {
+    let ticking = false;
+    const DOWN = 28;
+    const UP_HYST = 8;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY || 0;
+        const dy = y - lastY.current;
+        lastY.current = y;
+
+        const now = Date.now();
+        if (now < lockUntil.current) {
+          setCompact(false);
+          ticking = false;
+          return;
+        }
+        if (!compact && dy > 0 && y > DOWN) setCompact(true);
+        else if (compact && (dy < 0 || y < DOWN - UP_HYST)) setCompact(false);
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [compact]);
+
+  const expandNow = () => {
+    setCompact(false);
+    lockUntil.current = Date.now() + 550; // защита от мгновенного схлопа
+  };
+
+  const isActive = (href: string) =>
+    pathname === href || pathname.startsWith(href + "/");
+
+  const fullW = baseW;
+  const compactW = Math.max(Math.floor(baseW * WIDTH_COMPACT_FACTOR), WIDTH_MIN_PX);
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30">
+      
+      <div
+        ref={wrapRef}
+        className="mx-auto w-full max-w-[520px] px-4 pb-[calc(env(safe-area-inset-bottom,0)+10px)]"
+      >
+        {/* ПАНЕЛЬ: анимируем width/height плавно, центрируем */}
+        <motion.div
+          aria-label="Навигация"
+          className={[
+            "relative mx-auto rounded-2xl ring-1 ring-slate-100",
+            "bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60",
+            "shadow-[0_8px_30px_rgba(0,0,0,0.05)]",
+            "will-change-transform",
+          ].join(" ")}
+          initial={false}
+          animate={{
+            ...(baseW > 0 ? { width: compact ? compactW : fullW } : {}),
+            height: compact ? COMPACT_HEIGHT : FULL_HEIGHT,
+            borderRadius: compact ? 16 : 20,
+            y: compact ? 4 : 0,
+            paddingLeft: compact ? 0 : 12,
+            paddingRight: compact ? 0 : 12,
+            paddingTop: compact ? 2 : 8,
+            paddingBottom: compact ? 2 : 8,
+          }}
+          transition={{ type: "spring", stiffness: 240, damping: 30, mass: 0.7 }}
+          style={{ visibility: baseW > 0 ? "visible" : "hidden" }}
+          onClick={compact ? expandNow : undefined}
+        >
+          {/* РЯД КНОПОК: центрируем и анимируем gap (кнопки ближе к центру) */}
+          <motion.div
+            className="mx-auto flex items-center justify-center w-full"
+            initial={false}
+            animate={{ gap: compact ? GAP_COMPACT : GAP_FULL }}
+            transition={{ type: "spring", stiffness: 230, damping: 26 }}
+            style={{ width: "100%", height: "100%" }}
+          >
+            {items.map((it) => {
+              const active = isActive(it.href);
+              return (
+                <div key={it.href} className="relative flex items-center justify-center shrink-0">
+                  {active && (
+                    <img
+                      src="/highlighted_button.svg"
+                      alt=""
+                      className="pointer-events-none absolute left-1/2 top-1/2 h-[75%] w-[90%] -translate-x-1/2 -translate-y-1/2 object-contain"
+                    />
+                  )}
+
+                  <motion.button
+                    type="button"
+                    aria-label={it.label}
+                    aria-current={active ? "page" : undefined}
+                    className="relative inline-flex items-center justify-center select-none"
+                    initial={false}
+                    animate={{
+                      width: compact ? SLOT_WIDTH_COMPACT : SLOT_WIDTH_FULL,
+                      height: compact ? 32 : 56,
+                    }}
+                    transition={{ type: "spring", stiffness: 230, damping: 24 }}
+                    style={{ pointerEvents: compact ? "none" : "auto" }}
+                    onClick={() => !compact && router.push(it.href)}
+                    onKeyDown={(e) => {
+                      if (compact) return;
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(it.href);
+                      }
+                    }}
+                  >
+                    <motion.img
+                      src={active ? it.iconActive : it.icon}
+                      alt={it.label}
+                      draggable={false}
+                      initial={false}
+                      animate={{
+                        width: compact ? ICON_SIZE_COMPACT : ICON_SIZE_FULL,
+                        height: compact ? ICON_SIZE_COMPACT : ICON_SIZE_FULL,
+                      }}
+                      transition={{ type: "spring", stiffness: 230, damping: 24 }}
+                    />
+                  </motion.button>
+                </div>
+              );
+            })}
+          </motion.div>
+
+          {/* блокировка кликов + тап для разворота в compact */}
+          {compact && (
+            <button
+              aria-hidden="true"
+              onClick={expandNow}
+              className="absolute inset-0 cursor-pointer"
+            />
+          )}
+        </motion.div>
+      </div>
+    </nav>
+  );
+
+}
