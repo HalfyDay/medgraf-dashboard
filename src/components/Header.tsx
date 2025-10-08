@@ -1,22 +1,25 @@
+// src/components/Header.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { onec } from "@/app/api/onec";
 
-export default function Header({
-  onNotificationsClick,
-  hasUnread = false,
-  userName, // опционально: если передали — используем его
-}: {
+type HeaderProps = {
   onNotificationsClick?: () => void;
   hasUnread?: boolean;
   userName?: string;
-}) {
-  const [loading, setLoading] = useState(!userName); // если пропа нет — грузим
+};
+
+export default function Header({
+  onNotificationsClick,
+  hasUnread = false,
+  userName,
+}: HeaderProps) {
+  const [loading, setLoading] = useState(!userName);
   const [apiName, setApiName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (userName) return; // проп есть — не дергаем API
+    if (userName) return;
     let alive = true;
     (async () => {
       try {
@@ -24,7 +27,7 @@ export default function Header({
         if (!alive) return;
         setApiName(u?.fullName || null);
       } catch {
-        // тихо: оставим null
+        // игнорируем
       } finally {
         if (alive) setLoading(false);
       }
@@ -40,12 +43,12 @@ export default function Header({
     <header className="fixed inset-x-0 top-0 z-[1000] bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 pointer-events-auto">
       <div className="mx-auto max-w-[520px] px-4 py-3">
         <div className="relative flex items-center justify-between">
-          {/* ЛОГО — левый слот фиксированной ширины */}
+          {/* ЛОГО */}
           <div className="relative z-10 flex h-10 w-10 items-center justify-start">
             <img src="/logo.svg" alt="МедГрафт" className="h-7 w-auto" />
           </div>
 
-          {/* ЦЕНТР — имя пользователя */}
+          {/* Имя пользователя */}
           <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
             {loading ? (
               <span
@@ -59,7 +62,7 @@ export default function Header({
             )}
           </div>
 
-          {/* УВЕДОМЛЕНИЯ */}
+          {/* Уведомления */}
           <div className="relative z-10 flex h-10 w-10 items-center justify-end">
             <button
               aria-label="Уведомления"

@@ -1,9 +1,6 @@
 "use client";
 
-// import { useState } from "react";
 import DocumentsSheet from "@/components/DocumentsSheet";
-// import Header from "@/components/Header";
-// import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
 import NotificationsSheet from "@/components/NotificationsSheet";
 import VisitsSheet from "@/components/VisitsSheet";
