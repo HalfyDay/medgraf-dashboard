@@ -1,7 +1,7 @@
 // components/SheetFrame.tsx
 "use client";
 
-import React, { PropsWithChildren, useEffect, useRef, useState } from "react";
+import React, { PropsWithChildren, ReactNode, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
 type SheetFrameProps = {
@@ -11,6 +11,9 @@ type SheetFrameProps = {
   title: string;
   subtitle?: string;
   iconSrc?: string;
+
+  headerContent?: ReactNode;
+  headerClassName?: string;
 
   initialVH?: number;
   maxVH?: number;
@@ -31,6 +34,8 @@ export default function SheetFrame({
   title,
   subtitle,
   iconSrc = "/list.svg",
+  headerContent,
+  headerClassName,
 
   initialVH = 78,
   maxVH = 100,
@@ -401,19 +406,27 @@ export default function SheetFrame({
         {/* Синяя шапка */}
         <div
           ref={headerRef}
-          className="rounded-t-[24px] px-4 pt-5 pb-10 text-white bg-[linear-gradient(135deg,#0076E1_0%,#0096F8_100%)]"
+          className={clsx(
+            "rounded-t-[24px]",
+            headerContent
+              ? null
+              : "px-4 pt-5 pb-10 text-white bg-[linear-gradient(135deg,#0076E1_0%,#0096F8_100%)]",
+            headerClassName
+          )}
         >
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-[12px] bg-white/15 ring-1 ring-white/20">
-              <img src={iconSrc} alt="" className="h-15 w-15" />
-            </span>
-            <div className="leading-tight">
-              <div className={clsx("font-bold leading-none", subtitle ? "text-[22px]" : "text-[20px]")}>
-                {title}
+          {headerContent ?? (
+            <div className="flex items-center gap-3">
+              <span className="inline-flex h-14 w-14 items-center justify-center rounded-[12px] bg-white/15 ring-1 ring-white/20">
+                <img src={iconSrc} alt="" className="h-15 w-15" />
+              </span>
+              <div className="leading-tight">
+                <div className={clsx("font-bold leading-none", subtitle ? "text-[22px]" : "text-[20px]")}>
+                  {title}
+                </div>
+                {subtitle && <div className="mt-1 text-[14.5px] font-medium text-white/75">{subtitle}</div>}
               </div>
-              {subtitle && <div className="mt-1 text-[14.5px] font-medium text-white/75">{subtitle}</div>}
             </div>
-          </div>
+          )}
         </div>
 
         {/* Белая область со скроллом содержимого */}

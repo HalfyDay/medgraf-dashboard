@@ -21,34 +21,37 @@ export default function PromoSheet({ open, onClose, promo }: {
   const { title, subtitle, banner, bullets = [], ctaHref = "/booking", ctaText = "Записаться" } = promo;
 
   return (
-    <SheetFrame open={open} onClose={onClose} title={title} headerTitle={title}>
-      <div className="px-4 pt-3">
-        <div className="overflow-hidden rounded-2xl ring-1 ring-black/5">
-          <img src={banner} alt={title} className="w-full h-[180px] object-cover" />
+    <SheetFrame
+      open={open}
+      onClose={onClose}
+      title={title}
+      headerContent={(
+        <div className="relative h-[248px] w-full overflow-hidden">
+          <img src={banner} alt={title} className="h-full w-full object-cover" />
         </div>
-      </div>
-
-      <div className="px-4 py-4">
-        {subtitle && (
-          <p className="text-[15px] text-slate-600">{subtitle}</p>
-        )}
+      )}
+      headerClassName="overflow-hidden bg-black/10"
+    >
+      <div className="px-4 py-5">
+        <div className="space-y-2 text-slate-900">
+          <h2 className="text-[22px] font-semibold leading-tight">{title}</h2>
+          {subtitle && <p className="text-[15px] leading-[1.55] text-slate-600">{subtitle}</p>}
+        </div>
 
         {bullets.length > 0 && (
-          <ul className="mt-4 space-y-2 text-[15px] text-slate-800">
+          <ul className="mt-5 space-y-2 text-[15px] leading-[1.55] text-slate-800">
             {bullets.map((b, i) => (
               <li key={i} className="flex gap-2">
-                <span className="mt-1 inline-block h-1.5 w-1.5 rounded-full bg-sky-500 shrink-0" />
+                <span className="mt-[7px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />
                 <span>{b}</span>
               </li>
             ))}
           </ul>
         )}
 
-        <div className="h-4" />
-
         <Link
           href={ctaHref}
-          className="block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[18px] font-semibold text-white shadow-md active:translate-y-[1px]"
+          className="mt-6 block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[18px] font-semibold text-white shadow-md active:translate-y-[1px]"
         >
           {ctaText}
         </Link>
