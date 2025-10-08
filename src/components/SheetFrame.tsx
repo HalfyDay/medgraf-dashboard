@@ -356,8 +356,6 @@ export default function SheetFrame({
     isFull,
   ]);
 
-  if (!open) return null;
-
   const headerPx = headerRef.current?.offsetHeight || 150;
   const heightStyle = `${panelVH}dvh`;
   const bodyHeightStyle = `calc(${panelVH}dvh - ${headerPx}px)`;
@@ -368,10 +366,17 @@ export default function SheetFrame({
 
   return (
     <div
-      aria-modal
-      role="dialog"
-      className="fixed inset-0 z-[1000] flex flex-col justify-end"
-      style={{ contain: "layout paint size style" }}
+      role={open ? "dialog" : undefined}
+      aria-modal={open ? true : undefined}
+      aria-hidden={open ? undefined : true}
+      className={clsx(
+        "fixed inset-0 z-[1000] flex flex-col justify-end",
+        open ? "pointer-events-auto" : "pointer-events-none"
+      )}
+      style={{
+        contain: "layout paint size style",
+        visibility: open ? "visible" : "hidden",
+      }}
     >
       {/* затемнение */}
       <div
@@ -410,7 +415,7 @@ export default function SheetFrame({
             "rounded-t-[24px]",
             headerContent
               ? null
-              : "px-4 pt-5 pb-10 text-white bg-[linear-gradient(135deg,#0076E1_0%,#0096F8_100%)]",
+              : "px-4 pt-5 pb-10 text-white bg-[linear-gradient(135deg,#00A6FF_0%,#24E38E_100%)]",
             headerClassName
           )}
         >
@@ -434,6 +439,7 @@ export default function SheetFrame({
           ref={scrollRef}
           className={clsx(
             "-mt-6 w-full overflow-y-auto rounded-t-[24px] bg-white px-4 pb-8 pt-6",
+            "relative z-[2]",
             "overscroll-contain touch-pan-y",
             innerClassName
           )}

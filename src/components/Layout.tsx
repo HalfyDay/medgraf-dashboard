@@ -2,7 +2,7 @@
 "use client";
 
 import React from "react";
-import { Header } from "./Header";
+import Header from "./Header";
 import { PageWrapper } from "./PageWrapper";
 
 interface LayoutProps {
