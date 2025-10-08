@@ -26,6 +26,7 @@ export default function PromoSheet({ open, onClose, promo }: {
       onClose={onClose}
       title={title}
       headerContent={(
+
         <div className="relative isolate h-[248px] w-full">
           <img
             src={banner}
@@ -36,6 +37,13 @@ export default function PromoSheet({ open, onClose, promo }: {
         </div>
       )}
       headerClassName="relative overflow-hidden p-0"
+=======
+        <div className="relative h-[248px] w-full overflow-hidden">
+          <img src={banner} alt={title} className="h-full w-full object-cover" />
+        </div>
+      )}
+      headerClassName="overflow-hidden bg-black/10"
+
     >
       <div className="px-4 py-5">
         <div className="space-y-2 text-slate-900">
