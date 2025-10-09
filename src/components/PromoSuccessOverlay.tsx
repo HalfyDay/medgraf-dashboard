@@ -100,7 +100,7 @@ export default function PromoSuccessOverlay({ open, onClose }: PromoSuccessOverl
                   <p className="text-[32px] font-semibold leading-tight">
                     Спасибо!
                     <br />
-                    заявка принята
+                    Заявка принята
                   </p>
 
                   <div className="mt-8 flex flex-col items-center gap-8">
