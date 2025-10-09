@@ -20,13 +20,21 @@ function formatRuShort(d: string | Date) {
 
 export default function DocumentsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [docs, setDocs] = useState<Doc[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!open) return;
-    setLoading(true);
-    setTimeout(() => { setDocs(mockDocs); setLoading(false); }, 120);
-  }, [open]);
+    let alive = true;
+    const timer = window.setTimeout(() => {
+      if (!alive) return;
+      setDocs(mockDocs);
+      setLoading(false);
+    }, 120);
+
+    return () => {
+      alive = false;
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   return (
     <SheetFrame open={open} onClose={onClose} title="Мои исследования" iconSrc="/list.svg">

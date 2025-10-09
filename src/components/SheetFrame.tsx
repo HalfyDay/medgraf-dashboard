@@ -4,6 +4,7 @@
 
 import React, { PropsWithChildren, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
+import { lockBodyScroll, unlockBodyScroll } from "@/utils/bodyScrollLock";
 
 type SheetFrameProps = {
   open: boolean;
@@ -135,8 +136,7 @@ export default function SheetFrame({
 
   useEffect(() => {
     if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    lockBodyScroll();
 
     // Жёстко выставляем стартовые значения без анимации высоты
     setSuppressHeightOnce(true);
@@ -154,7 +154,7 @@ export default function SheetFrame({
     lockInnerScroll();
 
     return () => {
-      document.body.style.overflow = prev;
+      unlockBodyScroll();
       unlockInnerScroll();
       setEntered(false);
     };

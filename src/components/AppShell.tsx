@@ -12,6 +12,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="relative min-h-dvh">
       <Header
         onNotificationsClick={() => setNotifOpen(true)}
+        notificationsOpen={notifOpen}
         // hasUnread={...} // сюда можешь подставить флаг непрочитанных, если есть
       />
       <div className="pt-14 md:pt-16">

@@ -1,8 +1,9 @@
 // components/CheckupsSheet.tsx
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import SheetFrame from "@/components/SheetFrame";
-import Link from "next/link";
+import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 
 export type CheckupData = {
   id: string;
@@ -38,6 +39,28 @@ export default function CheckupsSheet({
   onClose: () => void;
   checkup: CheckupData | null;
 }) {
+  const [successOpen, setSuccessOpen] = useState(false);
+  const checkupId = checkup?.id ?? null;
+  const successTimerRef = useRef<number | null>(null);
+  const SUCCESS_OVERLAY_DELAY_MS = 60;
+
+  useEffect(() => {
+    if (successTimerRef.current) {
+      window.clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setSuccessOpen(false);
+  }, [checkupId]);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        window.clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
+      }
+    };
+  }, []);
+
   if (!checkup) return null;
 
   const {
@@ -47,7 +70,6 @@ export default function CheckupsSheet({
     icon,
     bullets,
     price,
-    ctaHref = "/booking",
     ctaText = "Оставить заявку",
   } = checkup;
 
@@ -64,46 +86,46 @@ export default function CheckupsSheet({
       case "stetho":
         return (
           <svg {...common}>
-            <path d="M6 6v5a5 5 0 1 0 10 0V6M6 6h2M16 6h2M18 14a2 2 0 1 0 0-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M6 6v5a5 5 0 1 0 10 0V6M6 6h2M16 6h2M18 14a2 2 0 1 0 0-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         );
       case "eye":
         return (
           <svg {...common}>
-            <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.8"/>
-            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
+            <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.8" />
+            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
           </svg>
         );
       case "balloon":
         return (
           <svg {...common}>
-            <path d="M12 3c3 0 5 2.2 5 5s-2 7-5 7-5-4.2-5-7 2-5 5-5Z" stroke="currentColor" strokeWidth="1.8"/>
-            <path d="M12 15c0 2-1 3-3 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <path d="M12 3c3 0 5 2.2 5 5s-2 7-5 7-5-4.2-5-7 2-5 5-5Z" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M12 15c0 2-1 3-3 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         );
       case "heart":
         return (
           <svg {...common}>
-            <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         );
       case "leaf":
         return (
           <svg {...common}>
-            <path d="M4 14c3-6 8-8 16-8-1 8-3 13-9 14-4 .5-7-2-7-6Z" stroke="currentColor" strokeWidth="1.8"/>
-            <path d="M10 10c0 4 1 6 4 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <path d="M4 14c3-6 8-8 16-8-1 8-3 13-9 14-4 .5-7-2-7-6Z" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M10 10c0 4 1 6 4 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
           </svg>
         );
       case "ear":
         return (
           <svg {...common}>
-            <path d="M16 15c0 2-1.5 4-4 4s-4-2-4-4V9a4 4 0 1 1 8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M16 15c0 2-1.5 4-4 4s-4-2-4-4V9a4 4 0 1 1 8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         );
       case "bone":
         return (
           <svg {...common}>
-            <path d="M5 9a2.5 2.5 0 1 1 3-3l8 8a2.5 2.5 0 1 1-3 3l-8-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M5 9a2.5 2.5 0 1 1 3-3l8 8a2.5 2.5 0 1 1-3 3l-8-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         );
       default:
@@ -111,59 +133,75 @@ export default function CheckupsSheet({
     }
   };
 
+  const handleCtaClick = () => {
+    onClose();
+    if (successTimerRef.current) {
+      window.clearTimeout(successTimerRef.current);
+    }
+    successTimerRef.current = window.setTimeout(() => {
+      setSuccessOpen(true);
+      successTimerRef.current = null;
+    }, SUCCESS_OVERLAY_DELAY_MS);
+  };
+
   return (
-    <SheetFrame open={open} onClose={onClose} title={title}>
-      {/* Верхняя цветная карточка (вместо изображения) */}
-      <div className="px-4 pt-3">
-        <div
-          className={[
-            "relative overflow-hidden rounded-2xl ring-1 ring-black/5",
-            "bg-gradient-to-br",
-            bg,
-            "text-white",
-          ].join(" ")}
-          style={{ minHeight: 128 }}
-        >
+    <>
+      <SheetFrame open={open} onClose={onClose} title={title}>
+        {/* Верхняя цветная карточка (вместо изображения) */}
+        <div className="px-4 pt-3">
           <div
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(110% 55% at 0% 0%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 60%)",
-            }}
-          />
-          <div className="relative z-10 w-full p-4">
-            <div className="mb-2 opacity-95 text-white/90"><Icon /></div>
-            <div className="text-[18px] font-semibold leading-tight">{title}</div>
-            {sub && <div className="text-[13.5px] leading-5 text-white/85">{sub}</div>}
+            className={[
+              "relative overflow-hidden rounded-2xl ring-1 ring-black/5",
+              "bg-gradient-to-br",
+              bg,
+              "text-white",
+            ].join(" ")}
+            style={{ minHeight: 128 }}
+          >
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(110% 55% at 0% 0%, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 60%)",
+              }}
+            />
+            <div className="relative z-10 w-full p-4">
+              <div className="mb-2 opacity-95 text-white/90"><Icon /></div>
+              <div className="text-[18px] font-semibold leading-tight">{title}</div>
+              {sub && <div className="text-[13.5px] leading-5 text-white/85">{sub}</div>}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Контент шита */}
-      <div className="px-4 py-5">
-        {bullets?.length ? (
-          <>
-            <div className="text-[18px] font-semibold mb-3">Состав комплекса:</div>
-            <ul className="space-y-2 text-[15px] leading-[1.45]">
-              {bullets.map((b, i) => (
-                <li key={i} className="pl-4 relative">
-                  <span className="absolute left-0 top-[.55em] -translate-y-1/2 text-black">•</span>
-                  {b}
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
+        {/* Контент шита */}
+        <div className="px-4 py-5">
+          {bullets?.length ? (
+            <>
+              <div className="text-[18px] font-semibold mb-3">Состав комплекса:</div>
+              <ul className="space-y-2 text-[15px] leading-[1.45]">
+                {bullets.map((b, i) => (
+                  <li key={i} className="pl-4 relative">
+                    <span className="absolute left-0 top-[.55em] -translate-y-1/2 text-black">•</span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
 
-        <Price value={price} />
+          <Price value={price} />
 
-        <Link
-          href={ctaHref}
-          className="mt-5 block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[17px] font-semibold text-white shadow-md active:translate-y-[1px]"
-        >
-          {ctaText}
-        </Link>
-      </div>
-    </SheetFrame>
+          <button
+            type="button"
+            onClick={handleCtaClick}
+            className="mt-5 block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[17px] font-semibold text-white shadow-md transition-transform active:translate-y-[1px]"
+          >
+            {ctaText}
+          </button>
+        </div>
+      </SheetFrame>
+
+      <PromoSuccessOverlay open={successOpen} onClose={() => setSuccessOpen(false)} />
+    </>
   );
 }

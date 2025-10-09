@@ -65,6 +65,7 @@ export default function HomePage() {
   const [promos, setPromos] = useState<PromoData[]>([]);
   const [checkups, setCheckups] = useState<CheckupData[]>([]);
   const [booting, setBooting] = useState(true);
+  const promoImageCache = useRef<Set<string>>(new Set());
 
   const [contacts, setContacts] = useState({
     phone: "+7 (3953) 21-64-22",
@@ -95,6 +96,22 @@ export default function HomePage() {
     })();
     return () => { alive = false; };
   }, []);
+
+  useEffect(() => {
+    if (!promos.length) return;
+    const cache = promoImageCache.current;
+
+    promos.forEach((promo) => {
+      [promo.cardImage, promo.banner].forEach((src) => {
+        if (!src) return;
+        if (cache.has(src)) return;
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        cache.add(src);
+      });
+    });
+  }, [promos]);
   // авто-подгон заголовков
   const baseTitlePx = 16;
   const minTitlePx  = 12;

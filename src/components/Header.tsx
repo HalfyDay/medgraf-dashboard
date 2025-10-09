@@ -9,12 +9,14 @@ type HeaderProps = {
   onNotificationsClick?: () => void;
   hasUnread?: boolean;
   userName?: string;
+  notificationsOpen?: boolean;
 };
 
 export default function Header({
   onNotificationsClick,
   hasUnread = false,
   userName,
+  notificationsOpen = false,
 }: HeaderProps) {
   const [loading, setLoading] = useState(!userName);
   const [apiName, setApiName] = useState<string | null>(null);
@@ -67,11 +69,18 @@ export default function Header({
           <div className="relative z-10 flex h-10 w-10 items-center justify-end">
             <button
               aria-label="Уведомления"
+              aria-pressed={notificationsOpen}
               onClick={onNotificationsClick}
-              className="inline-flex h-10 w-10 items-center justify-center"
+              className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:outline-none"
             >
               <img
-                src={hasUnread ? "/new_notifications.svg" : "/notifications.svg"}
+                src={
+                  notificationsOpen
+                    ? "/notifications_active.svg"
+                    : hasUnread
+                    ? "/new_notifications.svg"
+                    : "/notifications.svg"
+                }
                 alt="Уведомления"
                 className="h-15 w-15"
               />

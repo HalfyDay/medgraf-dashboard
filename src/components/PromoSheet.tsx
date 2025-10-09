@@ -2,7 +2,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SheetFrame from "@/components/SheetFrame";
 import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 
@@ -20,15 +20,39 @@ export default function PromoSheet({ open, onClose, promo }: {
   open: boolean; onClose: () => void; promo: PromoData | null;
 }) {
   const [successOpen, setSuccessOpen] = useState(false);
-  useEffect(() => { setSuccessOpen(false); }, [promo]);
+  const successTimerRef = useRef<number | null>(null);
+  const SUCCESS_OVERLAY_DELAY_MS = 60;
+
+  useEffect(() => {
+    if (successTimerRef.current) {
+      window.clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
+    }
+    setSuccessOpen(false);
+  }, [promo]);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        window.clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (!promo) return null;
 
   const { title, subtitle, banner, bullets = [], ctaText = "Записаться" } = promo;
 
   const handleCtaClick = () => {
-    setSuccessOpen(true);
     onClose();
+    if (successTimerRef.current) {
+      window.clearTimeout(successTimerRef.current);
+    }
+    successTimerRef.current = window.setTimeout(() => {
+      setSuccessOpen(true);
+      successTimerRef.current = null;
+    }, SUCCESS_OVERLAY_DELAY_MS);
   };
 
   return (
