@@ -1,4 +1,4 @@
-// app/api/onec.ts
+﻿// app/api/onec.ts
 // Заготовка клиента для 1C API с подменными (mock) данными.
 // Позволяет уже сейчас брать данные на странице из единого места,
 // а позже — переключиться на реальный backend без правок страницы.
@@ -331,6 +331,7 @@ export const onec = {
         const data = await fetchJson<UserPreview>("/v1/patients/me/preview");
         return data;
       } catch (_) {
+        console.warn("onec.user.get fallback", _);
         await sleep(150); // чтобы увидеть спиннеры
         return structuredClone(MOCK_USER);
       }
@@ -344,6 +345,7 @@ export const onec = {
         const data = await fetchJson<Promotion[]>("/v1/promotions?active=true");
         return data;
       } catch (_) {
+        console.warn("onec.promotions.list fallback", _);
         await sleep(150);
         return structuredClone(MOCK_PROMOTIONS);
       }
@@ -358,6 +360,7 @@ export const onec = {
         const data = await fetchJson<Checkup[]>("/v1/checkups");
         return data;
       } catch (_) {
+        console.warn("onec.checkups.list fallback", _);
         await sleep(150);
         return structuredClone(MOCK_CHECKUPS);
       }
@@ -371,6 +374,7 @@ export const onec = {
         const data = await fetchJson<ContactInfo>("/v1/contacts");
         return data;
       } catch (_) {
+        console.warn("onec.contacts.get fallback", _);
         await sleep(80);
         return structuredClone(MOCK_CONTACTS);
       }

@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect, useRef } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/Button";
@@ -93,15 +94,6 @@ export default function BookingPage() {
   const docRef = useRef<HTMLDivElement>(null);
 
   // Скролл карусели филиалов
-  const scrollBranch = (delta: number) => {
-    const idx = BRANCHES.indexOf(branch);
-    const next = Math.min(Math.max(idx + delta, 0), BRANCHES.length - 1);
-    setBranch(BRANCHES[next]);
-    branchRef.current?.children[next]?.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-    });
-  };
   // Скролл карусели категорий
   const scrollDept = (delta: number) => {
     const idx = DEPARTMENTS.indexOf(department);

@@ -1,7 +1,8 @@
 // components/SheetFrame.tsx
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import React, { PropsWithChildren, ReactNode, useEffect, useRef, useState } from "react";
+import React, { PropsWithChildren, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 
 type SheetFrameProps = {
@@ -117,8 +118,8 @@ export default function SheetFrame({
     if (!sc) return;
     sc.style.overflowY = "";
     try {
-      if (preventWheel.current) sc.removeEventListener("wheel", preventWheel.current as any);
-      if (preventTouchMove.current) sc.removeEventListener("touchmove", preventTouchMove.current as any);
+      if (preventWheel.current) sc.removeEventListener("wheel", preventWheel.current as EventListener);
+      if (preventTouchMove.current) sc.removeEventListener("touchmove", preventTouchMove.current as EventListener);
     } catch {}
   };
 
@@ -176,7 +177,7 @@ export default function SheetFrame({
     dragYRef.current = dragY;
   }, [dragY]);
 
-  const snapBack = () => {
+  const snapBack = useCallback(() => {
     const start = dragYRef.current;
     const startTs = performance.now();
     const step = () => {
@@ -188,12 +189,12 @@ export default function SheetFrame({
       else setDragY(0);
     };
     requestAnimationFrame(step);
-  };
+  }, [snapBackMs]);
 
-  const expandToFull = () => {
+  const expandToFull = useCallback(() => {
     setAnimatingToFull(true);
     setPanelVH(maxVH);
-  };
+  }, [maxVH]);
 
   const isFull = panelVH >= maxVH - 0.5;
 
@@ -326,7 +327,7 @@ export default function SheetFrame({
     const onVisibility = () => {
       if (document.hidden) {
         setDragY(0);
-        if (scrollRef.current) scrollRef.current.style.overflowY = "";
+        sc.style.overflowY = "";
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -343,7 +344,7 @@ export default function SheetFrame({
       el.removeEventListener("touchcancel", tEnd);
 
       document.removeEventListener("visibilitychange", onVisibility);
-      if (scrollRef.current) scrollRef.current.style.overflowY = "";
+      sc.style.overflowY = "";
     };
   }, [
     open,
@@ -353,6 +354,8 @@ export default function SheetFrame({
     snapBackMs,
     expandUpThresholdPx,
     onClose,
+    snapBack,
+    expandToFull,
     isFull,
   ]);
 

@@ -1,10 +1,9 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import DocumentsSheet from "@/components/DocumentsSheet";
-import Link from "next/link";
 import NotificationsSheet from "@/components/NotificationsSheet";
 import VisitsSheet from "@/components/VisitsSheet";
-import NextLink from "next/link";
 import { useLayoutEffect, useRef, useState, useEffect } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
 import CheckupsSheet, { type CheckupData } from "@/components/CheckupsSheet";
@@ -63,7 +62,6 @@ export default function HomePage() {
   const [heights, setHeights] = useState({ collapsed: 0, expanded: 0 });
   const [checkupOpen, setCheckupOpen] = useState(false);
   const [activeCheckup, setActiveCheckup] = useState<CheckupData | null>(null);
-  const [user, setUser] = useState<any>(null);
   const [promos, setPromos] = useState<PromoData[]>([]);
   const [checkups, setCheckups] = useState<CheckupData[]>([]);
   const [booting, setBooting] = useState(true);
@@ -80,14 +78,12 @@ export default function HomePage() {
     let alive = true;
     (async () => {
       try {
-        const [u, pr, ch, c] = await Promise.all([
-          onec.user.get(),
+        const [pr, ch, c] = await Promise.all([
           onec.promotions.list(),
           onec.checkups.list(),
           onec.contacts.get(),
         ]);
         if (!alive) return;
-        setUser(u);
         setPromos(pr);
         setCheckups(ch);
         setContacts(c);

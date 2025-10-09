@@ -1,8 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
+import { ReactNode, useState } from "react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import NotificationsSheet from "@/components/NotificationsSheet";

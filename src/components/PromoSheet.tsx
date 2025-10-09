@@ -1,8 +1,10 @@
 // components/PromoSheet.tsx
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
+import { useEffect, useState } from "react";
 import SheetFrame from "@/components/SheetFrame";
-import Link from "next/link";
+import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 
 export type PromoData = {
   title: string;
@@ -17,11 +19,21 @@ export type PromoData = {
 export default function PromoSheet({ open, onClose, promo }: {
   open: boolean; onClose: () => void; promo: PromoData | null;
 }) {
+  const [successOpen, setSuccessOpen] = useState(false);
+  useEffect(() => { setSuccessOpen(false); }, [promo]);
+
   if (!promo) return null;
-  const { title, subtitle, banner, bullets = [], ctaHref = "/booking", ctaText = "Записаться" } = promo;
+
+  const { title, subtitle, banner, bullets = [], ctaText = "Записаться" } = promo;
+
+  const handleCtaClick = () => {
+    setSuccessOpen(true);
+    onClose();
+  };
 
   return (
-    <SheetFrame
+    <>
+      <SheetFrame
       open={open}
       onClose={onClose}
       title={title}
@@ -53,13 +65,16 @@ export default function PromoSheet({ open, onClose, promo }: {
           </ul>
         )}
 
-        <Link
-          href={ctaHref}
-          className="mt-6 block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[18px] font-semibold text-white shadow-md active:translate-y-[1px]"
+        <button
+          type="button"
+          onClick={handleCtaClick}
+          className="mt-6 w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[18px] font-semibold text-white shadow-md transition-transform active:translate-y-[1px]"
         >
           {ctaText}
-        </Link>
+        </button>
       </div>
     </SheetFrame>
+      <PromoSuccessOverlay open={successOpen} onClose={() => setSuccessOpen(false)} />
+    </>
   );
 }

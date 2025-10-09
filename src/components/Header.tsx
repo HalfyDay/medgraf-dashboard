@@ -1,5 +1,6 @@
 // src/components/Header.tsx
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
 import { onec } from "@/app/api/onec";

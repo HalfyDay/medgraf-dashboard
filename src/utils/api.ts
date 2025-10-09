@@ -63,7 +63,9 @@ export async function updateProfile(data: Profile): Promise<Profile> {
 }
 
 // Сменить пароль
-export async function changePassword(oldPwd: string, newPwd: string): Promise<void> {
+export async function changePassword(_oldPwd: string, _newPwd: string): Promise<void> {
+  void _oldPwd;
+  void _newPwd;
   await new Promise(res => setTimeout(res, 300));
   // на проде проверка старого и сохранение нового
 }

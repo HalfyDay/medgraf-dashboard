@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import SheetFrame, { SectionCard } from "@/components/SheetFrame";
-import { getDeferredPrompt } from "@/utils/pwaInstall";
-
-type BIPEvent = Event & { prompt: () => Promise<void>; userChoice?: Promise<{ outcome: "accepted" | "dismissed" }> };
+import { getDeferredPrompt, type DeferredPromptEvent } from "@/utils/pwaInstall";
 type Notification =
   | { id: string; kind: "install-app"; title: string; text: string; mode: "install" | "hint" }
   | { id: string; kind: "generic" | "appointment" | "document"; title: string; text: string; time: string; unread?: boolean };
+
+type DeferredPromptWindow = Window & {
+  __deferredPrompt?: DeferredPromptEvent | null;
+};
 
 const DEMO: Notification[] = [
   { id: "n1", kind: "appointment", title: "Напоминание о приёме", text: "Завтра в 10:00 у вас офтальмолог.", time: "09:10", unread: true },
@@ -18,7 +20,7 @@ export default function NotificationsSheet({ open, onClose }: { open: boolean; o
   const [isMobile, setIsMobile] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isChromeAndroid, setIsChromeAndroid] = useState(false);
-  const [bip, setBip] = useState<BIPEvent | null>(null);
+  const [bip, setBip] = useState<DeferredPromptEvent | null>(null);
   const [dismissedInstall, setDismissedInstall] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -27,7 +29,7 @@ export default function NotificationsSheet({ open, onClose }: { open: boolean; o
     if (!open) return;
 
     const ua = navigator.userAgent || "";
-    const vendor = (navigator as any).vendor || "";
+    const vendor = navigator.vendor || "";
     const android = /android/i.test(ua);
     const ios = /iphone|ipad|ipod/i.test(ua);
     setIsMobile(android || ios);
@@ -35,15 +37,16 @@ export default function NotificationsSheet({ open, onClose }: { open: boolean; o
     const chromeAndroid = android && /Chrome/i.test(ua) && /Google Inc/.test(vendor) && !/OPR|Edg/i.test(ua);
     setIsChromeAndroid(chromeAndroid);
 
-    const standaloneIOS = (navigator as any).standalone === true;
+    const nav = navigator as Navigator & { standalone?: boolean };
+    const standaloneIOS = nav.standalone === true;
     const mq = "matchMedia" in window ? window.matchMedia("(display-mode: standalone)").matches : false;
     setIsStandalone(standaloneIOS || mq);
 
-    setBip(getDeferredPrompt() as BIPEvent | null);
+    setBip(getDeferredPrompt());
 
-    const onAvail = () => setBip(getDeferredPrompt() as BIPEvent | null);
+    const onAvail = () => setBip(getDeferredPrompt());
     const onInstalled = () => {
-      (window as any).__deferredPrompt = null;
+      (window as DeferredPromptWindow).__deferredPrompt = null;
       setBip(null);
       setDismissedInstall(true);
     };
@@ -91,14 +94,16 @@ export default function NotificationsSheet({ open, onClose }: { open: boolean; o
     if (!bip) return;
     try {
       await bip.prompt();
-      const choice = (bip as any).userChoice ? await (bip as any).userChoice : null;
+      if (bip.userChoice) {
+        await bip.userChoice;
+      }
       setDismissedInstall(true);
       setBip(null);
-      (window as any).__deferredPrompt = null;
+      (window as DeferredPromptWindow).__deferredPrompt = null;
     } catch {
       setDismissedInstall(true);
       setBip(null);
-      (window as any).__deferredPrompt = null;
+      (window as DeferredPromptWindow).__deferredPrompt = null;
     }
   }
 
@@ -140,14 +145,14 @@ export default function NotificationsSheet({ open, onClose }: { open: boolean; o
                   <div className="leading-tight">
                     <div className="text-[16px] font-extrabold text-slate-900">
                       {n.title}
-                      {"unread" in n && (n as any).unread && (
+                      {n.unread && (
                         <span className="ml-2 inline-block h-1.5 w-1.5 translate-y-[-2px] rounded-full bg-sky-500 align-middle" />
                       )}
                     </div>
                     <div className="mt-1 text-[13.5px] font-medium text-slate-600">{n.text}</div>
                   </div>
                   <div className="mt-0.5 shrink-0 text-[12.5px] font-semibold text-slate-400">
-                    {"time" in n ? (n as any).time : ""}
+                    {n.time}
                   </div>
                 </div>
               )}

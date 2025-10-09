@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import SheetFrame, { SectionCard } from "@/components/SheetFrame";
 
 const appointment = {

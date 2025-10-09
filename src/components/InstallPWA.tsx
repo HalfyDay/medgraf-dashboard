@@ -1,14 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-
-type BIPEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice?: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
+import { type DeferredPromptEvent } from "@/utils/pwaInstall";
 
 export default function InstallPWA() {
   const [mounted, setMounted] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<BIPEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<DeferredPromptEvent | null>(null);
   const [show, setShow] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false);
@@ -32,7 +28,8 @@ export default function InstallPWA() {
     setIsAndroid(android);
     setIsMobile(ios || android);
 
-    const standaloneIOS = (navigator as any).standalone === true;
+    const nav = navigator as Navigator & { standalone?: boolean };
+    const standaloneIOS = nav.standalone === true;
     const mq = "matchMedia" in window ? window.matchMedia("(display-mode: standalone)").matches : false;
     setIsStandalone(standaloneIOS || mq);
   }, [mounted]);
@@ -41,26 +38,26 @@ export default function InstallPWA() {
   useEffect(() => {
     if (!mounted || !isMobile || isStandalone) return;
 
-    let fallbackTimer: number | undefined;
+    let fallbackTimer: ReturnType<typeof window.setTimeout> | undefined;
 
-    const onBIP = (e: Event) => {
+    const onBIP = (e: DeferredPromptEvent) => {
       e.preventDefault();
-      setDeferredPrompt(e as BIPEvent);
+      setDeferredPrompt(e);
       setShow(true);             // показать с кнопкой «Установить»
       if (fallbackTimer) window.clearTimeout(fallbackTimer);
     };
 
-    window.addEventListener("beforeinstallprompt", onBIP as any);
+    window.addEventListener("beforeinstallprompt", onBIP as EventListener);
 
     // ФОЛЛБЭК: на Android через 3 сек. показать подсказку, если BIP не пришёл
     if (isAndroid) {
       fallbackTimer = window.setTimeout(() => {
         if (!deferredPrompt) setShow(true);  // покажем карточку с инструкцией
-      }, 3000) as unknown as number;
+      }, 3000);
     }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBIP as any);
+      window.removeEventListener("beforeinstallprompt", onBIP as EventListener);
       if (fallbackTimer) window.clearTimeout(fallbackTimer);
     };
   }, [mounted, isMobile, isAndroid, isStandalone, deferredPrompt]);
