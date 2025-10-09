@@ -7,6 +7,45 @@ type OverlayChildren =
   | ReactNode
   | ((state: { visible: boolean }) => ReactNode);
 
+let scrollLockCount = 0;
+let previousOverflow: string | null = null;
+let previousPaddingRight: string | null = null;
+
+const lockBodyScroll = () => {
+  if (typeof window === "undefined") return;
+
+  if (scrollLockCount === 0) {
+    const { body, documentElement } = document;
+    previousOverflow = body.style.overflow;
+    previousPaddingRight = body.style.paddingRight;
+
+    const scrollbarWidth = window.innerWidth - documentElement.clientWidth;
+    const computedPadding = parseFloat(window.getComputedStyle(body).paddingRight || "0") || 0;
+
+    if (scrollbarWidth > 0) {
+      body.style.paddingRight = `${computedPadding + scrollbarWidth}px`;
+    }
+
+    body.style.overflow = "hidden";
+  }
+
+  scrollLockCount += 1;
+};
+
+const unlockBodyScroll = () => {
+  if (typeof window === "undefined") return;
+  if (scrollLockCount === 0) return;
+
+  scrollLockCount -= 1;
+  if (scrollLockCount > 0) return;
+
+  const { body } = document;
+  body.style.overflow = previousOverflow ?? "";
+  body.style.paddingRight = previousPaddingRight ?? "";
+  previousOverflow = null;
+  previousPaddingRight = null;
+};
+
 type FullscreenOverlayProps = {
   open: boolean;
   onClose: () => void;
@@ -15,6 +54,8 @@ type FullscreenOverlayProps = {
   backdropClassName?: string;
   contentWrapperClassName?: string;
   contentClassName?: string;
+  contentFade?: boolean;
+  lockScroll?: boolean;
 
   transitionMs?: number;
   closeOnBackdrop?: boolean;
@@ -30,6 +71,8 @@ export default function FullscreenOverlay({
   backdropClassName,
   contentWrapperClassName,
   contentClassName,
+  contentFade = true,
+  lockScroll = false,
   transitionMs = 360,
   closeOnBackdrop = true,
   closeOnContentClick = false,
@@ -37,6 +80,7 @@ export default function FullscreenOverlay({
   const [mounted, setMounted] = useState(open);
   const [visible, setVisible] = useState(false);
   const exitTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const entryFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -44,12 +88,26 @@ export default function FullscreenOverlay({
         window.clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
       }
+      if (entryFrameRef.current !== null) {
+        window.cancelAnimationFrame(entryFrameRef.current);
+        entryFrameRef.current = null;
+      }
+
       setMounted(true);
-      requestAnimationFrame(() => setVisible(true));
+      entryFrameRef.current = window.requestAnimationFrame(() => {
+        entryFrameRef.current = window.requestAnimationFrame(() => {
+          setVisible(true);
+          entryFrameRef.current = null;
+        });
+      });
       return;
     }
 
     setVisible(false);
+    if (entryFrameRef.current !== null) {
+      window.cancelAnimationFrame(entryFrameRef.current);
+      entryFrameRef.current = null;
+    }
     exitTimerRef.current = window.setTimeout(() => {
       setMounted(false);
       exitTimerRef.current = null;
@@ -60,14 +118,32 @@ export default function FullscreenOverlay({
         window.clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
       }
+      if (entryFrameRef.current !== null) {
+        window.cancelAnimationFrame(entryFrameRef.current);
+        entryFrameRef.current = null;
+      }
     };
   }, [open, transitionMs]);
+
+  useEffect(() => {
+    if (!lockScroll) return;
+    if (!mounted) return;
+
+    lockBodyScroll();
+    return () => {
+      unlockBodyScroll();
+    };
+  }, [lockScroll, mounted]);
 
   useEffect(() => {
     return () => {
       if (exitTimerRef.current) {
         window.clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
+      }
+      if (entryFrameRef.current !== null) {
+        window.cancelAnimationFrame(entryFrameRef.current);
+        entryFrameRef.current = null;
       }
     };
   }, []);
@@ -98,8 +174,8 @@ export default function FullscreenOverlay({
   );
 
   const contentClass = clsx(
-    "group/data-overlay transition-opacity",
-    visible ? "opacity-100" : "opacity-0",
+    contentFade && "group/data-overlay transition-opacity",
+    contentFade && (visible ? "opacity-100" : "opacity-0"),
     contentClassName ??
       "flex w-full max-w-sm flex-col items-center justify-center rounded-[28px] bg-white p-8 text-center shadow-xl"
   );
