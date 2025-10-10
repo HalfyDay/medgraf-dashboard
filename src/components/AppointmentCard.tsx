@@ -15,6 +15,7 @@ export function AppointmentCard({ appointment, onCancel }: Props) {
     date,
     serviceName,
     doctorName,
+    specialty,
     recommendations,
     patients: patientsRaw,
     status,
@@ -70,6 +71,7 @@ export function AppointmentCard({ appointment, onCancel }: Props) {
             <div className="space-y-3 text-base">
               <p>
                 <span className="font-medium">Врач:</span> {doctorName}
+                {specialty ? ` · ${specialty}` : ""}
               </p>
               <p className="font-medium">Пациенты:</p>
               {patients.length > 0 ? (

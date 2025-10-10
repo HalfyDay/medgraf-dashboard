@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { type CSSProperties } from "react";
 import FullscreenOverlay from "@/components/FullscreenOverlay";
@@ -6,13 +7,14 @@ import FullscreenOverlay from "@/components/FullscreenOverlay";
 type PromoSuccessOverlayProps = {
   open: boolean;
   onClose: () => void;
+  titleLines?: string[];
+  subtitle?: string;
+  icon?: "check" | "sad";
 };
 
 const GRADIENT_CLASS =
   "absolute inset-0 bg-gradient-to-b from-sky-400 via-sky-500 to-blue-600";
 
-// Centralized animation timings so the reveal stays consistent.
-// Tweak these numbers to speed up or slow down the success overlay animation.
 const ANIMATION = {
   circle: {
     durationMs: 900,
@@ -26,7 +28,54 @@ const ANIMATION = {
   },
 } as const;
 
-export default function PromoSuccessOverlay({ open, onClose }: PromoSuccessOverlayProps) {
+const DEFAULT_TITLE_LINES = [
+  "\u0421\u043f\u0430\u0441\u0438\u0431\u043e!",
+  "\u0417\u0430\u044f\u0432\u043a\u0430 \u043f\u0440\u0438\u043d\u044f\u0442\u0430",
+];
+const DEFAULT_SUBTITLE =
+  "\u041d\u0430\u0448 \u043e\u043f\u0435\u0440\u0430\u0442\u043e\u0440 \u0441\u0432\u044f\u0436\u0435\u0442\u0441\u044f \u0441 \u0432\u0430\u043c\u0438\n\u0432 \u0431\u043b\u0438\u0436\u0430\u0439\u0448\u0435\u0435 \u0432\u0440\u0435\u043c\u044f.";
+
+export default function PromoSuccessOverlay({
+  open,
+  onClose,
+  titleLines,
+  subtitle,
+  icon = "check",
+}: PromoSuccessOverlayProps) {
+  const title = titleLines && titleLines.length > 0 ? titleLines : DEFAULT_TITLE_LINES;
+  const subtitleText = subtitle ?? DEFAULT_SUBTITLE;
+
+  const Subtitle = () => (
+    <p className="text-[18px] leading-relaxed text-white/90 whitespace-pre-line">
+      {subtitleText}
+    </p>
+  );
+
+  const IconGraphic = () => {
+    if (icon === "sad") {
+      return <img src="/sadness.svg" alt="" className="h-20 w-20" />;
+    }
+
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-26 w-26"
+        viewBox="0 0 64 64"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="32" cy="32" r="25" stroke="white" strokeWidth="4" opacity="0.9" />
+        <path
+          d="M24 32.5 30.5 39l11.5-11.5"
+          stroke="white"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  };
+
   return (
     <FullscreenOverlay
       open={open}
@@ -97,43 +146,15 @@ export default function PromoSuccessOverlay({ open, onClose }: PromoSuccessOverl
                   className="mx-auto flex max-w-[360px] flex-col items-center px-6 text-center text-white"
                   style={textStyle}
                 >
-                  <p className="text-[32px] font-semibold leading-tight">
-                    Спасибо!
-                    <br />
-                    Заявка принята
+                  <p className="text-[32px] font-semibold leading-tight whitespace-pre-line">
+                    {title.join("\n")}
                   </p>
 
                   <div className="mt-8 flex flex-col items-center gap-8">
                     <div className="grid h-24 w-24 place-items-center rounded-full bg-white/15 backdrop-blur-sm">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-26 w-26"
-                        viewBox="0 0 64 64"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          cx="32"
-                          cy="32"
-                          r="25"
-                          stroke="white"
-                          strokeWidth="4"
-                          opacity="0.9"
-                        />
-                        <path
-                          d="M24 32.5 30.5 39l11.5-11.5"
-                          stroke="white"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      <IconGraphic />
                     </div>
-                    <p className="text-[18px] leading-relaxed text-white/90">
-                      Наш оператор свяжется с вами
-                      <br />
-                      в ближайшее время.
-                    </p>
+                    <Subtitle />
                   </div>
                 </div>
               </div>

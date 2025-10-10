@@ -1,125 +1,226 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import SheetFrame, { SectionCard } from "@/components/SheetFrame";
 
-const appointment = {
-  date: new Date("2025-08-31T13:00:00"),
-  time: "13:00",
-  clinic: { name: "Медграфт", city: "Усть-Илимск" },
-  conclusion: "Заключение",
-  doctor: {
-    name: "Былым И. А.",
-    role: "Офтальмолог",
-    avatar: "/doc1.png",
-    verified: true,
+import { useMemo } from "react";
+import SheetFrame from "@/components/SheetFrame";
+import type { Appointment } from "@/utils/api";
+
+type VisitsSheetProps = {
+  open: boolean;
+  onClose: () => void;
+  appointments: Appointment[];
+  onSelect?: (appointment: Appointment) => void;
+};
+
+const TITLE = "История посещений";
+const SUBTITLE = "Ваши приёмы";
+const EMPTY_ACTIVE = "Нет активных приёмов.";
+const EMPTY_HISTORY = "Пока нет записей в истории.";
+
+const STATUS_META: Record<
+  Appointment["status"],
+  { label: string; chipClass: string }
+> = {
+  planned: {
+    label: "Запланирован",
+    chipClass: "bg-sky-500/15 text-sky-600 ring-1 ring-sky-500/20",
+  },
+  completed: {
+    label: "Завершён",
+    chipClass: "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/20",
+  },
+  cancelled: {
+    label: "Отменён",
+    chipClass: "bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/20",
   },
 };
 
-function formatRuShort(d: Date) {
-  return d
-    .toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" })
-    .replace(/ ?г\.?/gi, "")
-    .replace(/\./g, "")
-    .replace(/\b([а-яё])/i, (m) => m.toUpperCase());
+function formatDateTime(dateIso: string) {
+  const date = new Date(dateIso);
+  const dateLabel = date.toLocaleDateString("ru-RU", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+  const timeLabel = date.toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return { dateLabel, timeLabel };
 }
 
-export default function VisitsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export default function VisitsSheet({
+  open,
+  onClose,
+  appointments,
+  onSelect,
+}: VisitsSheetProps) {
+  const { active, history } = useMemo(() => {
+    const sorted = [...appointments].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+    );
+
+    const activeItems = sorted.filter((item) => item.status === "planned");
+    const historyItems = sorted
+      .filter((item) => item.status !== "planned")
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return { active: activeItems, history: historyItems };
+  }, [appointments]);
+
+  const handleSelect = (appointment: Appointment) => {
+    if (!onSelect) return;
+    onSelect(appointment);
+  };
+
+  const renderActiveCard = (appointment: Appointment) => {
+    const { dateLabel, timeLabel } = formatDateTime(appointment.date);
+
+    return (
+      <button
+        key={`active-${appointment.id}`}
+        type="button"
+        onClick={() => handleSelect(appointment)}
+        className="relative flex w-full items-center gap-3 rounded-[20px] bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-4 text-left text-white shadow-lg ring-1 ring-black/5 transition-transform active:translate-y-[1px]"
+      >
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/15">
+          <img src="/list.svg" alt="" className="h-12 w-12" />
+        </span>
+
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="truncate text-[17px] font-semibold">
+            {appointment.serviceName}
+          </div>
+          <div className="mt-0.5 text-[14px] opacity-90">
+            {dateLabel} · {timeLabel}
+          </div>
+          {/* <div className="mt-1 text-[13px] opacity-80">
+            {appointment.doctorName} / {appointment.specialty}
+          </div> */}
+          {/* {appointment.clinic?.name && (
+            <div className="mt-1 text-[12.5px] opacity-70">
+              {appointment.clinic.name}
+              {appointment.clinic.room ? ` · ${appointment.clinic.room}` : ""}
+            </div>
+          )} */}
+        </div>
+
+        <span className="shrink-0 opacity-90">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M9 6l6 6-6 6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+    );
+  };
+
+  const renderHistoryCard = (appointment: Appointment) => {
+    const { dateLabel, timeLabel } = formatDateTime(appointment.date);
+    const statusMeta = STATUS_META[appointment.status];
+    const Component = onSelect ? "button" : "div";
+
+    return (
+      <Component
+        key={`history-${appointment.id}`}
+        {...(onSelect
+          ? {
+              type: "button",
+              onClick: () => handleSelect(appointment),
+            }
+          : undefined)}
+        className={[
+          "flex w-full items-start gap-3 rounded-[18px] bg-white px-4 py-4 text-left shadow-sm ring-1 ring-slate-200 transition-transform",
+          onSelect ? "active:translate-y-[1px]" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <span className="mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-[14px] bg-slate-100 text-slate-500">
+          <img src="/list_blue.svg" alt="" className="h-12 w-12" />
+        </span>
+
+        <div className="min-w-0 flex-1 leading-tight text-slate-800">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="truncate text-[16px] font-semibold">
+              {appointment.serviceName}
+            </div>
+            <span
+              className={[
+                "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none",
+                statusMeta.chipClass,
+              ].join(" ")}
+            >
+              {statusMeta.label}
+            </span>
+          </div>
+
+          <div className="mt-1 text-[13.5px] text-slate-600">
+            {dateLabel} · {timeLabel}
+          </div>
+          {/* <div className="mt-1 text-[13px] text-slate-500">
+            {appointment.doctorName} / {appointment.specialty}
+          </div>
+
+          {appointment.clinic?.name && (
+            <div className="mt-1 text-[12.5px] text-slate-500">
+              {appointment.clinic.name}
+              {appointment.clinic.room ? ` · ${appointment.clinic.room}` : ""}
+            </div>
+          )} */}
+        </div>
+      </Component>
+    );
+  };
+
   return (
     <SheetFrame
       open={open}
       onClose={onClose}
-      title="История посещений"
-      subtitle="Ваши приёмы"
+      title={TITLE}
+      subtitle={SUBTITLE}
       iconSrc="/list.svg"
+      innerClassName="space-y-6"
     >
-      {/* Можно оставлять секционные заголовки как есть — это уже «наполнение» */}
-      <h2 className="px-1 mb-3 text-[22px] font-extrabold text-slate-900">Детали записи</h2>
-
-      <SectionCard>
-        <ul className="divide-y divide-slate-100">
-          {/* Дата */}
-          <li className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="leading-tight">
-                <div className="text-[14px] text-slate-600">Дата</div>
-                <div className="mt-1 text-[18px] font-extrabold text-slate-900">
-                  {formatRuShort(appointment.date)}
-                </div>
-              </div>
-              <div className="shrink-0 opacity-70">
-                <img src="/date.svg" alt="" className="h-7 w-7" />
-              </div>
-            </div>
-          </li>
-
-          {/* Время */}
-          <li className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="leading-tight">
-                <div className="text-[14px] text-slate-600">Время</div>
-                <div className="mt-1 text-[18px] font-extrabold text-slate-900">
-                  {appointment.time}
-                </div>
-              </div>
-              <div className="shrink-0 opacity-70">
-                <img src="/time.svg" alt="" className="h-7 w-7" />
-              </div>
-            </div>
-          </li>
-
-          {/* Место */}
-          <li className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="leading-tight">
-                <div className="text-[18px] font-extrabold text-slate-900">{appointment.clinic.name}</div>
-                <div className="mt-1 text-[16px] font-semibold text-slate-600">{appointment.clinic.city}</div>
-              </div>
-              <div className="shrink-0 opacity-70">
-                <img src="/clinic.svg" alt="" className="h-7 w-7" />
-              </div>
-            </div>
-          </li>
-
-          {/* Заключение */}
-          <li className="px-4 py-3">
-            <div className="flex items-center justify-between">
-              <div className="leading-tight">
-                <div className="text-[18px] font-extrabold text-slate-900">
-                  {appointment.conclusion}
-                </div>
-              </div>
-              <div className="shrink-0 opacity-70">
-                <img src="/note.svg" alt="" className="h-7 w-7" />
-              </div>
-            </div>
-          </li>
-        </ul>
-      </SectionCard>
-
-      {/* Карточка врача — тоже «наполнение» */}
-      <div className="mx-1 mt-4 flex items-center justify-between rounded-[18px] bg-white px-4 py-3 shadow-md ring-1 ring-slate-100">
-        <div className="flex items-center gap-3">
-          <img
-            src={appointment.doctor.avatar}
-            alt="doctor avatar"
-            className="h-11 w-11 rounded-full object-cover"
-            onError={(e) =>
-              ((e.target as HTMLImageElement).src =
-                "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'><rect width='100%' height='100%' rx='20' fill='%23E5E7EB'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%239CA3AF'>👨‍⚕️</text></svg>")
-            }
-          />
-          <div className="leading-tight">
-            <div className="text-[16px] font-bold text-slate-900">{appointment.doctor.name}</div>
-            <div className="text-[13px] text-slate-600">{appointment.doctor.role}</div>
+      <section className="space-y-3">
+        <h3 className="px-1 text-[15px] font-semibold uppercase tracking-wide text-slate-500">
+          Активные приёмы
+        </h3>
+        {active.length === 0 ? (
+          <div className="rounded-[18px] bg-slate-100 px-5 py-6 text-center text-[15px] text-slate-600">
+            {EMPTY_ACTIVE}
           </div>
-        </div>
-
-        {appointment.doctor.verified && (
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/10 text-sky-600" title="Проверено">
-            <img src="/verified.svg" alt="" className="h-4.5 w-4.5" />
-          </span>
+        ) : (
+          <div className="space-y-3">{active.map(renderActiveCard)}</div>
         )}
-      </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="px-1 text-[15px] font-semibold uppercase tracking-wide text-slate-500">
+          История посещений
+        </h3>
+        {history.length === 0 ? (
+          <div className="rounded-[18px] bg-slate-50 px-5 py-6 text-center text-[15px] text-slate-500">
+            {EMPTY_HISTORY}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {history.map((appointment) => renderHistoryCard(appointment))}
+          </div>
+        )}
+      </section>
     </SheetFrame>
   );
 }

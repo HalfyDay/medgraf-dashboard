@@ -2,11 +2,16 @@
 /* eslint-disable @next/next/no-img-element */
 
 import DocumentsSheet from "@/components/DocumentsSheet";
+import DocumentDetailsSheet from "@/components/DocumentDetailsSheet";
 import NotificationsSheet from "@/components/NotificationsSheet";
+import MyAppointmentsSheet from "@/components/MyAppointmentsSheet";
+import AppointmentDetailsSheet from "@/components/AppointmentDetailsSheet";
 import VisitsSheet from "@/components/VisitsSheet";
-import { useLayoutEffect, useRef, useState, useEffect } from "react";
+import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
+import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
 import CheckupsSheet, { type CheckupData } from "@/components/CheckupsSheet";
+import { fetchAppointments, type Appointment, fetchDocuments, type DocumentItem } from "@/utils/api";
 import { onec } from "@/app/api/onec";
 
 function BootSplash({ visible }: { visible: boolean }) {
@@ -51,12 +56,29 @@ function BootSplash({ visible }: { visible: boolean }) {
   );
 }
 
+function formatTileDate(dateIso: string) {
+  const raw = new Date(dateIso).toLocaleDateString("ru-RU", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const cleaned = raw.replace(/\./g, "");
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+function formatTileTime(dateIso: string) {
+  return new Date(dateIso).toLocaleTimeString("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 
 export default function HomePage() {
   // ✅ хук теперь внутри компонента
   const [docsOpen, setDocsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [isVisitsOpen, setVisitsOpen] = useState(false);
   const [showAllCheckups, setShowAllCheckups] = useState(false);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [heights, setHeights] = useState({ collapsed: 0, expanded: 0 });
@@ -66,6 +88,19 @@ export default function HomePage() {
   const [checkups, setCheckups] = useState<CheckupData[]>([]);
   const [booting, setBooting] = useState(true);
   const promoImageCache = useRef<Set<string>>(new Set());
+
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [myAppointmentsOpen, setMyAppointmentsOpen] = useState(false);
+  const [visitsOpen, setVisitsOpen] = useState(false);
+  const [appointmentDetailsOpen, setAppointmentDetailsOpen] = useState(false);
+  const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
+  const [activeDocument, setActiveDocument] = useState<DocumentItem | null>(null);
+  const [cancelOverlayOpen, setCancelOverlayOpen] = useState(false);
+  const cancelOverlayTimerRef = useRef<number | null>(null);
 
   const [contacts, setContacts] = useState({
     phone: "+7 (3953) 21-64-22",
@@ -79,23 +114,109 @@ export default function HomePage() {
     let alive = true;
     (async () => {
       try {
-        const [pr, ch, c] = await Promise.all([
+        const [pr, ch, c, ap, docsData] = await Promise.all([
           onec.promotions.list(),
           onec.checkups.list(),
           onec.contacts.get(),
+          fetchAppointments().catch((err) => {
+            console.warn("appointments fallback:", err);
+            return [] as Appointment[];
+          }),
+          fetchDocuments().catch((err) => {
+            console.warn("documents fallback:", err);
+            return [] as DocumentItem[];
+          }),
         ]);
         if (!alive) return;
         setPromos(pr);
         setCheckups(ch);
         setContacts(c);
+        setAppointments(ap);
+        setDocuments(docsData);
       } catch (e) {
         console.warn("onec fallback:", e);
       } finally {
-        if (alive) setBooting(false);
+        if (alive) {
+          setBooting(false);
+          setAppointmentsLoading(false);
+          setDocumentsLoading(false);
+        }
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, []);
+
+  const upcomingAppointment = useMemo(() => {
+    if (!appointments.length) return null;
+    const planned = appointments.filter((item) => item.status === "planned");
+    if (!planned.length) return null;
+    return planned.reduce((nearest, item) => {
+      const itemTs = new Date(item.date).getTime();
+      const nearestTs = new Date(nearest.date).getTime();
+      return itemTs < nearestTs ? item : nearest;
+    });
+  }, [appointments]);
+
+  const upcomingDateLabel = upcomingAppointment ? formatTileDate(upcomingAppointment.date) : "—";
+  const upcomingTimeLabel = upcomingAppointment ? formatTileTime(upcomingAppointment.date) : "—";
+  const upcomingDoctorName = upcomingAppointment?.doctorName ?? "Пока нет записи";
+  const upcomingDoctorSpecialty =
+    upcomingAppointment?.specialty ?? "Запишитесь на приём, чтобы мы показали детали";
+  const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar ?? "/doc1.png";
+  const hasActiveAppointments = appointments.some((item) => item.status === "planned");
+  const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
+
+  const handleOpenMyRecord = () => {
+    setMyAppointmentsOpen(true);
+  };
+
+  const handleOpenVisits = () => {
+    setVisitsOpen(true);
+  };
+
+  const handleSelectAppointment = (appointment: Appointment) => {
+    setActiveAppointment(appointment);
+    setAppointmentDetailsOpen(true);
+    setMyAppointmentsOpen(false);
+    setVisitsOpen(false);
+  };
+
+  const handleCancelAppointment = (appointment: Appointment) => {
+    if (appointment.status !== "planned") return;
+    setAppointments((prev) =>
+      prev.map((item) => (item.id === appointment.id ? { ...item, status: "cancelled" } : item)),
+    );
+    setActiveAppointment((prev) =>
+      prev && prev.id === appointment.id ? { ...prev, status: "cancelled" } : prev,
+    );
+    setAppointmentDetailsOpen(false);
+    setCancelOverlayOpen(false);
+    if (cancelOverlayTimerRef.current) {
+      window.clearTimeout(cancelOverlayTimerRef.current);
+    }
+    cancelOverlayTimerRef.current = window.setTimeout(() => {
+      setCancelOverlayOpen(true);
+      cancelOverlayTimerRef.current = null;
+    }, 60);
+  };
+
+  const handleCloseAppointmentDetails = () => {
+    setAppointmentDetailsOpen(false);
+    setActiveAppointment(null);
+  };
+
+  const handleSelectDocument = (document: DocumentItem) => {
+    setActiveDocument(document);
+    setDocumentDetailsOpen(true);
+    setDocsOpen(false);
+  };
+
+  const handleCloseDocumentDetails = () => {
+    setDocumentDetailsOpen(false);
+    setActiveDocument(null);
+  };
 
   useEffect(() => {
     if (!promos.length) return;
@@ -112,6 +233,15 @@ export default function HomePage() {
       });
     });
   }, [promos]);
+
+  useEffect(() => {
+    return () => {
+      if (cancelOverlayTimerRef.current) {
+        window.clearTimeout(cancelOverlayTimerRef.current);
+        cancelOverlayTimerRef.current = null;
+      }
+    };
+  }, []);
   // авто-подгон заголовков
   const baseTitlePx = 16;
   const minTitlePx  = 12;
@@ -263,47 +393,72 @@ export default function HomePage() {
         </section>
 
         {/* Моя запись */}
-        <section className="mt-5 rounded-[22px] bg-gradient-to-br from-sky-400 to-blue-500 p-4 text-white shadow-lg">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-[19px] font-semibold">Моя запись</div>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-90">
-              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20 backdrop-blur-[2px]">
-              <div className="mb-1 flex items-center gap-2 text-[13px] opacity-90">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M7 3v3M17 3v3M4 9h16M5 21h14a2 2 0 0 0 2-2V8H3v11a2 2 0 0 0 2 2Z" stroke="currentColor" strokeWidth="1.6"/>
-                </svg>
-                Дата
+        {showMyRecordCard && (
+          <section
+            className="mt-5 rounded-[22px] bg-gradient-to-br from-sky-400 to-blue-500 p-4 text-white shadow-lg transition-transform active:translate-y-[1px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            role="button"
+            tabIndex={0}
+            onClick={handleOpenMyRecord}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleOpenMyRecord();
+              }
+            }}
+            aria-label="Открыть список моих записей"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-[19px] font-semibold">Моя запись</div>
               </div>
-              <div className="text-[16px] font-semibold">Вт, 11 окт 2025</div>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="shrink-0 opacity-90">
+                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </div>
 
-            <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20 backdrop-blur-[2px]">
-              <div className="mb-1 flex items-center gap-2 text-[13px] opacity-90">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/>
-                </svg>
-                Время
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20 backdrop-blur-[2px]">
+                <div className="mb-1 flex items-center gap-2 text-[13px] opacity-90">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 3v3M17 3v3M4 9h16M5 21h14a2 2 0 0 0 2-2V8H3v11a2 2 0 0 0 2 2Z" stroke="currentColor" strokeWidth="1.6"/>
+                  </svg>
+                  Дата
+                </div>
+                <div className="text-[16px] font-semibold">{upcomingDateLabel}</div>
               </div>
-              <div className="text-[16px] font-semibold">08:00 – 12:00</div>
-            </div>
-          </div>
 
-          <div className="mt-3 flex items-center justify-between rounded-[18px] bg-white p-3 text-slate-800">
-            <div className="flex items-center gap-3">
-              <img src="/doc1.png" alt="Врач" className="h-10 w-10 rounded-full border border-slate-200 object-cover" />
-              <div className="leading-tight">
-                <div className="text-[16px] font-semibold">Былим И. А.</div>
-                <div className="text-[12.5px] text-slate-500">Офтальмолог</div>
+              <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20 backdrop-blur-[2px]">
+                <div className="mb-1 flex items-center gap-2 text-[13px] opacity-90">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6"/>
+                  </svg>
+                  Время
+                </div>
+                <div className="text-[16px] font-semibold">{upcomingTimeLabel}</div>
               </div>
             </div>
-          </div>
-        </section>
+
+            <div className="mt-3 flex items-center justify-between rounded-[18px] bg-white/95 p-3 text-slate-800 ring-1 ring-white/30">
+              <div className="flex items-center gap-3">
+                <img
+                  src={upcomingDoctorAvatar}
+                  alt=""
+                  className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                  onError={(event) => {
+                    (event.currentTarget as HTMLImageElement).src = "/doc1.png";
+                  }}
+                />
+                <div className="min-w-0 leading-tight">
+                  <div className="truncate text-[16px] font-semibold">{upcomingDoctorName}</div>
+                  <div className="mt-0.5 text-[12.5px] text-slate-500">
+                    {upcomingDoctorSpecialty}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ЧЕКАПЫ */}
         <section className="mt-6 bg-inherit">
@@ -431,7 +586,7 @@ export default function HomePage() {
         {/* Кнопки */}
         <section className="mt-5 space-y-3">
           <button
-            onClick={() => setVisitsOpen(true)}
+            onClick={handleOpenVisits}
             className="block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[21px] font-semibold text-white shadow-md active:translate-y-[1px]"
           >
             Мои приёмы
@@ -552,11 +707,46 @@ export default function HomePage() {
         </section>
       </div>
 
+      <VisitsSheet
+        open={visitsOpen}
+        onClose={() => setVisitsOpen(false)}
+        appointments={appointments}
+        onSelect={handleSelectAppointment}
+      />
+      <MyAppointmentsSheet
+        open={myAppointmentsOpen}
+        onClose={() => setMyAppointmentsOpen(false)}
+        appointments={appointments}
+        onSelect={handleSelectAppointment}
+      />
+      <AppointmentDetailsSheet
+        open={appointmentDetailsOpen}
+        onClose={handleCloseAppointmentDetails}
+        appointment={activeAppointment}
+        onCancel={handleCancelAppointment}
+      />
       <CheckupsSheet open={checkupOpen} onClose={() => setCheckupOpen(false)} checkup={activeCheckup} />
       <PromoSheet open={promoOpen} onClose={() => setPromoOpen(false)} promo={activePromo} />
       <NotificationsSheet open={notifOpen} onClose={() => setNotifOpen(false)} />
-      <VisitsSheet open={isVisitsOpen} onClose={() => setVisitsOpen(false)} />
-      <DocumentsSheet open={docsOpen} onClose={() => setDocsOpen(false)} />
+      <DocumentsSheet
+        open={docsOpen}
+        onClose={() => setDocsOpen(false)}
+        documents={documents}
+        loading={documentsLoading}
+        onSelect={handleSelectDocument}
+      />
+      <DocumentDetailsSheet
+        open={documentDetailsOpen}
+        onClose={handleCloseDocumentDetails}
+        document={activeDocument}
+      />
+      <PromoSuccessOverlay
+        open={cancelOverlayOpen}
+        onClose={() => setCancelOverlayOpen(false)}
+        titleLines={["Спасибо!", "Ваша запись отменена"]}
+        subtitle="Будем ждать вас снова."
+        icon="sad"
+      />
       {/* <BottomNav /> */}
     </main>
   );
