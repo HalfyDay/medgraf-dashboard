@@ -100,6 +100,8 @@ export default function SheetFrame({
     sc.scrollTop = 0;
     if (!preventWheel.current) {
       preventWheel.current = (e) => {
+        const target = e.target as Element | null;
+        if (target?.closest("[data-allow-horizontal-scroll='true']")) return;
         e.preventDefault();
         e.stopPropagation();
       };
@@ -107,6 +109,8 @@ export default function SheetFrame({
     sc.addEventListener("wheel", preventWheel.current, { passive: false });
     if (!preventTouchMove.current) {
       preventTouchMove.current = (e) => {
+        const target = e.target as Element | null;
+        if (target?.closest("[data-allow-horizontal-scroll='true']")) return;
         e.preventDefault();
         e.stopPropagation();
       };
@@ -279,8 +283,8 @@ export default function SheetFrame({
             setDragY(from + (h - from) * eased);
             if (t < 1) requestAnimationFrame(step);
             else {
-              setDragY(0);
               onClose();
+              requestAnimationFrame(() => setDragY(0));
             }
           };
           requestAnimationFrame(step);

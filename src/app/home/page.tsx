@@ -12,50 +12,8 @@ import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
 import CheckupsSheet, { type CheckupData } from "@/components/CheckupsSheet";
-import { fetchAppointments, type Appointment, fetchDocuments, type DocumentItem } from "@/utils/api";
-import { onec } from "@/app/api/onec";
-
-function BootSplash({ visible }: { visible: boolean }) {
-  return (
-    <div
-      aria-hidden={!visible}
-      className={[
-        "fixed inset-0 z-[2000] transition-opacity duration-400",
-        visible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-      ].join(" ")}
-    >
-      {/* Фон: стекло как у хедера */}
-      <div className="absolute inset-0 bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40" />
-
-      {/* Центрированная карточка с логотипом/спиннером */}
-      <div className="relative z-10 flex h-full w-full items-center justify-center p-6">
-        <div className="w-full max-w-[360px] rounded-3xl bg-white/60 backdrop-blur-md supports-[backdrop-filter]:bg-white/40 shadow-xl ring-1 ring-white/30 p-8 text-center">
-          <div className="mx-auto mb-4 grid place-items-center">
-           <img
-             src="/logo.svg"
-             alt="Медграфт"
-             className="h-10 w-10"
-             width={40}
-             height={40}
-             decoding="async"
-           />
-          </div>
-
-          <div className="text-[24px] font-semibold text-slate-900">Медграфт</div>
-          <div className="mt-1 text-[16px] text-slate-500">загружаем персональные данные…</div>
-
-          <div className="mt-6 flex items-center justify-center gap-2 text-sky-600">
-            <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".2"/>
-              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            <span className="text-[15.5px]">Подключение…</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { type Appointment, type DocumentItem } from "@/utils/api";
+import { useAppData } from "@/providers/AppDataProvider";
 
 function formatTileDate(dateIso: string) {
   const raw = new Date(dateIso).toLocaleDateString("ru-RU", {
@@ -77,6 +35,18 @@ function formatTileTime(dateIso: string) {
 
 
 export default function HomePage() {
+  const {
+    booting,
+    promos,
+    checkups,
+    contacts,
+    appointments,
+    setAppointments,
+    appointmentsLoading,
+    documents,
+    documentsLoading,
+  } = useAppData();
+
   // ✅ хук теперь внутри компонента
   const [docsOpen, setDocsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -85,19 +55,11 @@ export default function HomePage() {
   const [heights, setHeights] = useState({ collapsed: 0, expanded: 0 });
   const [checkupOpen, setCheckupOpen] = useState(false);
   const [activeCheckup, setActiveCheckup] = useState<CheckupData | null>(null);
-  const [promos, setPromos] = useState<PromoData[]>([]);
-  const [checkups, setCheckups] = useState<CheckupData[]>([]);
-  const [booting, setBooting] = useState(true);
   const promoImageCache = useRef<Set<string>>(new Set());
-
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [myAppointmentsOpen, setMyAppointmentsOpen] = useState(false);
   const [visitsOpen, setVisitsOpen] = useState(false);
   const [appointmentDetailsOpen, setAppointmentDetailsOpen] = useState(false);
   const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [documentsLoading, setDocumentsLoading] = useState(true);
   const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
   const [activeDocument, setActiveDocument] = useState<DocumentItem | null>(null);
   const [cancelOverlayOpen, setCancelOverlayOpen] = useState(false);
@@ -105,52 +67,6 @@ export default function HomePage() {
   const [bookingFlowOpen, setBookingFlowOpen] = useState(false);
   const [bookingSuccessOpen, setBookingSuccessOpen] = useState(false);
   const [recentBooking, setRecentBooking] = useState<Appointment | null>(null);
-
-  const [contacts, setContacts] = useState({
-    phone: "+7 (3953) 21-64-22",
-    siteLabel: "медграфт.рф",
-    siteUrl: "https://медграфт.рф",
-    whatsappUrl: "https://wa.me/79990000000",
-    telegramUrl: "https://t.me/medgraft",
-  });
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const [pr, ch, c, ap, docsData] = await Promise.all([
-          onec.promotions.list(),
-          onec.checkups.list(),
-          onec.contacts.get(),
-          fetchAppointments().catch((err) => {
-            console.warn("appointments fallback:", err);
-            return [] as Appointment[];
-          }),
-          fetchDocuments().catch((err) => {
-            console.warn("documents fallback:", err);
-            return [] as DocumentItem[];
-          }),
-        ]);
-        if (!alive) return;
-        setPromos(pr);
-        setCheckups(ch);
-        setContacts(c);
-        setAppointments(ap);
-        setDocuments(docsData);
-      } catch (e) {
-        console.warn("onec fallback:", e);
-      } finally {
-        if (alive) {
-          setBooting(false);
-          setAppointmentsLoading(false);
-          setDocumentsLoading(false);
-        }
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   const upcomingAppointment = useMemo(() => {
     if (!appointments.length) return null;
@@ -394,7 +310,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-dvh bg-[#F7FAFF]">
-      <BootSplash visible={booting} />
       {/* <Header onNotificationsClick={() => setNotifOpen(true)} /> */}
 
 

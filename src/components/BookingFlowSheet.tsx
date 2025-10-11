@@ -37,7 +37,7 @@ const STEP_META: Record<
   doctor: {
     title: "Выберите специалиста",
     subtitle: "Свободные дни",
-    icon: "/list.svg",
+    icon: "/doctor.svg",
     actionLabel: "Далее",
   },
   date: {
@@ -49,7 +49,7 @@ const STEP_META: Record<
   time: {
     title: "Запись на приём",
     subtitle: "Выберите свободный слот",
-    icon: "/time.svg",
+    icon: "/date.svg",
     actionLabel: "Записаться",
   },
 };
@@ -464,11 +464,12 @@ export default function BookingFlowSheet({
   };
 
   const renderDoctorsStep = () => (
-      <div className="mt-1 space-y-5 pb-4">
+      <div className="mt-1 space-y-4 pb-3">
 
       {specialties.length > 0 && (
         <div
-          className="-mx-4 mt-1 overflow-x-auto px-4 pb-1"
+          className="-mx-4 mt-1 overflow-x-auto px-4 pb-1 no-scrollbar"
+          data-allow-horizontal-scroll="true"
           style={horizontalStyle}
           {...horizontalHandlers}
         >
@@ -515,7 +516,8 @@ export default function BookingFlowSheet({
       )}
 
       <div
-        className="-mx-4 mt-1 overflow-x-auto px-4 pb-4"
+        className="-mx-4 mt-2 overflow-x-auto px-4 pb-4 pt-2 no-scrollbar"
+        data-allow-horizontal-scroll="true"
         style={horizontalStyle}
         {...horizontalHandlers}
       >
@@ -550,15 +552,15 @@ export default function BookingFlowSheet({
                 </div>
 
                 <div className="space-y-3 px-4 pb-4 pt-3">
-                  <div className="space-y-2">
-                    <div className="flex items-baseline justify-between gap-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-baseline justify-between gap-1.5">
                       <p className="text-[17px] font-semibold leading-tight text-slate-900">
                         {formatDoctorShortName(doctor.fullName)}
                       </p>
-                      <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-amber-500">
+                      <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-amber-500">
                         <svg
-                          width="14"
-                          height="14"
+                          width="16"
+                          height="16"
                           viewBox="0 0 24 24"
                           fill="none"
                           className="shrink-0"
@@ -774,7 +776,7 @@ export default function BookingFlowSheet({
       iconSrc={meta.icon}
       initialVH={92}
       maxVH={100}
-      innerClassName="space-y-6 pb-12"
+      innerClassName="space-y-5 pb-6"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -801,12 +803,12 @@ export default function BookingFlowSheet({
       {step === "time" && renderTimeStep()}
 
       {bookingError && (
-        <div className="rounded-[16px] bg-rose-50 px-4 py-3 text-[14px] font-medium text-rose-600">
+        <div className="rounded-[16px] bg-rose-50 px- py-3 text-[14px] font-medium text-rose-600">
           {bookingError}
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-3">
         <button
           type="button"
           onClick={handlePrimaryAction}
