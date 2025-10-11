@@ -1,7 +1,14 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 import clsx from "clsx";
 import SheetFrame from "@/components/SheetFrame";
 import {
@@ -119,6 +126,41 @@ const formatLongDate = (isoDate: string) => {
   });
 };
 
+const formatDoctorShortName = (fullName: string) => {
+  const parts = fullName
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return fullName;
+  }
+  const [surname, firstName] = parts;
+  const initial = firstName?.[0];
+  return initial ? `${surname} ${initial}.` : surname;
+};
+
+type HorizontalHandlers = {
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onPointerMove: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onTouchStart: (event: ReactTouchEvent<HTMLDivElement>) => void;
+  onTouchMove: (event: ReactTouchEvent<HTMLDivElement>) => void;
+};
+
+const createHorizontalHandlers = (): HorizontalHandlers => {
+  const stopPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+  };
+  const stopTouch = (event: ReactTouchEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+  };
+  return {
+    onPointerDown: stopPointer,
+    onPointerMove: stopPointer,
+    onTouchStart: stopTouch,
+    onTouchMove: stopTouch,
+  };
+};
+
 export default function BookingFlowSheet({
   open,
   onClose,
@@ -146,6 +188,9 @@ export default function BookingFlowSheet({
   const [monthCursor, setMonthCursor] = useState<Date | null>(null);
   const [monthMin, setMonthMin] = useState<Date | null>(null);
   const [monthMax, setMonthMax] = useState<Date | null>(null);
+
+  const horizontalHandlers = useMemo(() => createHorizontalHandlers(), []);
+  const horizontalStyle = useMemo(() => ({ touchAction: "pan-x" as const }), []);
 
   const resetState = useCallback(() => {
     setStep("doctor");
@@ -291,7 +336,7 @@ export default function BookingFlowSheet({
       const today = startOfMonth(new Date());
       setMonthCursor(today);
       setMonthMin(today);
-      setMonthMax(addMonths(today, 5));
+      setMonthMax(addMonths(today, 11));
       return;
     }
 
@@ -299,12 +344,14 @@ export default function BookingFlowSheet({
       .map((day) => new Date(day.date))
       .sort((a, b) => a.getTime() - b.getTime());
 
+    const today = startOfMonth(new Date());
     const earliest = startOfMonth(sortedDates[0]);
-    const latest = startOfMonth(sortedDates[sortedDates.length - 1]);
-    const min = addMonths(earliest, -1);
-    const max = addMonths(latest, 5);
+    const initial =
+      compareMonths(earliest, today) < 0 ? today : earliest;
+    const min = today;
+    const max = addMonths(today, 11);
 
-    setMonthCursor(earliest);
+    setMonthCursor(initial);
     setMonthMin(min);
     setMonthMax(max);
   }, [open, schedule]);
@@ -417,19 +464,15 @@ export default function BookingFlowSheet({
   };
 
   const renderDoctorsStep = () => (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <h3 className="text-[15px] font-semibold uppercase tracking-wide text-slate-500">
-          Врачи клиники
-        </h3>
-        <p className="text-[14px] text-slate-500">
-          Выберите подходящую специализацию и врача
-        </p>
-      </div>
+      <div className="mt-1 space-y-5 pb-4">
 
       {specialties.length > 0 && (
-        <div className="overflow-x-auto pb-1">
-          <div className="flex w-max gap-2">
+        <div
+          className="-mx-4 mt-1 overflow-x-auto px-4 pb-1"
+          style={horizontalStyle}
+          {...horizontalHandlers}
+        >
+          <div className="flex w-max gap-2 pr-4">
             {specialties.map((item) => {
               const active = item === selectedSpecialty;
               return (
@@ -471,8 +514,12 @@ export default function BookingFlowSheet({
         </div>
       )}
 
-      <div className="overflow-x-auto pb-2">
-        <div className="flex w-max gap-3">
+      <div
+        className="-mx-4 mt-1 overflow-x-auto px-4 pb-4"
+        style={horizontalStyle}
+        {...horizontalHandlers}
+      >
+        <div className="-mx-2 flex w-max gap-3 px-2 pb-2 pr-4">
           {filteredDoctors.map((doctor) => {
             const selected = doctor.id === selectedDoctorId;
             return (
@@ -503,37 +550,33 @@ export default function BookingFlowSheet({
                 </div>
 
                 <div className="space-y-3 px-4 pb-4 pt-3">
-                  <div className="space-y-1">
-                    <p className="text-[17px] font-semibold leading-tight text-slate-900">
-                      {doctor.fullName}
-                    </p>
+                  <div className="space-y-2">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-[17px] font-semibold leading-tight text-slate-900">
+                        {formatDoctorShortName(doctor.fullName)}
+                      </p>
+                      <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-amber-500">
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="shrink-0"
+                          aria-hidden="true"
+                        >
+                          <path
+                            d="m12 2.75 2.31 5.41 5.94.5-4.52 3.84 1.38 5.78L12 15.8l-5.11 2.48 1.38-5.78-4.52-3.84 5.94-.5L12 2.75Z"
+                            stroke="currentColor"
+                            strokeWidth="1.4"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        {doctor.rating.toFixed(1)}
+                      </span>
+                    </div>
                     <p className="text-[14px] font-medium text-slate-500">
                       {doctor.specialty}
                     </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 text-[13px] font-semibold">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        className="shrink-0 text-amber-500"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="m12 2.75 2.31 5.41 5.94.5-4.52 3.84 1.38 5.78L12 15.8l-5.11 2.48 1.38-5.78-4.52-3.84 5.94-.5L12 2.75Z"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      {doctor.rating.toFixed(1)}
-                    </span>
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-                      {doctor.reviews} отзывов
-                    </span>
                   </div>
 
                   <div className="text-[14px] font-semibold text-rose-500">
@@ -613,36 +656,38 @@ export default function BookingFlowSheet({
             </div>
 
             <div className="mt-2 grid grid-cols-7 gap-1.5">
-              {calendarCells.map(({ dateIso, dayLabel, available }) => {
-                if (!dateIso) {
-                  return (
-                    <span
-                      key={`empty-${dayLabel}-${Math.random()}`}
+            {calendarCells.map(({ dateIso, dayLabel, available }) => {
+              if (!dateIso) {
+                return (
+                  <span
+                    key={`empty-${dayLabel}-${Math.random()}`}
                       className="h-10 rounded-full"
                     />
                   );
-                }
+              }
 
-                const selected = selectedDate === dateIso;
-                return (
-                  <button
-                    key={dateIso}
-                    type="button"
-                    onClick={() => (available ? handleSelectDate(dateIso) : null)}
-                    className={clsx(
-                      "h-11 rounded-full text-[15px] font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500",
-                      available
-                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              const selected = selectedDate === dateIso;
+              return (
+                <button
+                  key={dateIso}
+                  type="button"
+                  onClick={() => {
+                    if (available) handleSelectDate(dateIso);
+                  }}
+                  className={clsx(
+                    "h-11 rounded-full text-[15px] font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500",
+                    available
+                      ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
                         : "cursor-default bg-slate-50 text-slate-400",
-                      selected &&
-                        "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md hover:from-sky-500 hover:to-blue-600",
-                    )}
-                    disabled={!available}
-                  >
-                    {dayLabel}
-                  </button>
-                );
-              })}
+                    selected &&
+                      "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md hover:from-sky-500 hover:to-blue-600",
+                  )}
+                  disabled={!available}
+                >
+                  {dayLabel}
+                </button>
+              );
+            })}
             </div>
           </div>
         )}
@@ -712,6 +757,13 @@ export default function BookingFlowSheet({
 
   const meta = STEP_META[step];
   const showBack = step !== "doctor";
+  const stepNumber = step === "doctor" ? 1 : step === "date" ? 2 : 3;
+  const STEP_BAR_LABEL: Record<BookingFlowStep, string> = {
+    doctor: "Врачи клиники",
+    date: "Выберите день",
+    time: "Выберите время",
+  };
+  const currentBarLabel = STEP_BAR_LABEL[step];
 
   return (
     <SheetFrame
@@ -720,17 +772,24 @@ export default function BookingFlowSheet({
       title={meta.title}
       subtitle={meta.subtitle}
       iconSrc={meta.icon}
-      innerClassName="space-y-6 pb-1"
+      initialVH={92}
+      maxVH={100}
+      innerClassName="space-y-6 pb-12"
     >
-      <div className="flex items-center justify-between text-[13px] font-semibold text-slate-400">
-        <span>
-          Шаг {step === "doctor" ? 1 : step === "date" ? 2 : 3} из 3
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-[13px] font-semibold text-slate-400">
+            Шаг {stepNumber} из 3
+          </span>
+          <span className="text-[15px] font-semibold text-slate-600">
+            {currentBarLabel}
+          </span>
+        </div>
         {showBack && (
           <button
             type="button"
             onClick={handleBack}
-            className="text-sky-600 transition-colors hover:text-sky-700"
+            className="text-[13px] font-semibold text-sky-600 transition-colors hover:text-sky-700"
           >
             Назад
           </button>
@@ -747,7 +806,7 @@ export default function BookingFlowSheet({
         </div>
       )}
 
-      <div className="sticky bottom-0 z-10 mt-4 rounded-[20px] bg-white px-1 pb-1 pt-3">
+      <div className="mt-6">
         <button
           type="button"
           onClick={handlePrimaryAction}

@@ -390,6 +390,14 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-neuro-1-2025-10-18-1130", start: "2025-10-18T11:30:00+03:00" },
       ],
     },
+    {
+      date: "2025-10-24",
+      slots: [
+        { id: "doc-neuro-1-2025-10-24-1000", start: "2025-10-24T10:00:00+03:00" },
+        { id: "doc-neuro-1-2025-10-24-1200", start: "2025-10-24T12:00:00+03:00" },
+        { id: "doc-neuro-1-2025-10-24-1500", start: "2025-10-24T15:00:00+03:00" },
+      ],
+    },
   ],
   "doc-neuro-2": [
     {
@@ -407,6 +415,14 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-neuro-2-2025-11-02-1300", start: "2025-11-02T13:00:00+03:00" },
       ],
     },
+    {
+      date: "2025-11-14",
+      slots: [
+        { id: "doc-neuro-2-2025-11-14-0930", start: "2025-11-14T09:30:00+03:00" },
+        { id: "doc-neuro-2-2025-11-14-1130", start: "2025-11-14T11:30:00+03:00" },
+        { id: "doc-neuro-2-2025-11-14-1600", start: "2025-11-14T16:00:00+03:00" },
+      ],
+    },
   ],
   "doc-neuro-3": [
     {
@@ -421,6 +437,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
       slots: [
         { id: "doc-neuro-3-2025-11-10-1400", start: "2025-11-10T14:00:00+03:00" },
         { id: "doc-neuro-3-2025-11-10-1600", start: "2025-11-10T16:00:00+03:00" },
+      ],
+    },
+    {
+      date: "2025-11-21",
+      slots: [
+        { id: "doc-neuro-3-2025-11-21-1030", start: "2025-11-21T10:30:00+03:00" },
+        { id: "doc-neuro-3-2025-11-21-1230", start: "2025-11-21T12:30:00+03:00" },
       ],
     },
   ],
@@ -440,6 +463,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-thera-1-2025-10-19-1530", start: "2025-10-19T15:30:00+03:00" },
       ],
     },
+    {
+      date: "2025-10-26",
+      slots: [
+        { id: "doc-thera-1-2025-10-26-0930", start: "2025-10-26T09:30:00+03:00" },
+        { id: "doc-thera-1-2025-10-26-1230", start: "2025-10-26T12:30:00+03:00" },
+      ],
+    },
   ],
   "doc-thera-2": [
     {
@@ -457,6 +487,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-thera-2-2025-10-25-1400", start: "2025-10-25T14:00:00+03:00" },
       ],
     },
+    {
+      date: "2025-11-05",
+      slots: [
+        { id: "doc-thera-2-2025-11-05-0930", start: "2025-11-05T09:30:00+03:00" },
+        { id: "doc-thera-2-2025-11-05-1200", start: "2025-11-05T12:00:00+03:00" },
+      ],
+    },
   ],
   "doc-thera-3": [
     {
@@ -472,6 +509,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-thera-3-2025-11-08-1000", start: "2025-11-08T10:00:00+03:00" },
         { id: "doc-thera-3-2025-11-08-1200", start: "2025-11-08T12:00:00+03:00" },
         { id: "doc-thera-3-2025-11-08-1500", start: "2025-11-08T15:00:00+03:00" },
+      ],
+    },
+    {
+      date: "2025-11-19",
+      slots: [
+        { id: "doc-thera-3-2025-11-19-0930", start: "2025-11-19T09:30:00+03:00" },
+        { id: "doc-thera-3-2025-11-19-1230", start: "2025-11-19T12:30:00+03:00" },
       ],
     },
   ],
@@ -492,6 +536,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-ophtha-1-2025-10-25-1230", start: "2025-10-25T12:30:00+03:00" },
       ],
     },
+    {
+      date: "2025-11-07",
+      slots: [
+        { id: "doc-ophtha-1-2025-11-07-1000", start: "2025-11-07T10:00:00+03:00" },
+        { id: "doc-ophtha-1-2025-11-07-1230", start: "2025-11-07T12:30:00+03:00" },
+      ],
+    },
   ],
   "doc-ophtha-2": [
     {
@@ -509,6 +560,14 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-ophtha-2-2025-11-05-1300", start: "2025-11-05T13:00:00+03:00" },
       ],
     },
+    {
+      date: "2025-11-18",
+      slots: [
+        { id: "doc-ophtha-2-2025-11-18-0900", start: "2025-11-18T09:00:00+03:00" },
+        { id: "doc-ophtha-2-2025-11-18-1100", start: "2025-11-18T11:00:00+03:00" },
+        { id: "doc-ophtha-2-2025-11-18-1500", start: "2025-11-18T15:00:00+03:00" },
+      ],
+    },
   ],
   "doc-ophtha-3": [
     {
@@ -523,6 +582,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
       slots: [
         { id: "doc-ophtha-3-2025-11-20-1400", start: "2025-11-20T14:00:00+03:00" },
         { id: "doc-ophtha-3-2025-11-20-1630", start: "2025-11-20T16:30:00+03:00" },
+      ],
+    },
+    {
+      date: "2025-11-28",
+      slots: [
+        { id: "doc-ophtha-3-2025-11-28-1000", start: "2025-11-28T10:00:00+03:00" },
+        { id: "doc-ophtha-3-2025-11-28-1230", start: "2025-11-28T12:30:00+03:00" },
       ],
     },
   ],
@@ -542,6 +608,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-gyno-1-2025-10-27-1730", start: "2025-10-27T17:30:00+03:00" },
       ],
     },
+    {
+      date: "2025-11-06",
+      slots: [
+        { id: "doc-gyno-1-2025-11-06-1000", start: "2025-11-06T10:00:00+03:00" },
+        { id: "doc-gyno-1-2025-11-06-1230", start: "2025-11-06T12:30:00+03:00" },
+      ],
+    },
   ],
   "doc-gyno-2": [
     {
@@ -559,6 +632,14 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-gyno-2-2025-11-03-1200", start: "2025-11-03T12:00:00+03:00" },
       ],
     },
+    {
+      date: "2025-11-15",
+      slots: [
+        { id: "doc-gyno-2-2025-11-15-0930", start: "2025-11-15T09:30:00+03:00" },
+        { id: "doc-gyno-2-2025-11-15-1100", start: "2025-11-15T11:00:00+03:00" },
+        { id: "doc-gyno-2-2025-11-15-1400", start: "2025-11-15T14:00:00+03:00" },
+      ],
+    },
   ],
   "doc-gyno-3": [
     {
@@ -574,6 +655,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
         { id: "doc-gyno-3-2025-11-22-1000", start: "2025-11-22T10:00:00+03:00" },
         { id: "doc-gyno-3-2025-11-22-1230", start: "2025-11-22T12:30:00+03:00" },
         { id: "doc-gyno-3-2025-11-22-1500", start: "2025-11-22T15:00:00+03:00" },
+      ],
+    },
+    {
+      date: "2025-12-02",
+      slots: [
+        { id: "doc-gyno-3-2025-12-02-1030", start: "2025-12-02T10:30:00+03:00" },
+        { id: "doc-gyno-3-2025-12-02-1300", start: "2025-12-02T13:00:00+03:00" },
       ],
     },
   ],
