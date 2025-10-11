@@ -7,6 +7,7 @@ import NotificationsSheet from "@/components/NotificationsSheet";
 import MyAppointmentsSheet from "@/components/MyAppointmentsSheet";
 import AppointmentDetailsSheet from "@/components/AppointmentDetailsSheet";
 import VisitsSheet from "@/components/VisitsSheet";
+import BookingFlowSheet from "@/components/BookingFlowSheet";
 import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
@@ -101,6 +102,9 @@ export default function HomePage() {
   const [activeDocument, setActiveDocument] = useState<DocumentItem | null>(null);
   const [cancelOverlayOpen, setCancelOverlayOpen] = useState(false);
   const cancelOverlayTimerRef = useRef<number | null>(null);
+  const [bookingFlowOpen, setBookingFlowOpen] = useState(false);
+  const [bookingSuccessOpen, setBookingSuccessOpen] = useState(false);
+  const [recentBooking, setRecentBooking] = useState<Appointment | null>(null);
 
   const [contacts, setContacts] = useState({
     phone: "+7 (3953) 21-64-22",
@@ -167,6 +171,22 @@ export default function HomePage() {
   const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar ?? "/doc1.png";
   const hasActiveAppointments = appointments.some((item) => item.status === "planned");
   const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
+  const bookingSuccessSubtitle = useMemo(() => {
+    if (!recentBooking) {
+      return "За 24 часа до записи мы свяжемся с вами для подтверждения приёма.";
+    }
+    const bookingDate = new Date(recentBooking.date);
+    const dateLabel = bookingDate.toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    const timeLabel = bookingDate.toLocaleTimeString("ru-RU", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `Вы записаны на ${dateLabel} в ${timeLabel}. За 24 часа до приёма мы свяжемся с вами для подтверждения.`;
+  }, [recentBooking]);
 
   const handleOpenMyRecord = () => {
     setMyAppointmentsOpen(true);
@@ -216,6 +236,24 @@ export default function HomePage() {
   const handleCloseDocumentDetails = () => {
     setDocumentDetailsOpen(false);
     setActiveDocument(null);
+  };
+
+  const handleOpenBooking = () => {
+    setBookingFlowOpen(true);
+  };
+
+  const handleBookingBooked = (appointment: Appointment) => {
+    setAppointments((prev) => {
+      const next = [...prev, appointment];
+      return next.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    });
+    setRecentBooking(appointment);
+    setBookingSuccessOpen(true);
+  };
+
+  const handleCloseBookingSuccess = () => {
+    setBookingSuccessOpen(false);
+    setRecentBooking(null);
   };
 
   useEffect(() => {
@@ -385,7 +423,8 @@ export default function HomePage() {
         {/* CTA */}
         <section className="mt-4">
           <button
-            href="/booking"
+            type="button"
+            onClick={handleOpenBooking}
             className="block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[21px] font-semibold text-white shadow-md active:translate-y-[1px]"
           >
             Записаться на приём
@@ -707,6 +746,11 @@ export default function HomePage() {
         </section>
       </div>
 
+      <BookingFlowSheet
+        open={bookingFlowOpen}
+        onClose={() => setBookingFlowOpen(false)}
+        onBooked={handleBookingBooked}
+      />
       <VisitsSheet
         open={visitsOpen}
         onClose={() => setVisitsOpen(false)}
@@ -739,6 +783,12 @@ export default function HomePage() {
         open={documentDetailsOpen}
         onClose={handleCloseDocumentDetails}
         document={activeDocument}
+      />
+      <PromoSuccessOverlay
+        open={bookingSuccessOpen}
+        onClose={handleCloseBookingSuccess}
+        titleLines={["Спасибо!", "Вы записались"]}
+        subtitle={bookingSuccessSubtitle}
       />
       <PromoSuccessOverlay
         open={cancelOverlayOpen}
