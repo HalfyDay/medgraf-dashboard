@@ -99,20 +99,50 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [documentsLoading, setDocumentsLoading] = useState(true);
 
   const prefetchPublicAssets = useCallback(async () => {
-    await Promise.all(
-      PUBLIC_ASSET_URLS.map(async (url) => {
+    if (typeof navigator !== "undefined") {
+      const nav = navigator as Navigator & {
+        connection?: { saveData?: boolean; effectiveType?: string };
+        deviceMemory?: number;
+      };
+      const connection = nav.connection;
+      const deviceMemory = nav.deviceMemory;
+      if (connection?.saveData) {
+        return;
+      }
+      if (connection?.effectiveType && ["slow-2g", "2g"].includes(connection.effectiveType)) {
+        return;
+      }
+      if (typeof deviceMemory === "number" && deviceMemory <= 1) {
+        return;
+      }
+    }
+
+    const queue = [...PUBLIC_ASSET_URLS];
+    const MAX_CONCURRENT_PREFETCH = 4;
+
+    const worker = async () => {
+      while (queue.length) {
+        const url = queue.shift();
+        if (!url) break;
+
         try {
           const response = await fetch(url, { cache: "force-cache" });
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
           }
-          // Consume body to ensure the asset is cached.
           await response.blob();
         } catch (error) {
           console.warn("public asset prefetch failed:", url, error);
         }
-      }),
+      }
+    };
+
+    const tasks = Array.from(
+      { length: Math.min(MAX_CONCURRENT_PREFETCH, queue.length) },
+      () => worker(),
     );
+
+    await Promise.all(tasks);
   }, []);
 
   const loadData = useCallback(async () => {
@@ -147,14 +177,82 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      await Promise.all([loadData(), prefetchPublicAssets()]);
-      if (alive) {
-        setBooting(false);
+    const MIN_VISIBLE_MS = 350;
+    const MAX_WAIT_MS = 6000;
+    const createSleep = (ms: number) => {
+      let timeoutId: number;
+      const promise = new Promise<void>((resolve) => {
+        timeoutId = window.setTimeout(() => resolve(), ms);
+      });
+      return {
+        promise,
+        cancel: () => window.clearTimeout(timeoutId),
+      };
+    };
+    let cancelMinDelay: (() => void) | null = null;
+    let cancelTimeout: (() => void) | null = null;
+
+    const run = async () => {
+      const minDelay = createSleep(MIN_VISIBLE_MS);
+      cancelMinDelay = minDelay.cancel;
+      const loadPromise = loadData().catch((error) => {
+        console.warn("app boot loadData failed:", error);
+      });
+      const timeout = createSleep(MAX_WAIT_MS);
+      cancelTimeout = timeout.cancel;
+
+      await Promise.race([loadPromise, timeout.promise]);
+      await minDelay.promise;
+
+      if (!alive) {
+        return;
       }
-    })();
+
+      setBooting(false);
+
+      loadPromise.finally(() => {
+        if (!alive) {
+          return;
+        }
+
+        const triggerPrefetch = () =>
+          prefetchPublicAssets().catch((error) => console.warn("public asset prefetch failed:", error));
+
+        if (typeof window !== "undefined") {
+          const idle = (window as typeof window & { requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number }).requestIdleCallback;
+          if (typeof idle === "function") {
+            idle(
+              () => {
+                if (!alive) {
+                  return;
+                }
+                triggerPrefetch();
+              },
+              { timeout: 2000 },
+            );
+          } else {
+            window.setTimeout(() => {
+              if (!alive) {
+                return;
+              }
+              triggerPrefetch();
+            }, 400);
+          }
+        } else {
+          triggerPrefetch();
+        }
+      });
+
+      timeout.cancel();
+      minDelay.cancel();
+    };
+
+    run();
+
     return () => {
       alive = false;
+      cancelMinDelay?.();
+      cancelTimeout?.();
     };
   }, [loadData, prefetchPublicAssets]);
 
@@ -203,4 +301,3 @@ export function useAppData() {
   }
   return ctx;
 }
-

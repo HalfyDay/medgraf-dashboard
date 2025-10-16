@@ -1,11 +1,29 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
+import { useEffect, useState } from "react";
+
 type BootSplashProps = {
   visible: boolean;
 };
 
 export default function BootSplash({ visible }: BootSplashProps) {
+  const TRANSITION_MS = 420;
+  const [shouldRender, setShouldRender] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setShouldRender(true);
+      return;
+    }
+    const timeout = window.setTimeout(() => setShouldRender(false), TRANSITION_MS);
+    return () => window.clearTimeout(timeout);
+  }, [visible]);
+
+  if (!shouldRender) {
+    return null;
+  }
+
   return (
     <div
       aria-hidden={!visible}

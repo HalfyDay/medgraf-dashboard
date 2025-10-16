@@ -13,6 +13,11 @@ export const metadata: Metadata = {
   description: "Запись на приём, документы, чекапы",
   applicationName: "МедГрафт",
   manifest: "/manifest.webmanifest",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
+  colorScheme: "light",
   // ⚠️ themeColor и viewport — НЕ здесь (Next ругался), см. export viewport ниже
   formatDetection: { telephone: true, date: false, address: false, email: false, url: false },
   icons: {
@@ -34,7 +39,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0A58F5",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

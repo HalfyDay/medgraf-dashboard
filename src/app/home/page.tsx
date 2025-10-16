@@ -51,6 +51,7 @@ export default function HomePage() {
   const [docsOpen, setDocsOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [showAllCheckups, setShowAllCheckups] = useState(false);
+  const gridWrapperRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const [heights, setHeights] = useState({ collapsed: 0, expanded: 0 });
   const [checkupOpen, setCheckupOpen] = useState(false);
@@ -211,44 +212,50 @@ export default function HomePage() {
       const grid = gridRef.current;
       if (!grid) return;
       const items = Array.from(grid.children) as HTMLElement[];
-      const top = grid.getBoundingClientRect().top;
 
+      if (!items.length) {
+        setHeights((prev) => (prev.collapsed === 0 && prev.expanded === 0 ? prev : { collapsed: 0, expanded: 0 }));
+        return;
+      }
+
+      const top = grid.getBoundingClientRect().top;
       let collapsedMax = 0;
       items.slice(0, 4).forEach((el) => {
-        const r = el.getBoundingClientRect();
-        collapsedMax = Math.max(collapsedMax, r.bottom - top);
+        const rect = el.getBoundingClientRect();
+        collapsedMax = Math.max(collapsedMax, rect.bottom - top);
       });
 
-      setHeights({
-        collapsed: Math.ceil(collapsedMax),
-        expanded: grid.scrollHeight,
+      const expandedHeight = grid.scrollHeight;
+      const collapsedHeight = Math.ceil(collapsedMax || expandedHeight);
+
+      setHeights((prev) => {
+        if (prev.collapsed === collapsedHeight && prev.expanded === expandedHeight) {
+          return prev;
+        }
+        return { collapsed: collapsedHeight, expanded: expandedHeight };
       });
     };
 
-    // ⬇️ НОВОЕ: подгоняем размер текста ОТДЕЛЬНО для каждой карточки
     const fitTitlesPerCard = () => {
       titleRefs.current.forEach((el) => {
         if (!el) return;
 
-        // контейнер карточки
-        const card = el.closest("a") as HTMLElement | null;
+        const card = el.closest("[data-checkup-card]") as HTMLElement | null;
         const container = card ?? (el.parentElement as HTMLElement);
         if (!container) return;
 
-        // доступная ширина = clientWidth - горизонтальные padding
         const cs = getComputedStyle(container);
         const available =
           container.clientWidth -
           parseFloat(cs.paddingLeft || "0") -
           parseFloat(cs.paddingRight || "0") -
-          2; // маленький запас
+          2;
 
         if (available <= 0) {
           el.style.fontSize = `${minTitlePx}px`;
           return;
         }
 
-        // создаём скрытый "пробник" вне потока, чтобы измерять без ограничений
         const probe = el.cloneNode(true) as HTMLElement;
         probe.style.position = "absolute";
         probe.style.visibility = "hidden";
@@ -260,14 +267,12 @@ export default function HomePage() {
         probe.style.fontSize = `${baseTitlePx}px`;
         document.body.appendChild(probe);
 
-        // если помещается в базовом — оставляем базовый
         if (probe.scrollWidth <= available) {
           el.style.fontSize = `${baseTitlePx}px`;
           document.body.removeChild(probe);
           return;
         }
 
-        // бинарный поиск подходящего размера [min, base]
         let lo = minTitlePx;
         let hi = baseTitlePx;
         let best = lo;
@@ -279,31 +284,56 @@ export default function HomePage() {
 
           if (needed <= available) {
             best = mid;
-            lo = mid; // пробуем больше
+            lo = mid;
           } else {
-            hi = mid; // нужно меньше
+            hi = mid;
           }
         }
 
-        // применяем найденный размер
         el.style.fontSize = `${Math.max(minTitlePx, Math.round(best * 10) / 10)}px`;
         document.body.removeChild(probe);
       });
     };
 
-    const run = () => {
-      measureGridHeights();
-      fitTitlesPerCard(); // ⬅️ вызов
+    let rafId = 0;
+    const scheduleMeasurement = () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = window.requestAnimationFrame(() => {
+        measureGridHeights();
+        fitTitlesPerCard();
+      });
     };
 
-    run();
-    const ro = new ResizeObserver(run);
-    if (gridRef.current) ro.observe(gridRef.current);
-    window.addEventListener("resize", run);
+    scheduleMeasurement();
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => scheduleMeasurement());
+      const grid = gridRef.current;
+      if (grid) {
+        ro.observe(grid);
+      }
+    }
+
+    window.addEventListener("resize", scheduleMeasurement);
+
+    if (typeof document !== "undefined") {
+      const fontSet = document.fonts;
+      if (fontSet) {
+        fontSet.ready.then(() => scheduleMeasurement()).catch(() => {});
+      }
+    }
 
     return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", run);
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      if (ro) {
+        ro.disconnect();
+      }
+      window.removeEventListener("resize", scheduleMeasurement);
     };
   }, [showAllCheckups, checkups.length]);
 
@@ -436,24 +466,34 @@ export default function HomePage() {
           </div>
 
           <div
-            ref={gridRef}
-            className="grid grid-cols-2 gap-3 overflow-hidden bg-transparent"
+            ref={gridWrapperRef}
+            className="relative overflow-hidden"
             style={{
-             maxHeight:
-               heights.collapsed > 0
-                 ? (showAllCheckups ? heights.expanded : heights.collapsed)
+              maxHeight:
+                heights.collapsed > 0
+                  ? (showAllCheckups ? heights.expanded : heights.collapsed)
                  : undefined, // пока не измерили — не ограничиваем
               transition: !booting && heights.collapsed > 0 ? "max-height 400ms cubic-bezier(.2,.8,.2,1)" : undefined,
-              WebkitBackfaceVisibility: "hidden",
-              backfaceVisibility: "hidden",
+              willChange: heights.collapsed > 0 ? "max-height" : undefined,
             }}
           >
+            <div
+              ref={gridRef}
+              className="grid grid-cols-2 gap-3 bg-transparent"
+              style={{
+                WebkitBackfaceVisibility: "hidden",
+                backfaceVisibility: "hidden",
+              }}
+            >
             {checkups.map((c, i) => {
               const hiddenWhileCollapsed = i >= 4 && !showAllCheckups;
               return (
                 <button
+                  data-checkup-card
                   key={c.id}
                   type="button"
+                  aria-hidden={hiddenWhileCollapsed}
+                  tabIndex={hiddenWhileCollapsed ? -1 : 0}
                   onClick={() => { setActiveCheckup(c as unknown as CheckupData); setCheckupOpen(true); }}
                   className={[
                     "relative overflow-hidden rounded-[20px] bg-gradient-to-br p-4 text-left text-white",
@@ -532,6 +572,7 @@ export default function HomePage() {
                 </button>
               );
             })}
+          </div>
           </div>
         </section>
 
