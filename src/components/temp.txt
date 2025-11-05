@@ -108,17 +108,6 @@ export default function BottomNav() {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
-  const actualActiveHref = useMemo(() => {
-    const current = items.find((it) => isActive(it.href));
-    return current?.href ?? items[0]?.href ?? "";
-  }, [items, pathname]);
-
-  const [visualActiveHref, setVisualActiveHref] = useState(actualActiveHref);
-
-  useEffect(() => {
-    setVisualActiveHref(actualActiveHref);
-  }, [actualActiveHref]);
-
   const fullW = baseW;
   const compactW = Math.max(Math.floor(baseW * WIDTH_COMPACT_FACTOR), WIDTH_MIN_PX);
 
@@ -156,57 +145,45 @@ export default function BottomNav() {
           {/* РЯД КНОПОК: центрируем и анимируем gap (кнопки ближе к центру) */}
           <LayoutGroup id="bottom-nav">
             <motion.div
-              className="relative mx-auto flex items-center justify-center w-full"
+              className="mx-auto flex items-center justify-center w-full"
               initial={false}
               animate={{ gap: compact ? GAP_COMPACT : GAP_FULL }}
               transition={{ type: "spring", stiffness: 230, damping: 26 }}
               style={{ width: "100%", height: "100%" }}
             >
               {items.map((it) => {
-                const actualActive = isActive(it.href);
-                const highlightActive = visualActiveHref === it.href;
-                const iconActive = highlightActive || actualActive;
-
+                const active = isActive(it.href);
                 return (
                   <div key={it.href} className="relative flex items-center justify-center shrink-0">
-                    {!compact && highlightActive && (
-                      <motion.div
-                        layoutId="bottom-nav-highlight"
-                        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-                        initial={false}
-                        animate={{ opacity: compact ? 0 : 1 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 420,
-                          damping: 30,
-                          mass: 0.58,
-                          opacity: { duration: 0.18 },
-                        }}
-                        style={{ zIndex: 0 }}
-                      >
-                        <img
-                          src="/highlighted_button.svg"
-                          alt=""
-                          className="h-[75%] w-[90%] object-contain"
-                        />
-                      </motion.div>
-                    )}
-
-                    {compact && actualActive && (
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <img
-                          src="/highlighted_button.svg"
-                          alt=""
-                          className="h-[75%] w-[90%] object-contain"
-                        />
-                      </div>
-                    )}
+                    {active &&
+                      (compact ? (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                          <img
+                            src="/highlighted_button.svg"
+                            alt=""
+                            className="h-[75%] w-[90%] object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <motion.div
+                          layoutId="bottom-nav-highlight"
+                          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                          initial={false}
+                          transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.65 }}
+                        >
+                          <img
+                            src="/highlighted_button.svg"
+                            alt=""
+                            className="h-[75%] w-[90%] object-contain"
+                          />
+                        </motion.div>
+                      ))}
 
                     <motion.button
                       type="button"
                       aria-label={it.label}
-                      aria-current={actualActive ? "page" : undefined}
-                      className="relative z-10 inline-flex items-center justify-center select-none"
+                      aria-current={active ? "page" : undefined}
+                      className="relative inline-flex items-center justify-center select-none"
                       initial={false}
                       animate={{
                         width: compact ? SLOT_WIDTH_COMPACT : SLOT_WIDTH_FULL,
@@ -214,22 +191,17 @@ export default function BottomNav() {
                       }}
                       transition={{ type: "spring", stiffness: 230, damping: 24 }}
                       style={{ pointerEvents: compact ? "none" : "auto" }}
-                      onClick={() => {
-                        if (compact) return;
-                        setVisualActiveHref(it.href);
-                        router.push(it.href);
-                      }}
+                      onClick={() => !compact && router.push(it.href)}
                       onKeyDown={(e) => {
                         if (compact) return;
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setVisualActiveHref(it.href);
                           router.push(it.href);
                         }
                       }}
                     >
                       <motion.img
-                        src={iconActive ? it.iconActive : it.icon}
+                        src={active ? it.iconActive : it.icon}
                         alt={it.label}
                         draggable={false}
                         initial={false}
@@ -246,7 +218,6 @@ export default function BottomNav() {
             </motion.div>
           </LayoutGroup>
 
-
           {/* блокировка кликов + тап для разворота в compact */}
           {compact && (
             <button
@@ -261,3 +232,4 @@ export default function BottomNav() {
   );
 
 }
+
