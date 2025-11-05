@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useMemo, useRef, useState, useLayoutEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -36,6 +36,15 @@ export default function BottomNav() {
 
   // измеряем доступную ширину контейнера (<= 520)
   const wrapRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const slotRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const highlightRaf = useRef<number>();
+  const [highlightRect, setHighlightRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [baseW, setBaseW] = useState(0);
   const router = useRouter();
   useEffect(() => {
@@ -108,6 +117,82 @@ export default function BottomNav() {
   const isActive = (href: string) =>
     pathname === href || pathname.startsWith(href + "/");
 
+  const activeHref = useMemo(() => {
+    const current = items.find((it) => isActive(it.href));
+    return current?.href ?? (items[0]?.href ?? "");
+  }, [items, pathname]);
+
+  const scheduleHighlightUpdate = useCallback(() => {
+    if (highlightRaf.current !== undefined) {
+      cancelAnimationFrame(highlightRaf.current);
+      highlightRaf.current = undefined;
+    }
+
+    if (compact || !activeHref) {
+      setHighlightRect(null);
+      return;
+    }
+
+    const container = listRef.current;
+    const target = slotRefs.current.get(activeHref);
+    if (!container || !target) {
+      setHighlightRect(null);
+      return;
+    }
+
+    const targetEl = target;
+    const containerEl = container;
+    highlightRaf.current = requestAnimationFrame(() => {
+      const containerRect = containerEl.getBoundingClientRect();
+      const targetRect = targetEl.getBoundingClientRect();
+      setHighlightRect({
+        left: targetRect.left - containerRect.left,
+        top: targetRect.top - containerRect.top,
+        width: targetRect.width,
+        height: targetRect.height,
+      });
+      highlightRaf.current = undefined;
+    });
+  }, [activeHref, compact]);
+
+  useLayoutEffect(() => {
+    scheduleHighlightUpdate();
+    return () => {
+      if (highlightRaf.current !== undefined) {
+        cancelAnimationFrame(highlightRaf.current);
+        highlightRaf.current = undefined;
+      }
+    };
+  }, [scheduleHighlightUpdate, baseW]);
+
+  useEffect(() => {
+    if (compact || !activeHref) return;
+    const target = slotRefs.current.get(activeHref);
+    if (!target) return;
+
+    const observer = new ResizeObserver(() => scheduleHighlightUpdate());
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [activeHref, compact, scheduleHighlightUpdate]);
+
+  useEffect(() => {
+    if (compact) return;
+    const handler = () => scheduleHighlightUpdate();
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [compact, scheduleHighlightUpdate]);
+
+  useEffect(
+    () => () => {
+      if (highlightRaf.current !== undefined) {
+        cancelAnimationFrame(highlightRaf.current);
+        highlightRaf.current = undefined;
+      }
+    },
+    []
+  );
+
   const fullW = baseW;
   const compactW = Math.max(Math.floor(baseW * WIDTH_COMPACT_FACTOR), WIDTH_MIN_PX);
 
@@ -144,22 +229,63 @@ export default function BottomNav() {
         >
           {/* РЯД КНОПОК: центрируем и анимируем gap (кнопки ближе к центру) */}
           <motion.div
-            className="mx-auto flex items-center justify-center w-full"
+            ref={listRef}
+            className="relative mx-auto flex items-center justify-center w-full"
             initial={false}
             animate={{ gap: compact ? GAP_COMPACT : GAP_FULL }}
             transition={{ type: "spring", stiffness: 230, damping: 26 }}
             style={{ width: "100%", height: "100%" }}
           >
+            {!compact && highlightRect && (
+              <motion.div
+                className="pointer-events-none absolute flex items-center justify-center"
+                initial={false}
+                animate={{
+                  left: highlightRect.left,
+                  top: highlightRect.top,
+                  width: highlightRect.width,
+                  height: highlightRect.height,
+                }}
+                transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.65 }}
+                style={{
+                  zIndex: 0,
+                  left: highlightRect.left,
+                  top: highlightRect.top,
+                  width: highlightRect.width,
+                  height: highlightRect.height,
+                }}
+              >
+                <img
+                  src="/highlighted_button.svg"
+                  alt=""
+                  className="h-[75%] w-[90%] object-contain"
+                />
+              </motion.div>
+            )}
+
             {items.map((it) => {
               const active = isActive(it.href);
               return (
-                <div key={it.href} className="relative flex items-center justify-center shrink-0">
-                  {active && (
-                    <img
-                      src="/highlighted_button.svg"
-                      alt=""
-                      className="pointer-events-none absolute left-1/2 top-1/2 h-[75%] w-[90%] -translate-x-1/2 -translate-y-1/2 object-contain"
-                    />
+                <div
+                  key={it.href}
+                  ref={(el) => {
+                    if (el) {
+                      slotRefs.current.set(it.href, el);
+                      if (!compact) scheduleHighlightUpdate();
+                    } else {
+                      slotRefs.current.delete(it.href);
+                    }
+                  }}
+                  className="relative z-10 flex items-center justify-center shrink-0"
+                >
+                  {compact && active && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <img
+                        src="/highlighted_button.svg"
+                        alt=""
+                        className="h-[75%] w-[90%] object-contain"
+                      />
+                    </div>
                   )}
 
                   <motion.button
