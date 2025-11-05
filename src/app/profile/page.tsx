@@ -1,37 +1,56 @@
 "use client";
 
-const PROFILE_DETAILS = [
-  {
-    label: "\u0424\u0418\u041E",
-    value: "\u0418\u0432\u0430\u043D\u043E\u0432 \u0418\u0432\u0430\u043D \u0418\u0432\u0430\u043D\u043E\u0432\u0438\u0447",
-  },
-  {
-    label: "\u041D\u043E\u043C\u0435\u0440 \u0422\u0435\u043B\u0435\u0444\u043E\u043D\u0430",
-    value: "+7 (987) 545 54 54",
-  },
-  {
-    label: "\u041D\u043E\u043C\u0435\u0440 \u041A\u0430\u0440\u0442\u044B",
-    value: "957496-7548965-75",
-  },
-  {
-    label: "\u0410\u0434\u0440\u0435\u0441 \u041F\u0440\u043E\u0436\u0438\u0432\u0430\u043D\u0438\u044F",
-    value:
-      "\u0411\u0440\u0430\u0442\u0441\u043A, \u0423\u043B. \u0418\u0432\u0430\u043D\u043E\u0432\u0430, 15, \u041A\u0432 16",
-  },
-  {
-    label: "\u0421\u043C\u0435\u043D\u0430 \u041F\u0430\u0440\u043E\u043B\u044F",
-    value: "******",
-  },
-];
+import { useMemo } from "react";
+import { useAuth } from "@/providers/AuthProvider";
+import { extractPhoneDigits, formatPhoneInput } from "@/utils/phone";
+
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleDateString("ru-RU");
+}
 
 export default function ProfilePage() {
+  const { user, logout } = useAuth();
+
+  const details = useMemo(
+    () => [
+      {
+        label: "ФИО",
+        value: user?.fullName || "-",
+      },
+      {
+        label: "Номер телефона",
+        value: user?.phone ? formatPhoneInput(extractPhoneDigits(user.phone)) : "-",
+      },
+      {
+        label: "Дата рождения",
+        value: formatDate(user?.birthDate),
+      },
+      {
+        label: "E-mail",
+        value: user?.email || "-",
+      },
+      {
+        label: "Последние 3 цифры паспорта",
+        value: user?.passportNumber ? `*** ${user.passportNumber}` : "-",
+      },
+    ],
+    [user?.birthDate, user?.email, user?.fullName, user?.passportNumber, user?.phone],
+  );
+
   return (
-    <div className="min-h-dvh flex flex-col bg-[#EEF3FF]">
+    <div className="flex min-h-dvh flex-col bg-[#EEF3FF]">
       <main className="flex-1">
         <div className="mx-auto max-w-[420px] px-5 py-10">
           <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#0F99FF] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">
             <div className="rounded-[32px] bg-gradient-to-r from-[#0D7BFF] via-[#20C269] to-[#28D07C] px-6 pt-7 pb-14 text-white">
-              <div className="flex items-center gap-4 -translate-y-2">
+              <div className="flex -translate-y-2 items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
                   <svg
                     width="28"
@@ -49,11 +68,9 @@ export default function ProfilePage() {
                   </svg>
                 </div>
                 <div className="-mt-1">
-                  <h1 className="text-2xl font-semibold leading-tight">
-                    {"\u041E\u0431\u043E \u043C\u043D\u0435"}
-                  </h1>
+                  <h1 className="text-2xl font-semibold leading-tight">Обо мне</h1>
                   <p className="mt-1 text-sm text-white/80">
-                    {"\u041A\u0440\u0430\u0442\u043A\u0430\u044F \u0438\u043D\u0444\u043E\u0440\u043C\u0430\u0446\u0438\u044F \u043F\u0440\u043E\u0444\u0438\u043B\u044F"}
+                    Краткая информация профиля пациента
                   </p>
                 </div>
               </div>
@@ -63,14 +80,10 @@ export default function ProfilePage() {
           <div className="-mt-14 space-y-6">
             <section className="relative rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">
               <ul className="divide-y divide-[#E9EDF8]">
-                {PROFILE_DETAILS.map((item) => (
+                {details.map((item) => (
                   <li key={item.label} className="py-3 first:pt-0 last:pb-0">
-                    <div className="text-sm font-bold text-neutral-800">
-                      {item.label}
-                    </div>
-                    <div className="mt-1 text-base font-medium text-neutral-600">
-                      {item.value}
-                    </div>
+                    <div className="text-sm font-bold text-neutral-800">{item.label}</div>
+                    <div className="mt-1 text-base font-medium text-neutral-600">{item.value}</div>
                   </li>
                 ))}
               </ul>
@@ -96,15 +109,24 @@ export default function ProfilePage() {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold">
-                      {"\u0414\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u044B"}
-                    </h2>
+                    <h2 className="text-xl font-semibold">Документы</h2>
                     <p className="mt-2 text-sm text-white/80">
-                      {"\u0422\u0443\u0442 \u0445\u0440\u0430\u043D\u044F\u0442\u0441\u044F \u0432\u0441\u0435 \u043F\u043E\u0434\u043F\u0438\u0441\u0430\u043D\u043D\u044B\u0435 \u0432\u0430\u043C\u0438 \u0434\u043E\u043A\u0443\u043C\u0435\u043D\u0442\u044B"}
+                      Тут хранятся все подписанные вами документы и согласия клиники. Обратитесь в регистратуру для получения копий.
                     </p>
+
                   </div>
                 </div>
               </div>
+            </section>
+
+            <section className="rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">
+              <button
+                type="button"
+                onClick={logout}
+                className="w-full rounded-2xl bg-gradient-to-r from-[#0F86FF] to-[#1CA7FF] px-6 py-3 text-base font-semibold text-white shadow-[0_10px_24px_rgba(15,134,255,0.25)] transition hover:brightness-110 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#78C7FF]"
+              >
+                Выйти из аккаунта
+              </button>
             </section>
           </div>
         </div>

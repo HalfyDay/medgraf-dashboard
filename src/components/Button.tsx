@@ -16,7 +16,7 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   // Общие стили
   const base =
-    "inline-flex items-center justify-center font-medium transition-transform duration-150 ease-out focus:outline-none";
+    "inline-flex items-center justify-center font-medium transition-transform duration-150 ease-out focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none disabled:pointer-events-none";
 
   const sizeClass =
     size === "sm" ? "text-sm px-4 py-1.5" : "text-base px-6 py-3";
