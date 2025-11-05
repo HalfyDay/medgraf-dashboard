@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useMemo, useRef, useState, useLayoutEffect, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -105,13 +105,15 @@ export default function BottomNav() {
     lockUntil.current = Date.now() + 550; // защита от мгновенного схлопа
   };
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/");
+  const isActive = useCallback(
+    (href: string) => pathname === href || pathname.startsWith(href + "/"),
+    [pathname]
+  );
 
   const actualActiveHref = useMemo(() => {
     const current = items.find((it) => isActive(it.href));
     return current?.href ?? items[0]?.href ?? "";
-  }, [items, pathname]);
+  }, [items, isActive]);
 
   const [visualActiveHref, setVisualActiveHref] = useState(actualActiveHref);
 
@@ -168,39 +170,42 @@ export default function BottomNav() {
                 const iconActive = highlightActive || actualActive;
 
                 return (
-                  <div key={it.href} className="relative flex items-center justify-center shrink-0">
-                    {!compact && highlightActive && (
-                      <motion.div
-                        layoutId="bottom-nav-highlight"
-                        className="pointer-events-none absolute inset-0 flex items-center justify-center"
-                        initial={false}
-                        animate={{ opacity: compact ? 0 : 1 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 420,
-                          damping: 30,
-                          mass: 0.58,
-                          opacity: { duration: 0.18 },
-                        }}
-                        style={{ zIndex: 0 }}
-                      >
-                        <img
-                          src="/highlighted_button.svg"
-                          alt=""
-                          className="h-[75%] w-[90%] object-contain"
-                        />
-                      </motion.div>
-                    )}
-
-                    {compact && actualActive && (
-                      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                        <img
-                          src="/highlighted_button.svg"
-                          alt=""
-                          className="h-[75%] w-[90%] object-contain"
-                        />
-                      </div>
-                    )}
+                  <div
+                    key={it.href}
+                    className="relative flex items-center justify-center shrink-0"
+                  >
+                    <motion.div
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+                      initial={false}
+                      animate={{
+                        opacity:
+                          !compact && highlightActive
+                            ? 1
+                            : compact && actualActive
+                            ? 1
+                            : 0,
+                        scale:
+                          !compact && highlightActive
+                            ? 1
+                            : compact && actualActive
+                            ? 1
+                            : 0.9,
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 320,
+                        damping: 28,
+                        opacity: { duration: 0.18 },
+                      }}
+                      style={{ zIndex: 0 }}
+                    >
+                      <img
+                        src="/highlighted_button.svg"
+                        alt=""
+                        className="h-[75%] w-[90%] object-contain"
+                      />
+                    </motion.div>
 
                     <motion.button
                       type="button"
