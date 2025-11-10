@@ -405,10 +405,6 @@ export default function AuthPage() {
             )}
             {loginStep === "doc" && (
               <form onSubmit={handleDocSubmit} className="space-y-4">
-                <p className="text-sm text-[#456388]">
-                  Подтвердите последние 3 цифры паспорта для номера{" "}
-                  {loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : ""}.
-                </p>
                 <AuthField
                   label="Последние 3 цифры паспорта"
                   value={loginPassportDigits}
@@ -424,7 +420,8 @@ export default function AuthPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="flex-1 whitespace-nowrap px-4"
+                    size="sm"
+                    className="flex-1 whitespace-nowrap px-3 py-2.5 text-sm"
                     onClick={() => {
                       resetLoginFlow();
                       setLoginPhoneDigits("");
@@ -433,7 +430,12 @@ export default function AuthPage() {
                   >
                     Изменить номер
                   </Button>
-                  <Button type="submit" className="flex-1" disabled={loginStepLoading}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="flex-1 px-3 py-2.5 text-sm"
+                    disabled={loginStepLoading}
+                  >
                     Подтвердить
                   </Button>
                 </div>
@@ -499,13 +501,19 @@ export default function AuthPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="flex-1"
+                    size="sm"
+                    className="flex-1 whitespace-nowrap py-2.5"
                     onClick={handleResendLoginCode}
                     disabled={loginStepLoading}
                   >
-                    Отправить код снова
+                    Отправить снова
                   </Button>
-                  <Button type="submit" className="flex-1" disabled={loginStepLoading}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="flex-1 py-2.5"
+                    disabled={loginStepLoading}
+                  >
                     Подтвердить
                   </Button>
                 </div>

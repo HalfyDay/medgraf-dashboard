@@ -38,6 +38,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     success: true,
     otpExpiresAt: otpResult.expiresAt,
-    debugCode: process.env.NODE_ENV !== "production" ? otpResult.code : undefined,
+    debugCode: otpResult.code,
   });
 }
