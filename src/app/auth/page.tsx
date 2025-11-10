@@ -198,6 +198,10 @@ export default function AuthPage() {
 
   const cleanDocDigits = (value: string) => value.replace(/\D/g, "").slice(-3);
 
+  const handleGosuslugiLogin = () => {
+    window.location.href = "/api/auth/gosuslugi";
+  };
+
   const handleLoginPhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (loginPhoneDigits.length !== 10) {
@@ -551,6 +555,20 @@ export default function AuthPage() {
             <p className="text-center text-xs text-[#5A719B]">
               Если не получается войти, свяжитесь со службой поддержки клиники.
             </p>
+          </div>
+          <div className="mt-8 border-t border-[#E3F0FF] pt-6 text-center">
+            <p className="mb-3 text-sm text-[#5A719B]">или через Госуслуги</p>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full gap-3 text-[#0C4DA2]"
+              onClick={handleGosuslugiLogin}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+                <Image src="/gosuslugi.svg" alt="Госуслуги" width={24} height={24} />
+              </span>
+              <span className="font-semibold">Войти через Госуслуги</span>
+            </Button>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { postJson } from "@/utils/http";
 import { normalizePhone } from "@/utils/phone";
+import { AUTH_STORAGE_KEY } from "@/constants/auth";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -34,8 +35,6 @@ type AuthContextValue = {
   setUser: (next: AuthUser | null) => void;
 };
 
-const STORAGE_KEY = "medgraf.auth-state.v1";
-
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -49,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
       if (!raw) {
         setStatus("unauthenticated");
         return;
@@ -60,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("authenticated");
     } catch (error) {
       console.warn("Не удалось восстановить состояние авторизации:", error);
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
       setStatus("unauthenticated");
     }
   }, []);
@@ -72,9 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (next) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
     } else {
-      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, []);
 
