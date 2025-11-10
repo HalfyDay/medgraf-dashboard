@@ -130,7 +130,7 @@ function ensureSuccess<T>(body: OnecEnvelope<T>, context: string): T {
     return body.details;
   }
   if (code === "2") {
-    throw new OnecLogicalError("Пользователь не найден в 1С", code, context);
+    throw new OnecLogicalError("Пользователь не найден", code, context);
   }
   throw new OnecLogicalError(`Ошибка 1С (${context}): ${statusText} [${code}]`, code, context);
 }
@@ -303,7 +303,7 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
 
   const rawMatches = await requestOnec<OnecRawRecord[]>("/umc_client/auth_user", "auth_user", query);
   if (!Array.isArray(rawMatches) || rawMatches.length === 0) {
-    throw new OnecLogicalError("Пользователь не найден в 1С", "2", "auth_user");
+    throw new OnecLogicalError("Пользователь не найден", "2", "auth_user");
   }
 
   const summary = normalizeRecord(rawMatches[0]) ?? {};
