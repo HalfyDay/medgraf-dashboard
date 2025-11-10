@@ -25,7 +25,7 @@ export default function ProfilePage() {
         value: user?.fullName || "-",
       },
       {
-        label: "Номер телефона",
+        label: "Телефон",
         value: user?.phone ? formatPhoneInput(extractPhoneDigits(user.phone)) : "-",
       },
       {
@@ -37,11 +37,15 @@ export default function ProfilePage() {
         value: user?.email || "-",
       },
       {
-        label: "Последние 3 цифры паспорта",
+        label: "Номер медкарты",
+        value: user?.medcardNumber || "-",
+      },
+      {
+        label: "Последние 3 цифры документа",
         value: user?.passportNumber ? `*** ${user.passportNumber}` : "-",
       },
     ],
-    [user?.birthDate, user?.email, user?.fullName, user?.passportNumber, user?.phone],
+    [user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.passportNumber, user?.phone],
   );
 
   return (
@@ -68,9 +72,11 @@ export default function ProfilePage() {
                   </svg>
                 </div>
                 <div className="-mt-1">
-                  <h1 className="text-2xl font-semibold leading-tight">Обо мне</h1>
+                  <h1 className="text-2xl font-semibold leading-tight">
+                    {user?.fullName ?? "Мой профиль"}
+                  </h1>
                   <p className="mt-1 text-sm text-white/80">
-                    Краткая информация профиля пациента
+                    Проверяйте личные данные и настройки уведомлений
                   </p>
                 </div>
               </div>
@@ -87,36 +93,6 @@ export default function ProfilePage() {
                   </li>
                 ))}
               </ul>
-            </section>
-
-            <section className="relative rounded-[28px] bg-gradient-to-r from-[#0F75FF] to-[#1CB0FF] p-[1px] shadow-[0_18px_40px_rgba(15,117,255,0.3)]">
-              <div className="rounded-[28px] bg-gradient-to-r from-[#0F86FF] to-[#1CA7FF] px-6 py-4 text-white">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
-                    <svg
-                      width="26"
-                      height="26"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="text-white"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M7 2C5.89543 2 5 2.89543 5 4V20C5 21.1046 5.89543 22 7 22H17C18.1046 22 19 21.1046 19 20V8.82843C19 8.29799 18.7893 7.78929 18.4142 7.41421L14.5858 3.58579C14.2107 3.21071 13.702 3 13.1716 3H7ZM13 8L13 3.5L18.5 9H14C13.4477 9 13 8.55228 13 8Z"
-                        fill="currentColor"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-semibold">Документы</h2>
-                    <p className="mt-2 text-sm text-white/80">
-                      Тут хранятся все подписанные вами документы и согласия клиники. Обратитесь в регистратуру для получения копий.
-                    </p>
-
-                  </div>
-                </div>
-              </div>
             </section>
 
             <section className="rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">

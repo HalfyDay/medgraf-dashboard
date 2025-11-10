@@ -1,31 +1,36 @@
 import { NextResponse } from "next/server";
-import db from "@/utils/db";
 import bcrypt from "bcrypt";
+import db from "@/utils/db";
 import { normalizePhone } from "@/utils/phone";
 
 type RegisterPayload = {
   phone: string;
   password: string;
-  fullName: string;
-  birthDate: string;
-  email?: string;
   passportLastDigits: string;
 };
 
 export async function POST(req: Request) {
   const body = (await req.json()) as RegisterPayload;
-  const { phone, password, fullName, birthDate, email, passportLastDigits } = body;
+  const { phone, password, passportLastDigits } = body;
 
-  if (!phone || !password || !fullName || !birthDate || !passportLastDigits) {
-    return NextResponse.json({ error: "Заполните все обязательные поля" }, { status: 400 });
+  if (!phone || !password || !passportLastDigits) {
+    return NextResponse.json(
+      { error: "Укажите телефон, пароль и последние 3 цифры документа" },
+      { status: 400 },
+    );
   }
 
-  if (passportLastDigits.replace(/\D/g, "").length !== 3) {
-    return NextResponse.json({ error: "Нужны только последние 3 цифры паспорта" }, { status: 400 });
+  const digits = passportLastDigits.replace(/\D/g, "").slice(-3);
+  if (digits.length !== 3) {
+    return NextResponse.json({ error: "Введите последние 3 цифры документа" }, { status: 400 });
+  }
+
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) {
+    return NextResponse.json({ error: "Некорректный номер телефона" }, { status: 400 });
   }
 
   const hash = await bcrypt.hash(password, 10);
-  const normalizedPhone = normalizePhone(phone);
 
   return new Promise((resolve) => {
     db.run(
@@ -39,18 +44,24 @@ export async function POST(req: Request) {
           passportSeries,
           passportNumber,
           passportIssueDate,
-          passportIssuedBy
+          passportIssuedBy,
+          onecId,
+          medcardNumber,
+          gender
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         normalizedPhone,
         hash,
-        fullName,
-        birthDate,
-        email ?? null,
         null,
-        passportLastDigits,
+        null,
+        null,
+        null,
+        digits,
+        null,
+        null,
+        null,
         null,
         null,
       ],
@@ -66,7 +77,7 @@ export async function POST(req: Request) {
             );
             return;
           }
-          resolve(NextResponse.json({ error: "Не удалось завершить регистрацию" }, { status: 500 }));
+          resolve(NextResponse.json({ error: "Не удалось создать пользователя" }, { status: 500 }));
           return;
         }
 
@@ -81,30 +92,23 @@ export async function POST(req: Request) {
               passportSeries,
               passportNumber,
               passportIssueDate,
-              passportIssuedBy
+              passportIssuedBy,
+              onecId,
+              medcardNumber,
+              gender
             FROM users WHERE id = ?
           `,
           [this.lastID],
           (selectErr, row) => {
             if (selectErr || !row) {
-              resolve(NextResponse.json({ error: "Не удалось подтвердить регистрацию" }, { status: 500 }));
+              resolve(NextResponse.json({ error: "Не удалось получить данные пользователя" }, { status: 500 }));
               return;
             }
 
             resolve(
               NextResponse.json({
                 success: true,
-                user: {
-                  id: row.id,
-                  phone: row.phone,
-                  fullName: row.fullName,
-                  birthDate: row.birthDate,
-                  email: row.email,
-                  passportSeries: row.passportSeries,
-                  passportNumber: row.passportNumber,
-                  passportIssueDate: row.passportIssueDate,
-                  passportIssuedBy: row.passportIssuedBy,
-                },
+                user: row,
               }),
             );
           },

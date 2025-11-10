@@ -25,7 +25,10 @@ db.serialize(() => {
         passportSeries TEXT,
         passportNumber TEXT,
         passportIssueDate TEXT,
-        passportIssuedBy TEXT
+        passportIssuedBy TEXT,
+        onecId TEXT,
+        medcardNumber TEXT,
+        gender TEXT
       )
     `,
     (err) => {
@@ -42,6 +45,9 @@ db.serialize(() => {
     { name: "passportNumber", definition: "TEXT" },
     { name: "passportIssueDate", definition: "TEXT" },
     { name: "passportIssuedBy", definition: "TEXT" },
+    { name: "onecId", definition: "TEXT" },
+    { name: "medcardNumber", definition: "TEXT" },
+    { name: "gender", definition: "TEXT" },
   ];
 
   db.all(`PRAGMA table_info(users)`, (err, rows) => {
@@ -63,6 +69,44 @@ db.serialize(() => {
       }
     });
   });
+
+  db.run(
+    `
+      CREATE TABLE IF NOT EXISTS login_sessions (
+        sessionId TEXT PRIMARY KEY,
+        phone TEXT NOT NULL,
+        createdAt INTEGER NOT NULL,
+        expiresAt INTEGER NOT NULL,
+        docVerified INTEGER DEFAULT 0,
+        otpVerified INTEGER DEFAULT 0,
+        otpCodeHash TEXT,
+        otpExpiresAt INTEGER,
+        otpAttemptsLeft INTEGER DEFAULT 0,
+        remoteCode TEXT,
+        remoteFullName TEXT,
+        remoteBirthDate TEXT,
+        remoteGender TEXT,
+        remoteMedcard TEXT,
+        docLastDigits TEXT
+      )
+    `,
+    (err) => {
+      if (err) {
+        console.error("Не удалось создать таблицу login_sessions:", err);
+      }
+    },
+  );
+
+  db.run(
+    `
+      CREATE INDEX IF NOT EXISTS idx_login_sessions_phone ON login_sessions (phone)
+    `,
+    (err) => {
+      if (err) {
+        console.error("Не удалось создать индекс idx_login_sessions_phone:", err);
+      }
+    },
+  );
 });
 
 export default db;

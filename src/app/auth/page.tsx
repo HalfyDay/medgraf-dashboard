@@ -1,35 +1,41 @@
-﻿"use client";
+"use client";
+
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
-import { checkPhoneExists, registerUser } from "@/utils/authClient";
+import {
+  finalizeLoginPassword,
+  resendLoginOtp,
+  startRemoteLogin,
+  verifyLoginOtp,
+  verifyPassportDigits,
+} from "@/utils/authClient";
 import { extractPhoneDigits, formatPhoneInput, normalizePhone } from "@/utils/phone";
-type RegisterStep = "phone" | "passport" | "credentials";
-type PassportData = {
-  lastName: string;
-  firstName: string;
-  middleName: string;
-  birthDate: string;
-  email: string;
-  passportLastDigits: string;
-};
+
+type LoginStep = "phone" | "password" | "otp" | "setPassword";
+
 const MIN_PASSWORD_LENGTH = 8;
-const WAVE_LINE_COUNT = 20; // Измените это значение, чтобы увеличить или уменьшить количество волнистых линий. 
-const WAVE_STROKE_WIDTH = 5; // Измените это значение, чтобы настроить толщину волнистых линий. 
-const WAVE_TOP_OFFSET = -50; // Измените это значение (в пикселях), чтобы переместить волнистые линии выше или ниже относительно верхнего края. 
-const WAVE_CONTAINER_HEIGHT = 300; // Измените это значение (в пикселях), чтобы контролировать, сколько места по вертикали занимают волны перед логотипом. 
-const WAVE_VIEW_BOX = "0 0 600 240"; // Измените это значение, если вам нужно изменить внутреннюю область рисования волн. 
-const WAVE_SVG_HEIGHT = `${WAVE_CONTAINER_HEIGHT}px`; // Измените это значение, чтобы настроить высоту холста SVG. 
-const WAVE_ANIMATION_DURATION = 6.9; // Измените это значение (в секундах), чтобы настроить скорость/интенсивность анимации. 
-const WAVE_START_Y = -40; // Измените это значение, чтобы поднять или опустить первую волну внутри SVG. 
-const WAVE_LINE_STEP = 13; // Измените это значение, чтобы расположить линии волн ближе или дальше друг от друга.
+const LOGIN_OTP_LENGTH = 4;
+
+const WAVE_LINE_COUNT = 20; // Increase to render more decorative wave lines.
+const WAVE_STROKE_WIDTH = 5; // Thickness of each SVG stroke.
+const WAVE_TOP_OFFSET = -50; // Vertical offset for the entire wave block.
+const WAVE_CONTAINER_HEIGHT = 300; // Height of the container hosting the waves.
+const WAVE_VIEW_BOX = "0 0 600 240"; // Default SVG viewBox.
+const WAVE_SVG_HEIGHT = `${WAVE_CONTAINER_HEIGHT}px`; // Explicit SVG height value.
+const WAVE_ANIMATION_DURATION = 6.9; // Duration of the breathing animation.
+const WAVE_START_Y = -40; // Initial Y coordinate for the first wave line.
+const WAVE_LINE_STEP = 13; // Distance between neighbouring wave lines.
+
 const registerWaveLines = Array.from({ length: WAVE_LINE_COUNT }, (_, index) => {
   const baseY = WAVE_START_Y + index * WAVE_LINE_STEP;
   return `M-40 ${baseY} C 80 ${baseY - 26}, 150 ${baseY + 24}, 260 ${baseY} S 460 ${baseY - 24}, 640 ${baseY}`;
 });
+
 const loginWaveLines = registerWaveLines;
+
 function Waves({ variant }: { variant: "register" | "login" }) {
   const lines = variant === "register" ? registerWaveLines : loginWaveLines;
   const viewBox = WAVE_VIEW_BOX;
@@ -63,7 +69,6 @@ function Waves({ variant }: { variant: "register" | "login" }) {
         ))}
       </svg>
       <style jsx>{`
-        /* Edit the translateY/skew/scale values below to change animation strength/amplitude. */
         @keyframes wave-breathe {
           0% {
             transform: translateY(-12px) skewX(0deg) scaleY(0.9);
@@ -81,12 +86,13 @@ function Waves({ variant }: { variant: "register" | "login" }) {
           animation-name: wave-breathe;
           animation-timing-function: ease-in-out;
           animation-iteration-count: infinite;
-          animation-duration: ${WAVE_ANIMATION_DURATION}s; /* Change this to tweak the animation speed/intensity. */
+          animation-duration: ${WAVE_ANIMATION_DURATION}s;
         }
       `}</style>
     </div>
   );
 }
+
 type AuthFieldProps = {
   label: string;
   value: string;
@@ -98,6 +104,7 @@ type AuthFieldProps = {
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
 };
+
 function AuthField({
   label,
   value,
@@ -128,61 +135,49 @@ function AuthField({
     </label>
   );
 }
-function generateSmsCode() {
-  return String(1000 + Math.floor(Math.random() * 9000));
-}
-function buildFullName({ lastName, firstName, middleName }: PassportData) {
-  return [lastName.trim(), firstName.trim(), middleName.trim()].filter(Boolean).join(" ");
-}
+
 export default function AuthPage() {
   const router = useRouter();
   const { login, actionPending, setUser } = useAuth();
-  const [mode, setMode] = useState<"register" | "login">("register");
-  const [registerStep, setRegisterStep] = useState<RegisterStep>("phone");
-  const [registerPhoneDigits, setRegisterPhoneDigits] = useState("");
- const [registerPhoneInput, setRegisterPhoneInput] = useState("");
- const [loginPhoneDigits, setLoginPhoneDigits] = useState("");
- const [loginPhoneInput, setLoginPhoneInput] = useState("");
-  const [registerErrors, setRegisterErrors] = useState<Record<string, string>>({});
+
+  const [loginPhoneDigits, setLoginPhoneDigits] = useState("");
+  const [loginPhoneInput, setLoginPhoneInput] = useState("");
+  const [loginPassportDigits, setLoginPassportDigits] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
-  const [passportData, setPassportData] = useState<PassportData>({
-    lastName: "",
-    firstName: "",
-    middleName: "",
-    birthDate: "",
-    email: "",
-    passportLastDigits: "",
-  });
-  const [smsCode, setSmsCode] = useState("");
-  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
-  const [password, setPassword] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [consent, setConsent] = useState(false);
-  const [registerLoading, setRegisterLoading] = useState(false);
-  const [loginPassword, setLoginPassword] = useState("");
-  const canResendCode = useMemo(
-    () => registerStep === "credentials" && Boolean(generatedCode),
-    [generatedCode, registerStep],
-  );
-  const clearRegisterError = (field: string) => {
-    setRegisterErrors((prev) => {
-      if (!(field in prev)) {
-        return prev;
-      }
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
+  const [loginStep, setLoginStep] = useState<LoginStep>("phone");
+  const [loginSessionId, setLoginSessionId] = useState<string | null>(null);
+  const [awaitingDocVerification, setAwaitingDocVerification] = useState(false);
+  const [loginOtpCode, setLoginOtpCode] = useState("");
+  const [loginOtpHint, setLoginOtpHint] = useState<string | null>(null);
+  const [loginSetupPassword, setLoginSetupPassword] = useState("");
+  const [loginSetupPasswordConfirm, setLoginSetupPasswordConfirm] = useState("");
+  const [loginStepLoading, setLoginStepLoading] = useState(false);
+  const [loginDisplayName, setLoginDisplayName] = useState<string | null>(null);
+
+  const helperName = useMemo(() => {
+    if (!loginDisplayName) return null;
+    const parts = loginDisplayName.split(/\s+/).filter(Boolean);
+    if (!parts.length) return null;
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[1]}`;
+  }, [loginDisplayName]);
+
+  const resetLoginFlow = () => {
+    setLoginStep("phone");
+    setLoginSessionId(null);
+    setAwaitingDocVerification(false);
+    setLoginOtpCode("");
+    setLoginOtpHint(null);
+    setLoginSetupPassword("");
+    setLoginSetupPasswordConfirm("");
+    setLoginPassword("");
+    setLoginDisplayName(null);
+    setLoginError(null);
+    setInfoMessage(null);
   };
-  const handleRegisterPhoneChange = (value: string) => {
-    const digits = extractPhoneDigits(value);
-    const formatted = digits ? formatPhoneInput(digits) : "";
-    const display = formatted || (value.trim().startsWith("+") ? value : "");
-    setRegisterPhoneDigits(digits);
-    setRegisterPhoneInput(display);
-    clearRegisterError("phone");
-  };
+
   const handleLoginPhoneChange = (value: string) => {
     const digits = extractPhoneDigits(value);
     const formatted = digits ? formatPhoneInput(digits) : "";
@@ -190,126 +185,96 @@ export default function AuthPage() {
     setLoginPhoneDigits(digits);
     setLoginPhoneInput(display);
     setLoginError(null);
+    setInfoMessage(null);
   };
-  const handlePhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const errors: Record<string, string> = {};
-    if (registerPhoneDigits.length !== 10) {
-      errors.phone = "Введите номер полностью";
+
+  const cleanDocDigits = (value: string) => value.replace(/\D/g, "").slice(-3);
+
+  const verifyDocDigits = async (sessionId: string, digits: string) => {
+    const cleaned = cleanDocDigits(digits);
+    if (cleaned.length !== 3) {
+      setLoginError("Введите последние 3 цифры документа");
+      return false;
     }
-    if (Object.keys(errors).length) {
-      setRegisterErrors(errors);
-      return;
-    }
+    setLoginError(null);
     try {
-      setRegisterLoading(true);
-      const exists = await checkPhoneExists(registerPhoneDigits);
-      if (exists) {
-        setRegisterErrors({ phone: "Такой номер уже зарегистрирован. Войдите по паролю." });
-        setMode("login");
-        setLoginPhoneDigits(registerPhoneDigits);
-        setLoginPhoneInput(formatPhoneInput(registerPhoneDigits));
-        setInfoMessage("Мы нашли ваш профиль. Введите пароль для входа.");
-        return;
-      }
-      setRegisterErrors({});
-      setRegisterStep("passport");
-      setInfoMessage("Подтвердите свои данные, чтобы мы нашли вашу карточку пациента.");
+      const result = await verifyPassportDigits(sessionId, cleaned);
+      setLoginPassportDigits(cleaned);
+      setLoginStep("otp");
+      setLoginOtpCode("");
+      setLoginOtpHint(result.debugCode ?? null);
+      setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
+      setAwaitingDocVerification(false);
+      return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось проверить номер";
-      setRegisterErrors({ phone: message });
-    } finally {
-      setRegisterLoading(false);
+      const message =
+        error instanceof Error ? error.message : "Не удалось подтвердить документ. Проверьте цифры.";
+      setLoginError(message);
+      setAwaitingDocVerification(true);
+      return false;
     }
   };
-  const handlePassportChange = (field: keyof PassportData) => (value: string) => {
-    const cleaned = field === "passportLastDigits" ? value.replace(/\D/g, "").slice(0, 3) : value;
-    setPassportData((prev) => ({ ...prev, [field]: cleaned }));
-    clearRegisterError(field);
-  };
-  const handlePassportSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const errors: Record<string, string> = {};
-    if (!passportData.lastName.trim()) errors.lastName = "Укажите фамилию";
-    if (!passportData.firstName.trim()) errors.firstName = "Укажите имя";
-    if (!passportData.birthDate) errors.birthDate = "Укажите дату рождения";
-    if (passportData.email && !/.+@.+\..+/.test(passportData.email.trim())) {
-      errors.email = "Некорректный e-mail";
-    }
-    if (passportData.passportLastDigits.length !== 3) {
-      errors.passportLastDigits = "Введите последние 3 цифры паспорта";
-    }
-    if (Object.keys(errors).length) {
-      setRegisterErrors(errors);
-      return;
-    }
-    setRegisterErrors({});
-    setRegisterStep("credentials");
-    const code = generateSmsCode();
-    setGeneratedCode(code);
-    setSmsCode("");
-    setPassword("");
-    setPasswordConfirm("");
-    setConsent(false);
-    setInfoMessage(`Мы отправили код подтверждения на ${formatPhoneInput(registerPhoneDigits)}.`);
-  };
-  const handleResendCode = () => {
-    if (!canResendCode) {
-      return;
-    }
-    const code = generateSmsCode();
-    setGeneratedCode(code);
-    setInfoMessage(`Новый код отправлен на ${formatPhoneInput(registerPhoneDigits)}.`);
-  };
-  const handleCredentialsSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const errors: Record<string, string> = {};
-    if (!generatedCode) {
-      errors.smsCode = "Получите код подтверждения";
-    } else if (smsCode.trim() !== generatedCode) {
-      errors.smsCode = "Неверный код из SMS";
-    }
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      errors.password = `Минимум ${MIN_PASSWORD_LENGTH} символов`;
-    }
-    if (password !== passwordConfirm) {
-      errors.passwordConfirm = "Пароли не совпадают";
-    }
-    if (!consent) {
-      errors.consent = "Необходимо согласие";
-    }
-    if (registerPhoneDigits.length !== 10) {
-      errors.phone = "Введите номер полностью";
-    }
-    if (Object.keys(errors).length) {
-      setRegisterErrors(errors);
-      return;
-    }
-    setRegisterErrors({});
-    setRegisterLoading(true);
-    try {
-      const user = await registerUser({
-        phone: registerPhoneDigits,
-        password,
-        fullName: buildFullName(passportData),
-        birthDate: passportData.birthDate,
-        email: passportData.email.trim() || undefined,
-        passportLastDigits: passportData.passportLastDigits,
-      });
-      setUser(user);
-      setInfoMessage("Регистрация выполнена! Перенаправляем в личный кабинет…");
-      router.replace("/home");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось завершить регистрацию";
-      setRegisterErrors({ general: message });
-    } finally {
-      setRegisterLoading(false);
-    }
-  };
-  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
+
+  const handleLoginPhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (loginPhoneDigits.length !== 10) {
-      setLoginError("Введите номер полностью");
+      setLoginError("Введите номер телефона полностью");
+      return;
+    }
+
+    // Если уже есть активная сессия и ждём только подтверждение документа.
+    if (awaitingDocVerification && loginSessionId) {
+      setLoginStepLoading(true);
+      try {
+        await verifyDocDigits(loginSessionId, loginPassportDigits);
+      } finally {
+        setLoginStepLoading(false);
+      }
+      return;
+    }
+
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      const result = await startRemoteLogin(loginPhoneDigits);
+      setLoginDisplayName(result.displayName ?? null);
+      if (result.hasLocalPassword) {
+        setLoginStep("password");
+        setInfoMessage(
+          result.displayName
+            ? `Найдена карточка пациента ${result.displayName}. Введите пароль для входа.`
+            : "Введите пароль для входа.",
+        );
+        setLoginSessionId(null);
+        setAwaitingDocVerification(false);
+        return;
+      }
+
+      if (!result.sessionId) {
+        throw new Error("Не удалось начать вход");
+      }
+
+      setLoginSessionId(result.sessionId);
+      const cleanedDigits = cleanDocDigits(loginPassportDigits);
+      if (cleanedDigits.length === 3) {
+        await verifyDocDigits(result.sessionId, cleanedDigits);
+      } else {
+        setAwaitingDocVerification(true);
+        setInfoMessage("Укажите последние 3 цифры документа, чтобы продолжить.");
+        setLoginError("Введите последние 3 цифры документа");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось проверить номер";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
+  const handleExistingPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (loginPhoneDigits.length !== 10) {
+      setLoginError("Введите номер телефона полностью");
       return;
     }
     if (!loginPassword) {
@@ -323,280 +288,246 @@ export default function AuthPage() {
     }
     router.replace("/home");
   };
-  const switchMode = (nextMode: "register" | "login") => {
-    setMode(nextMode);
-    setInfoMessage(null);
-    setRegisterErrors({});
+
+  const handleResendLoginCode = async () => {
+    if (!loginSessionId) {
+      setLoginError("Сессия не найдена. Начните заново.");
+      return;
+    }
     setLoginError(null);
-    if (nextMode === "register") {
-      setRegisterStep("phone");
-      setRegisterLoading(false);
+    setLoginStepLoading(true);
+    try {
+      const result = await resendLoginOtp(loginSessionId);
+      setLoginOtpHint(result.debugCode ?? null);
+      setInfoMessage("Новый код отправлен.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось отправить код";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
     }
   };
+
+  const handleOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginSessionId) {
+      setLoginError("Сессия не найдена. Начните заново.");
+      return;
+    }
+    if (loginOtpCode.length !== LOGIN_OTP_LENGTH) {
+      setLoginError("Введите полный код из SMS");
+      return;
+    }
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      await verifyLoginOtp(loginSessionId, loginOtpCode);
+      setLoginStep("setPassword");
+      setInfoMessage("Код подтверждён. Придумайте пароль для входа.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось подтвердить код";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
+  const handleSetPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginSessionId) {
+      setLoginError("Сессия не найдена. Начните заново.");
+      return;
+    }
+    if (loginSetupPassword.length < MIN_PASSWORD_LENGTH) {
+      setLoginError(`Пароль должен содержать не менее ${MIN_PASSWORD_LENGTH} символов`);
+      return;
+    }
+    if (loginSetupPassword !== loginSetupPasswordConfirm) {
+      setLoginError("Пароли не совпадают");
+      return;
+    }
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      const user = await finalizeLoginPassword(loginSessionId, loginSetupPassword);
+      setUser(user);
+      resetLoginFlow();
+      router.replace("/home");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось сохранить пароль";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
   return (
     <div className="relative min-h-dvh overflow-hidden bg-[#F4F9FF]">
-      <Waves variant={mode === "register" ? "register" : "login"} />
+      <Waves variant="login" />
       <div className="relative z-10 mx-auto flex min-h-dvh max-w-[420px] flex-col px-6 pb-12 pt-36">
         <header className="mb-8 text-center">
           <div className="flex items-center justify-center gap-3 text-[#0C8FE8]">
             <div className="relative h-16 w-16">
-              <Image src="/logo.svg" alt="Клиника МЕДГРАФТ" fill priority />
+              <Image src="/logo.svg" alt="Медграфт Клиент" fill priority />
             </div>
             <div className="text-left">
               <span className="block text-xs font-bold uppercase tracking-[0.2em] text-[#0C8FE8]">
-                клиника
+                Медграфт
               </span>
               <span className="block text-2xl font-extrabold leading-tight text-[#20BD75]">
-                МЕДГРАФТ
+                Клиент
               </span>
             </div>
           </div>
-          <h1 className="mt-8 text-3xl font-bold leading-tight text-[#0173DB]">
-            {mode === "register" ? "Войти в личный кабинет пациента" : "Личный кабинет пациента"}
-          </h1>
+          <h1 className="mt-8 text-3xl font-bold leading-tight text-[#0173DB]">Вход в личный кабинет</h1>
         </header>
+
         <div className="grow rounded-[28px] bg-white/95 p-6 shadow-[0_18px_45px_rgba(17,130,255,0.18)] backdrop-blur-sm">
           {infoMessage && (
-            <div className="mb-5 rounded-2xl bg-[#E6F5FF] px-4 py-3 text-sm text-[#0C8FE8]">
-              {infoMessage}
-              {canResendCode && generatedCode && (
-                <span className="mt-1 block text-xs text-[#0C8FE8]/80">Демонстрационный код: {generatedCode}</span>
-              )}
-            </div>
+            <div className="mb-5 rounded-2xl bg-[#E6F5FF] px-4 py-3 text-sm text-[#0C8FE8]">{infoMessage}</div>
           )}
-          {mode === "register" ? (
-            <div className="space-y-5">
-              {registerErrors.general && (
-                <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
-                  {registerErrors.general}
+          <div className="space-y-5">
+            {loginError && (
+              <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{loginError}</div>
+            )}
+
+            {loginStep === "phone" && (
+              <form onSubmit={handleLoginPhoneSubmit} className="space-y-4">
+                <AuthField
+                  label="Телефон"
+                  placeholder="+7 (___) ___-__-__"
+                  value={loginPhoneInput}
+                  onChange={handleLoginPhoneChange}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={18}
+                />
+                <AuthField
+                  label="Последние 3 цифры документа"
+                  value={loginPassportDigits}
+                  onChange={(value) => {
+                    setLoginPassportDigits(cleanDocDigits(value));
+                    setLoginError(null);
+                  }}
+                  placeholder="000"
+                  maxLength={3}
+                  inputMode="numeric"
+                />
+                <Button type="submit" className="w-full" disabled={loginStepLoading}>
+                  Продолжить
+                </Button>
+                <p className="text-center text-xs text-[#5A719B]">
+                  Для первого входа используйте номер телефона и последние 3 цифры паспорта.
+                </p>
+              </form>
+            )}
+
+            {loginStep === "password" && (
+              <form onSubmit={handleExistingPasswordSubmit} className="space-y-4">
+                <div className="rounded-2xl bg-[#EEF6FF] px-4 py-3 text-sm text-[#456388]">
+                  <p className="font-semibold text-[#16345A]">
+                    {helperName ?? "Пациент найден"}
+                  </p>
+                  <p>{loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : ""}</p>
                 </div>
-              )}
-              {registerStep === "phone" && (
-                <form onSubmit={handlePhoneSubmit} className="space-y-5">
-                  <AuthField
-                    label="Логин"
-                    placeholder="+7 (___) ___-__-__"
-                    value={registerPhoneInput}
-                    onChange={handleRegisterPhoneChange}
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    maxLength={18}
-                    error={registerErrors.phone}
-                  />
-                  <Button type="submit" className="w-full" disabled={registerLoading}>
-                    Продолжить
-                  </Button>
-                </form>
-              )}
-              {registerStep === "passport" && (
-                <form onSubmit={handlePassportSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <AuthField
-                      label="Фамилия"
-                      value={passportData.lastName}
-                      onChange={handlePassportChange("lastName")}
-                      placeholder="Иванова"
-                      error={registerErrors.lastName}
-                    />
-                    <AuthField
-                      label="Имя"
-                      value={passportData.firstName}
-                      onChange={handlePassportChange("firstName")}
-                      placeholder="Анна"
-                      error={registerErrors.firstName}
-                    />
-                    <AuthField
-                      label="Отчество"
-                      value={passportData.middleName}
-                      onChange={handlePassportChange("middleName")}
-                      placeholder="(если есть)"
-                    />
-                    <AuthField
-                      label="Дата рождения"
-                      type="date"
-                      value={passportData.birthDate}
-                      onChange={handlePassportChange("birthDate")}
-                      error={registerErrors.birthDate}
-                    />
-                  </div>
-                  <AuthField
-                    label="E-mail"
-                    type="email"
-                    value={passportData.email}
-                    onChange={handlePassportChange("email")}
-                    placeholder="name@mail.ru"
-                    error={registerErrors.email}
-                  />
-                  <AuthField
-                    label="Последние 3 цифры паспорта"
-                    value={passportData.passportLastDigits}
-                    onChange={handlePassportChange("passportLastDigits")}
-                    placeholder="000"
-                    maxLength={3}
-                    inputMode="numeric"
-                    error={registerErrors.passportLastDigits}
-                  />
-                  <div className="flex items-center gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="flex-1"
-                      onClick={() => {
-                        setRegisterStep("phone");
-                        setInfoMessage(null);
-                      }}
-                    >
-                      Назад
-                    </Button>
-                    <Button type="submit" className="flex-1" disabled={registerLoading}>
-                      Далее
-                    </Button>
-                  </div>
-                </form>
-              )}
-              {registerStep === "credentials" && (
-                <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-                  <AuthField
-                    label="Код из SMS"
-                    value={smsCode}
-                    onChange={(value) => {
-                      setSmsCode(value.replace(/\D/g, "").slice(0, 4));
-                      clearRegisterError("smsCode");
-                    }}
-                    placeholder="проверочный код"
-                    maxLength={4}
-                    inputMode="numeric"
-                    error={registerErrors.smsCode}
-                  />
+                <AuthField
+                  label="Пароль"
+                  type="password"
+                  placeholder="Введите пароль"
+                  value={loginPassword}
+                  onChange={(value) => {
+                    setLoginPassword(value);
+                    setLoginError(null);
+                  }}
+                />
+                <div className="flex items-center gap-3">
                   <Button
                     type="button"
                     variant="secondary"
-                    onClick={handleResendCode}
-                    disabled={!canResendCode || registerLoading}
-                    className="w-full"
+                    className="flex-1"
+                    onClick={() => {
+                      resetLoginFlow();
+                      setLoginPhoneDigits("");
+                      setLoginPhoneInput("");
+                      setLoginPassportDigits("");
+                    }}
                   >
-                    Отправить код ещё раз
+                    Изменить номер
                   </Button>
-                  <AuthField
-                    label="Задать пароль"
-                    type="password"
-                    value={password}
-                    onChange={(value) => {
-                      setPassword(value);
-                      clearRegisterError("password");
-                    }}
-                    placeholder={`${MIN_PASSWORD_LENGTH} символов`}
-                    error={registerErrors.password}
-                  />
-                  <AuthField
-                    label="Повторите пароль"
-                    type="password"
-                    value={passwordConfirm}
-                    onChange={(value) => {
-                      setPasswordConfirm(value);
-                      clearRegisterError("passwordConfirm");
-                    }}
-                    placeholder="введите ещё раз"
-                    error={registerErrors.passwordConfirm}
-                  />
-                  <label
-                    className={`flex items-start gap-3 rounded-2xl border border-transparent bg-[#EEF6FF] px-4 py-3 text-sm text-[#456388] ${
-                      registerErrors.consent ? "border-red-400" : ""
-                    }`}
+                  <Button type="submit" className="flex-1" disabled={actionPending}>
+                    Войти
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {loginStep === "otp" && (
+              <form onSubmit={handleOtpSubmit} className="space-y-4">
+                <AuthField
+                  label="Код из SMS"
+                  value={loginOtpCode}
+                  onChange={(value) => {
+                    setLoginOtpCode(value.replace(/\D/g, "").slice(0, LOGIN_OTP_LENGTH));
+                    setLoginError(null);
+                  }}
+                  placeholder="Введите код"
+                  maxLength={LOGIN_OTP_LENGTH}
+                  inputMode="numeric"
+                />
+                {loginOtpHint && (
+                  <p className="text-xs text-[#5A719B]">Тестовый код: {loginOtpHint}</p>
+                )}
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={handleResendLoginCode}
+                    disabled={loginStepLoading}
                   >
-                    <input
-                      type="checkbox"
-                      checked={consent}
-                      onChange={(event) => {
-                        setConsent(event.target.checked);
-                        clearRegisterError("consent");
-                      }}
-                      className="mt-1 h-4 w-4 rounded border border-[#98A8C4] text-[#1AA4FF] focus:ring-[#1AA4FF]"
-                    />
-                    <span>
-                      Я даю своё согласие на обработку персональных данных и подтверждаю, что ознакомлен(а) с правилами
-                      использования сервиса.
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-3 pt-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="flex-1"
-                      onClick={() => {
-                        setRegisterStep("passport");
-                        setInfoMessage(null);
-                      }}
-                    >
-                      Назад
-                    </Button>
-                    <Button type="submit" className="flex-1" disabled={registerLoading}>
-                      Зарегистрироваться
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </div>
-          ) : (
-            <form onSubmit={handleLoginSubmit} className="space-y-5">
-              {loginError && (
-                <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{loginError}</div>
-              )}
-              <AuthField
-                label="Логин"
-                placeholder="+7 (___) ___-__-__"
-                value={loginPhoneInput}
-                onChange={handleLoginPhoneChange}
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                maxLength={18}
-              />
-              <AuthField
-                label="Пароль"
-                type="password"
-                placeholder="ввод пароля"
-                value={loginPassword}
-                onChange={(value) => {
-                  setLoginPassword(value);
-                  setLoginError(null);
-                }}
-              />
-              <Button type="submit" className="w-full" disabled={actionPending}>
-                Войти
-              </Button>
-              <p className="text-center text-xs text-[#5A719B]">
-                Если забыли пароль, обратитесь в клинику для восстановления доступа.
-              </p>
-            </form>
-          )}
+                    Отправить код снова
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={loginStepLoading}>
+                    Подтвердить
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {loginStep === "setPassword" && (
+              <form onSubmit={handleSetPasswordSubmit} className="space-y-4">
+                <AuthField
+                  label="Придумайте пароль"
+                  type="password"
+                  value={loginSetupPassword}
+                  onChange={(value) => {
+                    setLoginSetupPassword(value);
+                    setLoginError(null);
+                  }}
+                  placeholder={`${MIN_PASSWORD_LENGTH} символов`}
+                />
+                <AuthField
+                  label="Повторите пароль"
+                  type="password"
+                  value={loginSetupPasswordConfirm}
+                  onChange={(value) => {
+                    setLoginSetupPasswordConfirm(value);
+                    setLoginError(null);
+                  }}
+                  placeholder="Введите ещё раз"
+                />
+                <Button type="submit" className="w-full" disabled={loginStepLoading}>
+                  Сохранить пароль
+                </Button>
+              </form>
+            )}
+
+            <p className="text-center text-xs text-[#5A719B]">
+              Если не получается войти, свяжитесь со службой поддержки клиники.
+            </p>
+          </div>
         </div>
-        <footer className="mt-6 text-center text-sm text-[#456388]">
-          {mode === "register" ? (
-            <>
-              Уже зарегистрированы?
-              <button
-                type="button"
-                className="ml-1 font-semibold text-[#0B8EEA]"
-                onClick={() => switchMode("login")}
-              >
-                Войти
-              </button>
-            </>
-          ) : (
-            <>
-              Впервые в клинике?
-              <button
-                type="button"
-                className="ml-1 font-semibold text-[#0B8EEA]"
-                onClick={() => switchMode("register")}
-              >
-                Зарегистрироваться
-              </button>
-            </>
-          )}
-        </footer>
       </div>
     </div>
   );

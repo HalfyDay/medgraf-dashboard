@@ -16,6 +16,9 @@ export type AuthUser = {
   passportNumber?: string | null;
   passportIssuedBy?: string | null;
   passportIssueDate?: string | null;
+  onecId?: string | null;
+  medcardNumber?: string | null;
+  gender?: string | null;
 };
 
 type AuthResult =
