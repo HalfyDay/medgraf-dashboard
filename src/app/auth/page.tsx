@@ -14,7 +14,7 @@ import {
 } from "@/utils/authClient";
 import { extractPhoneDigits, formatPhoneInput, normalizePhone } from "@/utils/phone";
 
-type LoginStep = "phone" | "password" | "otp" | "setPassword";
+type LoginStep = "phone" | "doc" | "password" | "otp" | "setPassword";
 
 const MIN_PASSWORD_LENGTH = 8;
 const LOGIN_OTP_LENGTH = 4;
@@ -118,7 +118,7 @@ function AuthField({
 }: AuthFieldProps) {
   return (
     <label className="block text-left">
-      <span className="mb-1 block text-sm font-medium text-[#2D4F8A]">{label}</span>
+      <span className="mb-1 block pl-4 text-sm font-medium text-[#2D4F8A]">{label}</span>
       <input
         type={type}
         value={value}
@@ -148,7 +148,6 @@ export default function AuthPage() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [loginStep, setLoginStep] = useState<LoginStep>("phone");
   const [loginSessionId, setLoginSessionId] = useState<string | null>(null);
-  const [awaitingDocVerification, setAwaitingDocVerification] = useState(false);
   const [loginOtpCode, setLoginOtpCode] = useState("");
   const [loginOtpHint, setLoginOtpHint] = useState<string | null>(null);
   const [loginSetupPassword, setLoginSetupPassword] = useState("");
@@ -167,12 +166,12 @@ export default function AuthPage() {
   const resetLoginFlow = () => {
     setLoginStep("phone");
     setLoginSessionId(null);
-    setAwaitingDocVerification(false);
     setLoginOtpCode("");
     setLoginOtpHint(null);
     setLoginSetupPassword("");
     setLoginSetupPasswordConfirm("");
     setLoginPassword("");
+    setLoginPassportDigits("");
     setLoginDisplayName(null);
     setLoginError(null);
     setInfoMessage(null);
@@ -180,8 +179,17 @@ export default function AuthPage() {
 
   const handleLoginPhoneChange = (value: string) => {
     const digits = extractPhoneDigits(value);
-    const formatted = digits ? formatPhoneInput(digits) : "";
-    const display = formatted || (value.trim().startsWith("+") ? value : "");
+    const isDeleting = value.length < loginPhoneInput.length;
+
+    let display: string;
+    if (!digits) {
+      display = "";
+    } else if (isDeleting) {
+      display = value;
+    } else {
+      display = formatPhoneInput(digits);
+    }
+
     setLoginPhoneDigits(digits);
     setLoginPhoneInput(display);
     setLoginError(null);
@@ -190,49 +198,12 @@ export default function AuthPage() {
 
   const cleanDocDigits = (value: string) => value.replace(/\D/g, "").slice(-3);
 
-  const verifyDocDigits = async (sessionId: string, digits: string) => {
-    const cleaned = cleanDocDigits(digits);
-    if (cleaned.length !== 3) {
-      setLoginError("Введите последние 3 цифры документа");
-      return false;
-    }
-    setLoginError(null);
-    try {
-      const result = await verifyPassportDigits(sessionId, cleaned);
-      setLoginPassportDigits(cleaned);
-      setLoginStep("otp");
-      setLoginOtpCode("");
-      setLoginOtpHint(result.debugCode ?? null);
-      setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
-      setAwaitingDocVerification(false);
-      return true;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Не удалось подтвердить документ. Проверьте цифры.";
-      setLoginError(message);
-      setAwaitingDocVerification(true);
-      return false;
-    }
-  };
-
   const handleLoginPhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (loginPhoneDigits.length !== 10) {
       setLoginError("Введите номер телефона полностью");
       return;
     }
-
-    // Если уже есть активная сессия и ждём только подтверждение документа.
-    if (awaitingDocVerification && loginSessionId) {
-      setLoginStepLoading(true);
-      try {
-        await verifyDocDigits(loginSessionId, loginPassportDigits);
-      } finally {
-        setLoginStepLoading(false);
-      }
-      return;
-    }
-
     setLoginError(null);
     setLoginStepLoading(true);
     try {
@@ -246,25 +217,45 @@ export default function AuthPage() {
             : "Введите пароль для входа.",
         );
         setLoginSessionId(null);
-        setAwaitingDocVerification(false);
         return;
       }
-
       if (!result.sessionId) {
         throw new Error("Не удалось начать вход");
       }
-
       setLoginSessionId(result.sessionId);
-      const cleanedDigits = cleanDocDigits(loginPassportDigits);
-      if (cleanedDigits.length === 3) {
-        await verifyDocDigits(result.sessionId, cleanedDigits);
-      } else {
-        setAwaitingDocVerification(true);
-        setInfoMessage("Укажите последние 3 цифры документа, чтобы продолжить.");
-        setLoginError("Введите последние 3 цифры документа");
-      }
+      setLoginPassportDigits("");
+      setLoginStep("doc");
+      setInfoMessage("Укажите последние 3 цифры паспорта, чтобы продолжить.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось проверить номер";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
+  const handleDocSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginSessionId) {
+      setLoginError("Сессия не найдена. Начните заново.");
+      return;
+    }
+    const cleaned = cleanDocDigits(loginPassportDigits);
+    if (cleaned.length !== 3) {
+      setLoginError("Введите последние 3 цифры паспорта");
+      return;
+    }
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      const result = await verifyPassportDigits(loginSessionId, cleaned);
+      setLoginPassportDigits(cleaned);
+      setLoginStep("otp");
+      setLoginOtpCode("");
+      setLoginOtpHint(result.debugCode ?? null);
+      setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось подтвердить паспортные данные";
       setLoginError(message);
     } finally {
       setLoginStepLoading(false);
@@ -368,18 +359,22 @@ export default function AuthPage() {
         <header className="mb-8 text-center">
           <div className="flex items-center justify-center gap-3 text-[#0C8FE8]">
             <div className="relative h-16 w-16">
-              <Image src="/logo.svg" alt="Медграфт Клиент" fill priority />
+              <Image src="/logo.svg" alt="Клиника Медграфт" fill priority />
             </div>
             <div className="text-left">
-              <span className="block text-xs font-bold uppercase tracking-[0.2em] text-[#0C8FE8]">
-                Медграфт
+              <span className="block text-sm font-extrabold uppercase tracking-[0.08em] text-[#0C8FE8]">
+                Клиника
               </span>
               <span className="block text-2xl font-extrabold leading-tight text-[#20BD75]">
-                Клиент
+                Медграфт
               </span>
             </div>
           </div>
-          <h1 className="mt-8 text-3xl font-bold leading-tight text-[#0173DB]">Вход в личный кабинет</h1>
+          <h1 className="mt-8 text-3xl font-bold leading-tight text-[#0173DB]">
+            Вход в
+            <br />
+            Личный кабинет
+          </h1>
         </header>
 
         <div className="grow rounded-[28px] bg-white/95 p-6 shadow-[0_18px_45px_rgba(17,130,255,0.18)] backdrop-blur-sm">
@@ -403,8 +398,19 @@ export default function AuthPage() {
                   autoComplete="tel"
                   maxLength={18}
                 />
+                <Button type="submit" className="w-full" disabled={loginStepLoading}>
+                  Продолжить
+                </Button>
+              </form>
+            )}
+            {loginStep === "doc" && (
+              <form onSubmit={handleDocSubmit} className="space-y-4">
+                <p className="text-sm text-[#456388]">
+                  Подтвердите последние 3 цифры паспорта для номера{" "}
+                  {loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : ""}.
+                </p>
                 <AuthField
-                  label="Последние 3 цифры документа"
+                  label="Последние 3 цифры паспорта"
                   value={loginPassportDigits}
                   onChange={(value) => {
                     setLoginPassportDigits(cleanDocDigits(value));
@@ -414,12 +420,23 @@ export default function AuthPage() {
                   maxLength={3}
                   inputMode="numeric"
                 />
-                <Button type="submit" className="w-full" disabled={loginStepLoading}>
-                  Продолжить
-                </Button>
-                <p className="text-center text-xs text-[#5A719B]">
-                  Для первого входа используйте номер телефона и последние 3 цифры паспорта.
-                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1 whitespace-nowrap px-4"
+                    onClick={() => {
+                      resetLoginFlow();
+                      setLoginPhoneDigits("");
+                      setLoginPhoneInput("");
+                    }}
+                  >
+                    Изменить номер
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={loginStepLoading}>
+                    Подтвердить
+                  </Button>
+                </div>
               </form>
             )}
 
@@ -445,7 +462,7 @@ export default function AuthPage() {
                   <Button
                     type="button"
                     variant="secondary"
-                    className="flex-1"
+                    className="flex-1 whitespace-nowrap px-4"
                     onClick={() => {
                       resetLoginFlow();
                       setLoginPhoneDigits("");

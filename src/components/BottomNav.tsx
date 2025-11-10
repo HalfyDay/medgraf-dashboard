@@ -1,11 +1,14 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useRef, useState, useLayoutEffect, useCallback } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 
 
+
+const MotionLink = motion(Link);
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -100,10 +103,10 @@ export default function BottomNav() {
     return () => window.removeEventListener("scroll", onScroll);
   }, [compact]);
 
-  const expandNow = () => {
+  const expandNow = useCallback(() => {
     setCompact(false);
     lockUntil.current = Date.now() + 550; // защита от мгновенного схлопа
-  };
+  }, []);
 
   const isActive = useCallback(
     (href: string) => pathname === href || pathname.startsWith(href + "/"),
@@ -120,6 +123,18 @@ export default function BottomNav() {
   useEffect(() => {
     setVisualActiveHref(actualActiveHref);
   }, [actualActiveHref]);
+
+  const handleNavigate = useCallback(
+    (href: string) => {
+      router.prefetch?.(href);
+      if (compact) {
+        expandNow();
+      }
+      setVisualActiveHref(href);
+      router.push(href);
+    },
+    [compact, expandNow, router],
+  );
 
   const fullW = baseW;
   const compactW = Math.max(Math.floor(baseW * WIDTH_COMPACT_FACTOR), WIDTH_MIN_PX);
@@ -207,29 +222,26 @@ export default function BottomNav() {
                       />
                     </motion.div>
 
-                    <motion.button
-                      type="button"
+                    <MotionLink
+                      href={it.href}
+                      prefetch
                       aria-label={it.label}
                       aria-current={actualActive ? "page" : undefined}
-                      className="relative z-10 inline-flex items-center justify-center select-none"
+                      className="relative z-10 inline-flex items-center justify-center select-none rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-400"
                       initial={false}
                       animate={{
                         width: compact ? SLOT_WIDTH_COMPACT : SLOT_WIDTH_FULL,
                         height: compact ? 32 : 56,
                       }}
                       transition={{ type: "spring", stiffness: 230, damping: 24 }}
-                      style={{ pointerEvents: compact ? "none" : "auto" }}
-                      onClick={() => {
-                        if (compact) return;
-                        setVisualActiveHref(it.href);
-                        router.push(it.href);
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleNavigate(it.href);
                       }}
                       onKeyDown={(e) => {
-                        if (compact) return;
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          setVisualActiveHref(it.href);
-                          router.push(it.href);
+                          handleNavigate(it.href);
                         }
                       }}
                     >
@@ -244,7 +256,7 @@ export default function BottomNav() {
                         }}
                         transition={{ type: "spring", stiffness: 230, damping: 24 }}
                       />
-                    </motion.button>
+                    </MotionLink>
                   </div>
                 );
               })}
