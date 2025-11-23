@@ -719,6 +719,10 @@ export async function fetchDoctors(): Promise<Doctor[]> {
       throw new Error("Doctors API returned empty payload");
     }
     return payload.data.map(mapDirectoryDoctor);
+  } catch (error) {
+    console.warn("fetchDoctors fallback to mock data", error);
+    await delay(350);
+    return MOCK_DOCTORS.map((doctor) => ({ ...doctor }));
   } finally {
     if (timeout) {
       clearTimeout(timeout);

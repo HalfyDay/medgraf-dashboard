@@ -1,4 +1,4 @@
-import crypto from "crypto";
+﻿import crypto from "crypto";
 
 export type GosuslugiProfile = {
   phone: string;
@@ -23,7 +23,7 @@ const MOCK_MODE =
 
 const MOCK_PROFILE: GosuslugiProfile = {
   phone: process.env.GOSUSLUGI_MOCK_PHONE ?? "79991112233",
-  fullName: process.env.GOSUSLUGI_MOCK_FULLNAME ?? "Госуслуга Тестовая",
+  fullName: process.env.GOSUSLUGI_MOCK_FULLNAME ?? "Р“РѕСЃСѓСЃР»СѓРіР° РўРµСЃС‚РѕРІР°СЏ",
   birthDate: process.env.GOSUSLUGI_MOCK_BIRTHDATE ?? "1990-01-01",
   email: process.env.GOSUSLUGI_MOCK_EMAIL ?? "mock.user@gosuslugi.ru",
   snils: process.env.GOSUSLUGI_MOCK_SNILS ?? "123-456-789 00",
@@ -96,44 +96,86 @@ async function requestAccessToken(code: string, codeVerifier: string, redirectUr
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Не удалось обменять код на токен Госуслуг: ${text || response.statusText}`);
+    throw new Error(`РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РјРµРЅСЏС‚СЊ РєРѕРґ РЅР° С‚РѕРєРµРЅ Р“РѕСЃСѓСЃР»СѓРі: ${text || response.statusText}`);
   }
 
   const payload = (await response.json()) as { access_token?: string };
   if (!payload.access_token) {
-    throw new Error("В ответе Госуслуг отсутствует access_token");
+    throw new Error("Р’ РѕС‚РІРµС‚Рµ Р“РѕСЃСѓСЃР»СѓРі РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ access_token");
   }
   return payload;
 }
 
-function mapProfile(raw: any): GosuslugiProfile {
-  const primary =
-    raw?.phone ??
-    raw?.mobile_phone ??
-    raw?.mobilePhone ??
-    raw?.person?.mobile_phone ??
-    raw?.person?.mobilePhone ??
-    raw?.contacts?.phone ??
-    raw?.contacts?.mobile;
-  if (!primary) {
-    throw new Error("Не удалось получить номер телефона из профиля Госуслуг");
+type ProfileRecord = {
+  [key: string]: unknown;
+  person?: ProfileRecord;
+  contacts?: ProfileRecord;
+};
+
+const pickString = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    return normalized.length ? normalized : null;
+  }
+  if (typeof value === "number") {
+    return value.toString();
+  }
+  return null;
+};
+
+const pickFromRecord = (record: ProfileRecord | undefined, keys: string[]): string | null => {
+  if (!record) {
+    return null;
+  }
+  for (const key of keys) {
+    const candidate = pickString(record[key]);
+    if (candidate) {
+      return candidate;
+    }
+  }
+  return null;
+};
+
+function mapProfile(raw: unknown): GosuslugiProfile {
+  if (!raw || typeof raw !== "object") {
+    throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ СЂР°Р·РѕР±СЂР°С‚СЊ РїСЂРѕС„РёР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ Р“РѕСЃСѓСЃР»СѓРіРё");
   }
 
+  const record = raw as ProfileRecord;
+  const person = record.person && typeof record.person === "object" ? (record.person as ProfileRecord) : undefined;
+  const contacts = record.contacts && typeof record.contacts === "object" ? (record.contacts as ProfileRecord) : undefined;
+
+  const primary =
+    pickFromRecord(record, ["phone", "mobile_phone", "mobilePhone"]) ??
+    pickFromRecord(person, ["mobile_phone", "mobilePhone"]) ??
+    pickFromRecord(contacts, ["phone", "mobile", "mobile_phone"]);
+
+  if (!primary) {
+    throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РєРѕРЅС‚Р°РєС‚РЅС‹Р№ С‚РµР»РµС„РѕРЅ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ Р“РѕСЃСѓСЃР»СѓРіРё");
+  }
+
+  const nameParts = [
+    pickFromRecord(record, ["last_name", "lastName"]),
+    pickFromRecord(record, ["first_name", "firstName"]),
+    pickFromRecord(record, ["middle_name", "middleName"]),
+  ].filter(Boolean) as string[];
+
   const fullName =
-    raw?.full_name ??
-    raw?.fio ??
-    [raw?.last_name ?? raw?.lastName, raw?.first_name ?? raw?.firstName, raw?.middle_name ?? raw?.middleName]
-      .filter(Boolean)
-      .join(" ")
-      .trim() ||
-    raw?.person?.full_name ??
-    raw?.person?.fio;
-  const birthDate = raw?.birth_date ?? raw?.birthDate ?? raw?.person?.birth_date ?? raw?.person?.birthDate ?? null;
-  const email = raw?.email ?? raw?.person?.email ?? raw?.contacts?.email ?? null;
-  const snils = raw?.snils ?? raw?.person?.snils ?? null;
+    pickFromRecord(record, ["full_name", "fio"]) ??
+    (nameParts.length ? nameParts.join(" ").trim() : null) ??
+    pickFromRecord(person, ["full_name", "fio"]);
+
+  const birthDate =
+    pickFromRecord(record, ["birth_date", "birthDate"]) ??
+    pickFromRecord(person, ["birth_date", "birthDate"]);
+  const email =
+    pickFromRecord(record, ["email"]) ??
+    pickFromRecord(person, ["email"]) ??
+    pickFromRecord(contacts, ["email"]);
+  const snils = pickFromRecord(record, ["snils"]) ?? pickFromRecord(person, ["snils"]);
 
   return {
-    phone: String(primary),
+    phone: primary,
     fullName: fullName || null,
     birthDate: birthDate || null,
     email,
@@ -156,7 +198,7 @@ async function requestProfile(accessToken: string): Promise<GosuslugiProfile> {
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Не удалось получить профиль Госуслуг: ${text || response.statusText}`);
+    throw new Error(`РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РїСЂРѕС„РёР»СЊ Р“РѕСЃСѓСЃР»СѓРі: ${text || response.statusText}`);
   }
 
   const raw = await response.json();
@@ -193,3 +235,4 @@ export function decodeOauthSession(value: string | undefined | null) {
 export function isGosuslugiMockMode() {
   return MOCK_MODE;
 }
+

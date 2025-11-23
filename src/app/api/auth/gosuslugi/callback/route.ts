@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import {
   decodeOauthSession,
   fetchGosuslugiProfile,
   GOSUSLUGI_COOKIE_NAME,
-  isGosuslugiMockMode,
 } from "@/server/gosuslugiAuth";
 import { ensureUserFromGosuslugi } from "@/server/authUser";
 import { buildErrorPage, buildLocalStorageLoginResponse } from "@/server/authResponse";
@@ -41,4 +40,3 @@ export async function GET(req: NextRequest) {
     return buildErrorPage("Не удалось завершить вход через Госуслуги. Попробуйте позже.", 502);
   }
 }
-

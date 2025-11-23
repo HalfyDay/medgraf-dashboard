@@ -1,4 +1,5 @@
 import iconv from "iconv-lite";
+import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
 
 const DEFAULT_BASE_URL = "http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs";
 const DEFAULT_BASIC_USER = "Test";
@@ -269,6 +270,10 @@ async function requestOnec<T>(path: string, context: string, query?: Record<stri
   }
 }
 
+async function requestOnecBasic<T>(path: string, context: string, query?: Record<string, string>) {
+  return requestJson<T>(path, context, "basic", query);
+}
+
 function pickPrimary(profile: OnecUserProfile): OnecPerson {
   return profile.patient ?? profile.summary;
 }
@@ -326,4 +331,114 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
   }
 
   return { summary, patient };
+}
+
+type OnecDoctorRaw = {
+  id?: string;
+  full_name?: string;
+  email?: string;
+  phone?: string;
+  specialties?: string[] | string | null;
+  photo?: string;
+};
+
+const normalizeSpecialties = (value: OnecDoctorRaw["specialties"]) => {
+  if (!value) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => (typeof entry === "string" ? entry.trim() : String(entry ?? "")))
+      .filter((entry) => entry.length > 0);
+  }
+  return [String(value).trim()].filter((entry) => entry.length > 0);
+};
+
+const mapDoctorRecord = (raw: OnecDoctorRaw): DoctorDirectoryEntry | null => {
+  const id = raw.id?.toString().trim();
+  if (!id) {
+    return null;
+  }
+  const fullName = composeFullName({
+    full_name: typeof raw.full_name === "string" ? raw.full_name : undefined,
+    first_name: undefined,
+    last_name: undefined,
+    middle_name: undefined,
+  });
+
+  return {
+    id,
+    fullName: fullName || raw.full_name?.toString().trim() || id,
+    email: typeof raw.email === "string" ? raw.email.trim() : undefined,
+    phone: typeof raw.phone === "string" ? raw.phone.trim() : undefined,
+    specialties: normalizeSpecialties(raw.specialties),
+    photoUrl: typeof raw.photo === "string" ? raw.photo.trim() : undefined,
+  };
+};
+
+export async function fetchOnecDoctorsDirectory(query?: { id?: string }): Promise<DoctorDirectoryEntry[]> {
+  const params = query?.id ? { id: query.id } : undefined;
+  const rawList = await requestOnecBasic<OnecDoctorRaw[]>("/doctors/get_doctors", "get_doctors", params);
+  if (!Array.isArray(rawList)) {
+    return [];
+  }
+  return rawList
+    .map((raw) => {
+      try {
+        return mapDoctorRecord(raw);
+      } catch (error) {
+        console.warn("Failed to normalize doctor entry", raw, error);
+        return null;
+      }
+    })
+    .filter((entry): entry is DoctorDirectoryEntry => Boolean(entry));
+}
+
+type OnecServiceRaw = {
+  id?: string;
+  category?: string;
+  subcategory?: string;
+  name?: string;
+  price?: number | string;
+  currency?: string;
+  duration_minutes?: number | string;
+};
+
+const mapServiceRecord = (raw: OnecServiceRaw): ServiceDirectoryEntry | null => {
+  const id = raw.id?.toString().trim();
+  if (!id) {
+    return null;
+  }
+  return {
+    id,
+    category: raw.category?.toString().trim() || "Общие услуги",
+    subcategory: raw.subcategory?.toString().trim() || null,
+    name: raw.name?.toString().trim() || id,
+    price: typeof raw.price === "number" ? raw.price : raw.price ? Number(raw.price) : undefined,
+    currency: raw.currency?.toString().trim() || undefined,
+    durationMinutes:
+      typeof raw.duration_minutes === "number"
+        ? raw.duration_minutes
+        : raw.duration_minutes
+          ? Number(raw.duration_minutes)
+          : undefined,
+  };
+};
+
+export async function fetchOnecServicesDirectory(query?: { id?: string }): Promise<ServiceDirectoryEntry[]> {
+  const params = query?.id ? { id: query.id } : undefined;
+  const rawList = await requestOnecBasic<OnecServiceRaw[]>("/services/service", "services", params);
+  if (!Array.isArray(rawList)) {
+    return [];
+  }
+  return rawList
+    .map((raw) => {
+      try {
+        return mapServiceRecord(raw);
+      } catch (error) {
+        console.warn("Failed to normalize service entry", raw, error);
+        return null;
+      }
+    })
+    .filter((entry): entry is ServiceDirectoryEntry => Boolean(entry));
 }
