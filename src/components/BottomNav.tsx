@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 export default function BottomNav() {
   const pathname = usePathname();

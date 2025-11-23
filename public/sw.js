@@ -1,5 +1,5 @@
 // public/sw.js
-const CACHE = "medgraft-v2";
+const CACHE = "medgraft-v3";
 // ОСТАВЬТЕ ТОЛЬКО ASCII-ПУТИ!
 const ASSETS = [
   "/", "/home",
@@ -36,13 +36,17 @@ self.addEventListener("fetch", (e) => {
   e.respondWith(
     (async () => {
       const cached = await caches.match(request);
+
       const network = fetch(request)
         .then((resp) => {
-          const copy = resp.clone();
-          caches.open(CACHE).then((c) => c.put(request, copy));
+          if (resp.ok) {
+            const copy = resp.clone();
+            caches.open(CACHE).then((c) => c.put(request, copy));
+          }
           return resp;
         })
         .catch(() => cached);
+
       return cached || network;
     })()
   );

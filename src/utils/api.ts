@@ -1,5 +1,7 @@
 // src/utils/api.ts
 import type { DoctorDirectoryEntry } from "@/types/clinic";
+
+export const DOCTOR_AVATAR_PLACEHOLDER = "/doctor.svg";
 export interface Appointment {
   id: string;
   date: string;       // ISO 8601, например "2025-07-20T14:30:00+03:00"
@@ -37,7 +39,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
         room: "Кабинет 204",
       },
       status: "planned",
-      doctorAvatar: "/doc1.png",
+      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
       patients: ["Иванов Иван Иванович"],
       recommendations: "Принести предыдущие выписки и результаты обследований.",
       conclusion: "Проверка динамики после операции.",
@@ -55,7 +57,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
         room: "Кабинет 307",
       },
       status: "planned",
-      doctorAvatar: "/doc2.png",
+      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
       patients: ["Иванов Иван Иванович"],
       recommendations: "Заполнить анкету здоровья заранее в личном кабинете.",
       conclusion: "Обследование и составление плана лечения.",
@@ -73,7 +75,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
         room: "Кабинет 112",
       },
       status: "completed",
-      doctorAvatar: "/doc3.png",
+      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
       patients: ["Иванов Иван Иванович"],
       recommendations: "Повторное обследование при появлении жалоб.",
       conclusion: "Патологий не выявлено.",
@@ -91,7 +93,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
         room: "Кабинет 204",
       },
       status: "cancelled",
-      doctorAvatar: "/doc1.png",
+      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
       patients: ["Иванов Иван Иванович"],
       recommendations: "Перенести визит при заболевании ОРВИ.",
       conclusion: "Отменено пациентом.",
@@ -217,7 +219,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: true,
-    photoUrl: "/doc1.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-neuro-2",
@@ -230,7 +232,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "45 минут",
     durationMinutes: 45,
     isAvailable: true,
-    photoUrl: "/doc3.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-neuro-3",
@@ -243,7 +245,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: false,
-    photoUrl: "/doc2.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-thera-1",
@@ -256,7 +258,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: true,
-    photoUrl: "/doc2.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-thera-2",
@@ -269,7 +271,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: true,
-    photoUrl: "/doc1.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-thera-3",
@@ -282,7 +284,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "45 минут",
     durationMinutes: 45,
     isAvailable: false,
-    photoUrl: "/doc3.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-ophtha-1",
@@ -295,7 +297,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "час",
     durationMinutes: 60,
     isAvailable: true,
-    photoUrl: "/doc2.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-ophtha-2",
@@ -308,7 +310,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "45 минут",
     durationMinutes: 45,
     isAvailable: true,
-    photoUrl: "/doc1.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-ophtha-3",
@@ -321,7 +323,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: false,
-    photoUrl: "/doc3.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-gyno-1",
@@ -334,7 +336,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: false,
-    photoUrl: "/doc3.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-gyno-2",
@@ -347,7 +349,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "45 минут",
     durationMinutes: 45,
     isAvailable: true,
-    photoUrl: "/doc1.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-gyno-3",
@@ -360,7 +362,7 @@ const MOCK_DOCTORS: Doctor[] = [
     pricePeriod: "30 минут",
     durationMinutes: 30,
     isAvailable: true,
-    photoUrl: "/doc2.png",
+    photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
 ];
 
@@ -676,8 +678,6 @@ const APPOINTMENT_CLINIC = {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const DOCTOR_FALLBACK_SPECIALTY = "Врач клиники";
-const DOCTOR_FALLBACK_PHOTO = "/doctor.svg";
-
 const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
   const specialties = entry.specialties?.length ? entry.specialties : [DOCTOR_FALLBACK_SPECIALTY];
   const primarySpecialty = specialties[0] ?? DOCTOR_FALLBACK_SPECIALTY;
@@ -693,7 +693,8 @@ const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
     pricePeriod: "30 мин",
     durationMinutes: 30,
     isAvailable: true,
-    photoUrl: entry.photoUrl && entry.photoUrl.length > 0 ? entry.photoUrl : DOCTOR_FALLBACK_PHOTO,
+    photoUrl:
+      entry.photoUrl && entry.photoUrl.length > 0 ? entry.photoUrl : DOCTOR_AVATAR_PLACEHOLDER,
   };
 };
 
@@ -759,8 +760,9 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
     specialty: doctor.specialty,
     clinic: { ...APPOINTMENT_CLINIC },
     status: "planned",
-    doctorAvatar: doctor.photoUrl,
+    doctorAvatar: doctor.photoUrl || DOCTOR_AVATAR_PLACEHOLDER,
   };
 
   return appointment;
 }
+

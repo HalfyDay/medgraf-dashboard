@@ -12,7 +12,7 @@ import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
 import CheckupsSheet, { type CheckupData } from "@/components/CheckupsSheet";
-import { type Appointment, type DocumentItem } from "@/utils/api";
+import { DOCTOR_AVATAR_PLACEHOLDER, type Appointment, type DocumentItem } from "@/utils/api";
 import { useAppData } from "@/providers/AppDataProvider";
 
 function formatTileDate(dateIso: string) {
@@ -85,7 +85,7 @@ export default function HomePage() {
   const upcomingDoctorName = upcomingAppointment?.doctorName ?? "Пока нет записи";
   const upcomingDoctorSpecialty =
     upcomingAppointment?.specialty ?? "Запишитесь на приём, чтобы мы показали детали";
-  const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar ?? "/doc1.png";
+  const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER;
   const hasActiveAppointments = appointments.some((item) => item.status === "planned");
   const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
   const bookingSuccessSubtitle = useMemo(() => {
@@ -430,7 +430,7 @@ export default function HomePage() {
                   alt=""
                   className="h-10 w-10 rounded-full border border-slate-200 object-cover"
                   onError={(event) => {
-                    (event.currentTarget as HTMLImageElement).src = "/doc1.png";
+                    (event.currentTarget as HTMLImageElement).src = DOCTOR_AVATAR_PLACEHOLDER;
                   }}
                 />
                 <div className="min-w-0 leading-tight">

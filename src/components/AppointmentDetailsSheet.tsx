@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import SheetFrame, { SectionCard } from "@/components/SheetFrame";
-import type { Appointment } from "@/utils/api";
+import { DOCTOR_AVATAR_PLACEHOLDER, type Appointment } from "@/utils/api";
 
 type AppointmentDetailsSheetProps = {
   open: boolean;
@@ -124,11 +124,11 @@ export default function AppointmentDetailsSheet({
       <div className="mx-1 mt-4 flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 shadow-md ring-1 ring-slate-100">
         <div className="flex items-center gap-3">
           <img
-            src={appointment.doctorAvatar || "/doc1.png"}
+            src={appointment.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER}
             alt=""
             className="h-11 w-11 rounded-full object-cover"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = "/doc1.png";
+              (e.target as HTMLImageElement).src = DOCTOR_AVATAR_PLACEHOLDER;
             }}
           />
           <div className="leading-tight">

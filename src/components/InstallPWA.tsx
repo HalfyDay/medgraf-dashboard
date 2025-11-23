@@ -14,9 +14,17 @@ export default function InstallPWA() {
 
   useEffect(() => {
     setMounted(true);
-    if ("serviceWorker" in navigator) {
+    if (!("serviceWorker" in navigator)) return;
+
+    if (process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
+      return;
     }
+
+    // In dev, make sure old SWs (that could cache 404s) are cleared
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => reg.unregister().catch(() => {}));
+    });
   }, []);
 
   useEffect(() => {

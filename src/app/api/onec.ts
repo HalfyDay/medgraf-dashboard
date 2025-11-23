@@ -1,4 +1,4 @@
-﻿// app/api/onec.ts
+// app/api/onec.ts
 // Заготовка клиента для 1C API с подменными (mock) данными.
 // Позволяет уже сейчас брать данные на странице из единого места,
 // а позже — переключиться на реальный backend без правок страницы.
@@ -9,25 +9,33 @@ const USE_MOCK_ALWAYS = true;
 // Базовая конфигурация API (заполните при появлении доступа к 1С)
 const BASE_URL = process.env.NEXT_PUBLIC_ONEC_URL || ""; // например: https://sandbox.1c.your-domain.ru
 const API_TOKEN = process.env.NEXT_PUBLIC_ONEC_TOKEN || ""; // Bearer
+const USE_MOCK = USE_MOCK_ALWAYS || !BASE_URL;
 
-// Общий фетчер. Если USE_MOCK_ALWAYS=true — сразу кидает исключение, чтобы сработал мок.
+// Небольшая искусственная задержка для имитации сети
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const cloneWithDelay = async <T>(value: T, delayMs = 120): Promise<T> => {
+  if (delayMs > 0) {
+    await sleep(delayMs);
+  }
+  return structuredClone(value);
+};
+
+// Общий фетчер. Если USE_MOCK=true — сразу кидает исключение, чтобы сработал мок.
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  if (USE_MOCK_ALWAYS || !BASE_URL) {
+  if (USE_MOCK) {
     throw new Error("MOCK_FALLBACK");
   }
 
-  const res = await fetch(`${BASE_URL}${path}`,
-    {
-      ...init,
-      headers: {
-        "Content-Type": "application/json; charset=utf-8",
-        Authorization: API_TOKEN ? `Bearer ${API_TOKEN}` : "",
-        ...(init?.headers || {}),
-      },
-      // Не кэшируем, чтобы видеть свежие изменения из 1С
-      cache: "no-store",
-    }
-  );
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      Authorization: API_TOKEN ? `Bearer ${API_TOKEN}` : "",
+      ...(init?.headers || {}),
+    },
+    // Не кэшируем, чтобы видеть свежие изменения из 1С
+    cache: "no-store",
+  });
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -53,7 +61,7 @@ export type Promotion = {
   title: string;
   subtitle?: string;
   cardImage: string; // превью на главной
-  banner?: string;   // картинка внутри шита
+  banner?: string; // картинка внутри шита
   bullets?: string[];
   ctaHref?: string;
   ctaText?: string;
@@ -62,8 +70,8 @@ export type Promotion = {
 export type Checkup = {
   id: string;
   title: string;
-  sub?: string;        // подзаголовок под названием
-  bg: string;          // tailwind bg градиент, например "from-pink-400 to-fuchsia-500"
+  sub?: string; // подзаголовок под названием
+  bg: string; // tailwind bg градиент, например "from-pink-400 to-fuchsia-500"
   icon: "mrt" | "stetho" | "eye" | "balloon" | "heart" | "leaf" | "ear" | "bone";
   bullets: string[];
   price?: number;
@@ -74,11 +82,13 @@ export type Checkup = {
 export type UserPreview = {
   fullName: string;
   // Блок "Моя запись" — опционально (сейчас на странице заглушка)
-  appointment?: {
-    dateLabel: string;  // например: "Вт, 11 окт 2025"
-    timeLabel: string;  // например: "08:00 – 12:00"
-    doctor?: { name: string; specialty?: string; photoUrl?: string };
-  } | null;
+  appointment?:
+    | {
+        dateLabel: string; // например: "Вт, 11 окт 2025"
+        timeLabel: string; // например: "08:00 – 12:00"
+        doctor?: { name: string; specialty?: string; photoUrl?: string };
+      }
+    | null;
 };
 
 // ————————————————————————————————————————————————————————————————————————
@@ -316,9 +326,6 @@ const MOCK_USER: UserPreview = {
   },
 };
 
-// Небольшая искусственная задержка для имитации сети
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
 // ————————————————————————————————————————————————————————————————————————
 // Публичный клиент
 // ————————————————————————————————————————————————————————————————————————
@@ -327,13 +334,15 @@ export const onec = {
   // Пациент (краткая сводка для главной)
   user: {
     async get(): Promise<UserPreview> {
+      if (USE_MOCK) {
+        return cloneWithDelay(MOCK_USER, 120);
+      }
       try {
         const data = await fetchJson<UserPreview>("/v1/patients/me/preview");
         return data;
-      } catch (_) {
-        console.warn("onec.user.get fallback", _);
-        await sleep(150); // чтобы увидеть спиннеры
-        return structuredClone(MOCK_USER);
+      } catch (error) {
+        console.warn("onec.user.get fallback", error);
+        return cloneWithDelay(MOCK_USER, 150);
       }
     },
   },
@@ -341,13 +350,15 @@ export const onec = {
   // Акции — список
   promotions: {
     async list(): Promise<Promotion[]> {
+      if (USE_MOCK) {
+        return cloneWithDelay(MOCK_PROMOTIONS, 120);
+      }
       try {
         const data = await fetchJson<Promotion[]>("/v1/promotions?active=true");
         return data;
-      } catch (_) {
-        console.warn("onec.promotions.list fallback", _);
-        await sleep(150);
-        return structuredClone(MOCK_PROMOTIONS);
+      } catch (error) {
+        console.warn("onec.promotions.list fallback", error);
+        return cloneWithDelay(MOCK_PROMOTIONS, 150);
       }
     },
   },
@@ -355,14 +366,16 @@ export const onec = {
   // Чекапы — список
   checkups: {
     async list(): Promise<Checkup[]> {
+      if (USE_MOCK) {
+        return cloneWithDelay(MOCK_CHECKUPS, 120);
+      }
       try {
         // В идеале — получать из 1С: /v1/checkups
         const data = await fetchJson<Checkup[]>("/v1/checkups");
         return data;
-      } catch (_) {
-        console.warn("onec.checkups.list fallback", _);
-        await sleep(150);
-        return structuredClone(MOCK_CHECKUPS);
+      } catch (error) {
+        console.warn("onec.checkups.list fallback", error);
+        return cloneWithDelay(MOCK_CHECKUPS, 150);
       }
     },
   },
@@ -370,13 +383,15 @@ export const onec = {
   // Контакты клиники
   contacts: {
     async get(): Promise<ContactInfo> {
+      if (USE_MOCK) {
+        return cloneWithDelay(MOCK_CONTACTS, 80);
+      }
       try {
         const data = await fetchJson<ContactInfo>("/v1/contacts");
         return data;
-      } catch (_) {
-        console.warn("onec.contacts.get fallback", _);
-        await sleep(80);
-        return structuredClone(MOCK_CONTACTS);
+      } catch (error) {
+        console.warn("onec.contacts.get fallback", error);
+        return cloneWithDelay(MOCK_CONTACTS, 80);
       }
     },
   },
