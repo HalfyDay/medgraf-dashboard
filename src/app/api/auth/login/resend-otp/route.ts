@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getLoginSession, issueOtpForSession } from "@/server/loginSessionStore";
+import { getOtpDebugCode, sendLoginOtpSms } from "@/server/smsService";
 
 export async function POST(req: Request) {
   const { sessionId } = (await req.json()) as { sessionId?: string };
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
   let otpResult;
   try {
     otpResult = await issueOtpForSession(sessionId);
+    await sendLoginOtpSms(session.phone, otpResult.code);
   } catch (error) {
     console.error("Не удалось отправить SMS-код:", error);
     return NextResponse.json({ error: "Не удалось отправить код" }, { status: 500 });
@@ -38,6 +40,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     success: true,
     otpExpiresAt: otpResult.expiresAt,
-    debugCode: otpResult.code,
+    debugCode: getOtpDebugCode(otpResult.code),
   });
 }
