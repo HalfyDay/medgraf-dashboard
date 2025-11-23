@@ -23,7 +23,7 @@ function formatDate(dateIso: string) {
 }
 
 const DEFAULT_DESCRIPTION = "\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0434\u043b\u044f \u0441\u043a\u0430\u0447\u0438\u0432\u0430\u043d\u0438\u044f";
-const DOWNLOAD_LABEL = "\u0421\u043a\u0430\u0447\u0430\u0442\u044c PDF";
+const DOWNLOAD_LABEL = "\u0421\u043a\u0430\u0447\u0430\u0442\u044c";
 
 export default function DocumentDetailsSheet({
   open,
@@ -34,12 +34,13 @@ export default function DocumentDetailsSheet({
 
   const dateLabel = formatDate(document.date);
   const description = document.description ?? DEFAULT_DESCRIPTION;
+  const downloadLink = document.downloadUrl;
 
   return (
     <SheetFrame
       open={open}
       onClose={onClose}
-      title={document.type}
+      title={document.title}
       subtitle={dateLabel}
       iconSrc="/list.svg"
       innerClassName="space-y-4"
@@ -51,7 +52,7 @@ export default function DocumentDetailsSheet({
             <div className="mt-1 text-[15px] font-medium text-slate-700">{description}</div>
           </div>
           <a
-            href={document.url}
+            href={downloadLink}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex h-11 w-11 items-center justify-center text-sky-600 transition hover:scale-[1.05]"

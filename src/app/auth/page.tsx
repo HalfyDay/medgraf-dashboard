@@ -217,21 +217,23 @@ export default function AuthPage() {
         setLoginStep("password");
         setInfoMessage(
           result.displayName
-            ? `Найдена карточка пациента ${result.displayName}. Введите пароль для входа.`
-            : "Введите пароль для входа.",
+            ? `Нашли вашу учетную запись ${result.displayName}. Введите пароль.`
+            : "Нашли вашу учетную запись. Введите пароль.",
         );
         setLoginSessionId(null);
         return;
       }
       if (!result.sessionId) {
-        throw new Error("Не удалось начать вход");
+        throw new Error("Не удалось создать сессию входа");
       }
       setLoginSessionId(result.sessionId);
       setLoginPassportDigits("");
-      setLoginStep("doc");
-      setInfoMessage("Укажите последние 3 цифры паспорта, чтобы продолжить.");
+      setLoginOtpCode("");
+      setLoginOtpHint(result.debugCode ?? null);
+      setLoginStep("otp");
+      setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось проверить номер";
+      const message = error instanceof Error ? error.message : "Не удалось начать вход";
       setLoginError(message);
     } finally {
       setLoginStepLoading(false);
@@ -241,7 +243,7 @@ export default function AuthPage() {
   const handleDocSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!loginSessionId) {
-      setLoginError("Сессия не найдена. Начните заново.");
+      setLoginError("Сессия не найдена. Попробуйте снова.");
       return;
     }
     const cleaned = cleanDocDigits(loginPassportDigits);
@@ -252,12 +254,10 @@ export default function AuthPage() {
     setLoginError(null);
     setLoginStepLoading(true);
     try {
-      const result = await verifyPassportDigits(loginSessionId, cleaned);
+      await verifyPassportDigits(loginSessionId, cleaned);
       setLoginPassportDigits(cleaned);
-      setLoginStep("otp");
-      setLoginOtpCode("");
-      setLoginOtpHint(result.debugCode ?? null);
-      setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
+      setLoginStep("setPassword");
+      setInfoMessage("Придумайте пароль для входа.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось подтвердить паспортные данные";
       setLoginError(message);
@@ -286,7 +286,7 @@ export default function AuthPage() {
 
   const handleResendLoginCode = async () => {
     if (!loginSessionId) {
-      setLoginError("Сессия не найдена. Начните заново.");
+      setLoginError("Сессия не найдена. Попробуйте снова.");
       return;
     }
     setLoginError(null);
@@ -306,7 +306,7 @@ export default function AuthPage() {
   const handleOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!loginSessionId) {
-      setLoginError("Сессия не найдена. Начните заново.");
+      setLoginError("Сессия не найдена. Попробуйте снова.");
       return;
     }
     if (loginOtpCode.length !== LOGIN_OTP_LENGTH) {
@@ -317,8 +317,9 @@ export default function AuthPage() {
     setLoginStepLoading(true);
     try {
       await verifyLoginOtp(loginSessionId, loginOtpCode);
-      setLoginStep("setPassword");
-      setInfoMessage("Код подтверждён. Придумайте пароль для входа.");
+      setLoginStep("doc");
+      setLoginPassportDigits("");
+      setInfoMessage("Укажите последние 3 цифры паспорта, чтобы продолжить.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось подтвердить код";
       setLoginError(message);
@@ -334,7 +335,7 @@ export default function AuthPage() {
       return;
     }
     if (loginSetupPassword.length < MIN_PASSWORD_LENGTH) {
-      setLoginError(`Пароль должен содержать не менее ${MIN_PASSWORD_LENGTH} символов`);
+      setLoginError(`Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов`);
       return;
     }
     if (loginSetupPassword !== loginSetupPasswordConfirm) {
@@ -366,12 +367,8 @@ export default function AuthPage() {
               <Image src="/logo.svg" alt="Клиника Медграфт" fill priority />
             </div>
             <div className="text-left">
-              <span className="block text-sm font-extrabold uppercase tracking-[0.08em] text-[#0C8FE8]">
-                Клиника
-              </span>
-              <span className="block text-2xl font-extrabold leading-tight text-[#20BD75]">
-                Медграфт
-              </span>
+              <span className="block text-sm font-extrabold uppercase tracking-[0.08em] text-[#0C8FE8]">КЛИНИКА</span>
+              <span className="block text-2xl font-extrabold leading-tight text-[#20BD75]">Медграфт</span>
             </div>
           </div>
           <h1 className="mt-8 text-3xl font-bold leading-tight text-[#0173DB]">

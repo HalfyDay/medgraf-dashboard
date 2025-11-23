@@ -85,7 +85,7 @@ export default function DocumentsSheet({
                 <div className="min-w-0 flex-1 leading-tight">
                   <div className="min-w-0">
                     <div className="truncate text-[17px] font-semibold">
-                      {doc.type}
+                      {doc.title}
                     </div>
                   </div>
                   <div className="mt-1 text-[14px] text-white/90">

@@ -59,7 +59,12 @@ export async function POST(req: Request) {
   const remoteGender = profileFields.gender ?? userRow.gender ?? null;
   const remoteMedcard = profileFields.medcardNumber ?? userRow.medcardNumber ?? null;
   const remoteEmail = profileFields.email ?? userRow.email ?? null;
-  const remoteOnecId = profile.summary.code ?? profile.summary.id ?? userRow.onecId ?? null;
+  const remoteOnecId =
+    profile.patient?.id ??
+    profile.summary.id ??
+    profile.summary.code ??
+    userRow.onecId ??
+    null;
 
   try {
     await updateUserById(userRow.id, {

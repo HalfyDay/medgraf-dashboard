@@ -249,6 +249,43 @@ async function requestJson<T>(
   return ensureSuccess(payload, context);
 }
 
+async function requestBinary(
+  path: string,
+  context: string,
+  authMode: "basic" | "bearer",
+  query?: Record<string, string>,
+) {
+  const headers: Record<string, string> = {};
+  if (authMode === "basic") {
+    headers.Authorization = basicAuthHeader();
+  } else {
+    const token = await getBearerToken();
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${baseUrl}${path}${buildQuery(query)}`, {
+    method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new OnecRequestError(
+      `Ошибка обращения к 1С (${context}): ${text || res.statusText}`,
+      res.status,
+      text || "",
+    );
+  }
+
+  const arrayBuffer = await res.arrayBuffer();
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    contentType: res.headers.get("content-type"),
+    disposition: res.headers.get("content-disposition"),
+  };
+}
+
 function shouldRetryWithBasic(error: unknown) {
   if (!(error instanceof OnecRequestError)) {
     return false;
@@ -272,6 +309,21 @@ async function requestOnec<T>(path: string, context: string, query?: Record<stri
 
 async function requestOnecBasic<T>(path: string, context: string, query?: Record<string, string>) {
   return requestJson<T>(path, context, "basic", query);
+}
+
+async function requestOnecBinary(path: string, context: string, query?: Record<string, string>) {
+  try {
+    return await requestBinary(path, context, "bearer", query);
+  } catch (error) {
+    if (shouldRetryWithBasic(error)) {
+      console.warn(
+        `Bearer-запрос 1С (${context}) не прошел, пробуем еще раз через Basic Auth`,
+      );
+      cachedToken = null;
+      return requestBinary(path, context, "basic", query);
+    }
+    throw error;
+  }
 }
 
 function pickPrimary(profile: OnecUserProfile): OnecPerson {
@@ -378,7 +430,15 @@ const mapDoctorRecord = (raw: OnecDoctorRaw): DoctorDirectoryEntry | null => {
 
 export async function fetchOnecDoctorsDirectory(query?: { id?: string }): Promise<DoctorDirectoryEntry[]> {
   const params = query?.id ? { id: query.id } : undefined;
-  const rawList = await requestOnecBasic<OnecDoctorRaw[]>("/doctors/get_doctors", "get_doctors", params);
+  let rawList: OnecDoctorRaw[] = [];
+  try {
+    rawList = await requestOnecBasic<OnecDoctorRaw[]>("/doctors/get_doctors", "get_doctors", params);
+  } catch (error) {
+    if (error instanceof OnecLogicalError && error.code === "2") {
+      return [];
+    }
+    throw error;
+  }
   if (!Array.isArray(rawList)) {
     return [];
   }
@@ -441,4 +501,43 @@ export async function fetchOnecServicesDirectory(query?: { id?: string }): Promi
       }
     })
     .filter((entry): entry is ServiceDirectoryEntry => Boolean(entry));
+}
+
+export type OnecDocumentRecord = {
+  id?: string | null;
+  patient_id?: string | null;
+  title?: string | null;
+  date?: string | null;
+};
+
+export async function fetchOnecDocuments(patientId: string): Promise<OnecDocumentRecord[]> {
+  if (!patientId) {
+    throw new Error("Не указан id пациента для загрузки документов");
+  }
+  try {
+    console.log("[onec] /umc_client_users/results request", { patientId });
+    const docs = await requestOnec<OnecDocumentRecord[]>(
+      "/umc_client_users/results",
+      "results",
+      { id: patientId },
+    );
+    if (!Array.isArray(docs)) {
+      return [];
+    }
+    console.log("[onec] /umc_client_users/results response", docs);
+    return docs;
+  } catch (error) {
+    if (error instanceof OnecLogicalError && error.code === "2") {
+      console.warn("[onec] /umc_client_users/results logical error code=2", { patientId });
+      return [];
+    }
+    throw error;
+  }
+}
+
+export async function downloadOnecDocument(uid: string) {
+  if (!uid) {
+    throw new Error("Не указан uid документа");
+  }
+  return requestOnecBinary("/umc_client_users/document", "document", { uid });
 }

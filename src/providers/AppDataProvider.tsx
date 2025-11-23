@@ -6,6 +6,7 @@ import type { PromoData } from "@/components/PromoSheet";
 import type { CheckupData } from "@/components/CheckupsSheet";
 import { fetchAppointments, fetchDocuments, type Appointment, type DocumentItem } from "@/utils/api";
 import { onec } from "@/app/api/onec";
+import { useAuth } from "@/providers/AuthProvider";
 
 type Contacts = {
   phone: string;
@@ -52,8 +53,6 @@ const PUBLIC_ASSET_URLS: string[] = [
   "/telegram-icon.svg",
   "/time.svg",
   "/verified.svg",
-  "/whatsapp-icon.svg",
-  "/window.svg",
   "/banner_promo_1.svg",
   "/banner_promo_2.svg",
   "/banner_promo_3.svg",
@@ -86,6 +85,7 @@ type AppDataContextValue = {
 const AppDataContext = createContext<AppDataContextValue | null>(null);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const [booting, setBooting] = useState(true);
   const [promos, setPromos] = useState<PromoData[]>([]);
   const [checkups, setCheckups] = useState<CheckupData[]>([]);
@@ -145,6 +145,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const loadData = useCallback(async () => {
     setAppointmentsLoading(true);
     setDocumentsLoading(true);
+    const patientId = user?.onecId?.toString().trim() || null;
     try {
       const [promoItems, checkupItems, contactsData, appointmentItems, documentItems] = await Promise.all([
         onec.promotions.list(),
@@ -154,10 +155,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           console.warn("appointments fallback:", error);
           return [] as Appointment[];
         }),
-        fetchDocuments().catch((error) => {
-          console.warn("documents fallback:", error);
-          return [] as DocumentItem[];
-        }),
+        patientId
+          ? fetchDocuments(patientId).catch((error) => {
+              console.warn("documents fallback:", error);
+              return [] as DocumentItem[];
+            })
+          : Promise.resolve([] as DocumentItem[]),
       ]);
       setPromos(promoItems);
       setCheckups(checkupItems);
@@ -170,7 +173,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setAppointmentsLoading(false);
       setDocumentsLoading(false);
     }
-  }, []);
+  }, [user?.onecId]);
 
   useEffect(() => {
     let alive = true;

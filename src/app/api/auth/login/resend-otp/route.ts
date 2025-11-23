@@ -2,17 +2,19 @@ import { NextResponse } from "next/server";
 import { getLoginSession, issueOtpForSession } from "@/server/loginSessionStore";
 import { getOtpDebugCode, sendLoginOtpSms } from "@/server/smsService";
 
+const DEBUG_PHONE_SHOW_CODE = "+79111111111";
+
 export async function POST(req: Request) {
   const { sessionId } = (await req.json()) as { sessionId?: string };
   if (!sessionId || typeof sessionId !== "string") {
-    return NextResponse.json({ error: "Отсутствует идентификатор сессии" }, { status: 400 });
+    return NextResponse.json({ error: "Неверный идентификатор сессии" }, { status: 400 });
   }
 
   let session;
   try {
     session = await getLoginSession(sessionId);
   } catch (error) {
-    console.error("Не удалось получить сессию входа:", error);
+    console.error("Не удалось загрузить сессию входа:", error);
     return NextResponse.json({ error: "Не удалось отправить код" }, { status: 500 });
   }
 
@@ -21,11 +23,7 @@ export async function POST(req: Request) {
   }
 
   if (session.expiresAt < Date.now()) {
-    return NextResponse.json({ error: "Сессия устарела, начните заново" }, { status: 410 });
-  }
-
-  if (!session.docVerified) {
-    return NextResponse.json({ error: "Сначала подтвердите документ" }, { status: 400 });
+    return NextResponse.json({ error: "Сессия истекла, запросите код заново" }, { status: 410 });
   }
 
   let otpResult;
@@ -40,6 +38,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     success: true,
     otpExpiresAt: otpResult.expiresAt,
-    debugCode: getOtpDebugCode(otpResult.code),
+    debugCode: session.phone === DEBUG_PHONE_SHOW_CODE ? otpResult.code : getOtpDebugCode(otpResult.code),
   });
 }

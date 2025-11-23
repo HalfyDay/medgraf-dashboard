@@ -497,6 +497,7 @@ export default function HomePage() {
                   onClick={() => { setActiveCheckup(c as unknown as CheckupData); setCheckupOpen(true); }}
                   className={[
                     "relative overflow-hidden rounded-[20px] bg-gradient-to-br p-4 text-left text-white",
+                    "min-h-[120px]",
                     "ring-1 ring-white/10",
                     "transition-transform duration-300 will-change-transform",
                     "hover:-translate-y-[2px] active:translate-y-0 active:scale-[.99]",
@@ -504,7 +505,6 @@ export default function HomePage() {
                     hiddenWhileCollapsed ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100 translate-y-0",
                     "transition-opacity duration-300",
                   ].join(" ")}
-                  style={{ aspectRatio: "173.5 / 90" }}
                   aria-label={`Открыть чекап: ${c.title}`}
                 >
                   <div

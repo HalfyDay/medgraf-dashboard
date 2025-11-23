@@ -5,7 +5,7 @@ import { getLoginSession, markOtpVerified, updateOtpAttempts } from "@/server/lo
 export async function POST(req: Request) {
   const { sessionId, code } = (await req.json()) as { sessionId?: string; code?: string };
   if (!sessionId || typeof sessionId !== "string") {
-    return NextResponse.json({ error: "Отсутствует идентификатор сессии" }, { status: 400 });
+    return NextResponse.json({ error: "Неверный идентификатор сессии" }, { status: 400 });
   }
   if (!code) {
     return NextResponse.json({ error: "Введите код из SMS" }, { status: 400 });
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   try {
     session = await getLoginSession(sessionId);
   } catch (error) {
-    console.error("Не удалось получить сессию входа:", error);
+    console.error("Не удалось загрузить сессию входа:", error);
     return NextResponse.json({ error: "Не удалось проверить код" }, { status: 500 });
   }
 
@@ -25,16 +25,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Сессия не найдена" }, { status: 404 });
   }
 
-  if (!session.docVerified) {
-    return NextResponse.json({ error: "Сначала подтвердите документ" }, { status: 400 });
-  }
-
   if (!session.otpCodeHash || !session.otpExpiresAt) {
-    return NextResponse.json({ error: "Код ещё не был запрошен" }, { status: 400 });
+    return NextResponse.json({ error: "Код не запрошен или истек" }, { status: 400 });
   }
 
   if (session.otpExpiresAt < Date.now()) {
-    return NextResponse.json({ error: "Код истёк, запросите новый" }, { status: 410 });
+    return NextResponse.json({ error: "Код устарел, запросите новый" }, { status: 410 });
   }
 
   if (session.otpAttemptsLeft <= 0) {
@@ -47,7 +43,7 @@ export async function POST(req: Request) {
     try {
       await updateOtpAttempts(sessionId, attemptsLeft);
     } catch (error) {
-      console.error("Не удалось обновить количество попыток OTP:", error);
+      console.error("Не удалось обновить счетчик попыток OTP:", error);
     }
 
     const message =
@@ -61,7 +57,7 @@ export async function POST(req: Request) {
   try {
     await markOtpVerified(sessionId);
   } catch (error) {
-    console.error("Не удалось зафиксировать успешную проверку OTP:", error);
+    console.error("Не удалось сохранить подтверждение OTP:", error);
     return NextResponse.json({ error: "Не удалось подтвердить код" }, { status: 500 });
   }
 

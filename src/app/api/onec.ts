@@ -20,6 +20,9 @@ const cloneWithDelay = async <T>(value: T, delayMs = 120): Promise<T> => {
   return structuredClone(value);
 };
 
+const isMockFallback = (error: unknown) =>
+  error instanceof Error && error.message === "MOCK_FALLBACK";
+
 // Общий фетчер. Если USE_MOCK=true — сразу кидает исключение, чтобы сработал мок.
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   if (USE_MOCK) {
@@ -357,7 +360,9 @@ export const onec = {
         const data = await fetchJson<Promotion[]>("/v1/promotions?active=true");
         return data;
       } catch (error) {
-        console.warn("onec.promotions.list fallback", error);
+        if (!isMockFallback(error)) {
+          console.warn("onec.promotions.list fallback", error);
+        }
         return cloneWithDelay(MOCK_PROMOTIONS, 150);
       }
     },
@@ -374,7 +379,9 @@ export const onec = {
         const data = await fetchJson<Checkup[]>("/v1/checkups");
         return data;
       } catch (error) {
-        console.warn("onec.checkups.list fallback", error);
+        if (!isMockFallback(error)) {
+          console.warn("onec.checkups.list fallback", error);
+        }
         return cloneWithDelay(MOCK_CHECKUPS, 150);
       }
     },
@@ -390,7 +397,9 @@ export const onec = {
         const data = await fetchJson<ContactInfo>("/v1/contacts");
         return data;
       } catch (error) {
-        console.warn("onec.contacts.get fallback", error);
+        if (!isMockFallback(error)) {
+          console.warn("onec.contacts.get fallback", error);
+        }
         return cloneWithDelay(MOCK_CONTACTS, 80);
       }
     },

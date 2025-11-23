@@ -143,39 +143,35 @@ export async function changePassword(_oldPwd: string, _newPwd: string): Promise<
 
 export interface DocumentItem {
   id: string;
-  date: string;       // ISO‑дата, например "2025-07-01"
-  type: string;       // например "Общий анализ крови"
-  url: string;        // ссылка на PDF
-  description?: string;
+  date: string;       // YYYY-MM-DD
+  title: string;      // Название файла
+  downloadUrl: string; // API-ссылка на скачивание
+  patientId?: string | null;
+  description?: string | null;
 }
 
-// Мок‑данные документов
-export async function fetchDocuments(): Promise<DocumentItem[]> {
-  await new Promise(res => setTimeout(res, 400));
-  return [
-    {
-      id: "doc-1",
-      date: "2025-10-31",
-      type: "УЗИ",
-      description: "УЗИ почек",
-      url: "/documents/doc-1.pdf",
-    },
-    {
-      id: "doc-2",
-      date: "2024-01-22",
-      type: "МРТ",
-      description: "МРТ поясничного отдела",
-      url: "/documents/doc-2.pdf",
-    },
-    {
-      id: "doc-3",
-      date: "2023-01-06",
-      type: "Анализы",
-      description: "Общий анализ крови",
-      url: "/documents/doc-3.pdf",
-    },
-    // …другие записи
-  ];
+// Получение списка документов пациента
+export async function fetchDocuments(patientId?: string): Promise<DocumentItem[]> {
+  if (!patientId) {
+    return [];
+  }
+
+  const res = await fetch(`/api/documents?patientId=${encodeURIComponent(patientId)}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const payload = (await res.json().catch(() => null)) as { documents?: DocumentItem[]; error?: string } | null;
+  if (!res.ok) {
+    const message = payload?.error || "Не удалось загрузить документы";
+    throw new Error(message);
+  }
+
+  if (!payload || !Array.isArray(payload.documents)) {
+    return [];
+  }
+
+  return payload.documents;
 }
 
 export interface Doctor {

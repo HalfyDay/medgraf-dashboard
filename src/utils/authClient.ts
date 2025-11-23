@@ -7,12 +7,18 @@ export type LoginStartResponse = {
   hasLocalPassword: boolean;
   sessionId?: string | null;
   displayName?: string | null;
+  otpExpiresAt?: number | null;
+  debugCode?: string | null;
 };
 
 export type VerifyDocResponse = {
   success: boolean;
-  otpExpiresAt: number;
-  debugCode?: string;
+};
+
+export type LoginOtpResponse = {
+  success: boolean;
+  otpExpiresAt?: number | null;
+  debugCode?: string | null;
 };
 
 export async function startRemoteLogin(phone: string) {
@@ -29,7 +35,7 @@ export async function verifyPassportDigits(sessionId: string, digits: string) {
 }
 
 export async function resendLoginOtp(sessionId: string) {
-  return postJson<VerifyDocResponse>("/api/auth/login/resend-otp", {
+  return postJson<LoginOtpResponse>("/api/auth/login/resend-otp", {
     sessionId,
   });
 }
