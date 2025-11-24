@@ -516,7 +516,7 @@ export default function AuthPage() {
             {loginStep === "password" && (
               <form onSubmit={handleExistingPasswordSubmit} className="space-y-4">
                 <div className="rounded-2xl bg-[#EEF6FF] px-4 py-3 text-sm text-[#456388]">
-                  <p className="font-semibold text-[#16345A]">Аккаунт найден</p>
+                  <p className="font-semibold text-[#16345A]">Номер</p>
                   <p>{loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : ""}</p>
                 </div>
                 <AuthField
