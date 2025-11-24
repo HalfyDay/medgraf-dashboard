@@ -358,7 +358,9 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
     }
   }
 
+  console.log("[onec auth] /umc_client/auth_user request", query);
   const rawMatches = await requestOnec<OnecRawRecord[]>("/umc_client/auth_user", "auth_user", query);
+  console.log("[onec auth] /umc_client/auth_user response", rawMatches);
   if (!Array.isArray(rawMatches) || rawMatches.length === 0) {
     throw new OnecLogicalError("Пользователь не найден", "2", "auth_user");
   }
@@ -368,6 +370,7 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
 
   const codeToLookup = summary.code ?? summary.id ?? undefined;
   if (codeToLookup) {
+    console.log("[onec auth] /umc_client_users/patients request", { id: codeToLookup });
     const patientResponse = await requestOnec<OnecRawRecord[]>(
       "/umc_client_users/patients",
       "patients",
@@ -380,6 +383,7 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
     if (Array.isArray(patientResponse) && patientResponse.length > 0) {
       patient = normalizeRecord(patientResponse[0]);
     }
+    console.log("[onec auth] /umc_client_users/patients response", patientResponse);
   }
 
   return { summary, patient };
