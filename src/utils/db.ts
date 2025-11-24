@@ -8,7 +8,7 @@ const db = new Database(dbFile, (err) => {
   if (err) {
     console.error("Не удалось подключиться к SQLite:", err);
   } else {
-    console.log("Подключение к SQLite установлено");
+    console.log("Подключение к SQLite успешно");
   }
 });
 
@@ -35,7 +35,7 @@ db.serialize(() => {
       if (err) {
         console.error("Ошибка создания таблицы users:", err);
       } else {
-        console.log("Таблица users создана или уже существует");
+        console.log("Таблица users готова");
       }
     },
   );
@@ -52,7 +52,7 @@ db.serialize(() => {
 
   db.all(`PRAGMA table_info(users)`, (err, rows) => {
     if (err) {
-      console.error("Не удалось проверить структуру таблицы users:", err);
+      console.error("Ошибка получения списка столбцов таблицы users:", err);
       return;
     }
 
@@ -61,7 +61,7 @@ db.serialize(() => {
       if (!existingColumns.has(name)) {
         db.run(`ALTER TABLE users ADD COLUMN ${name} ${definition}`, (alterErr) => {
           if (alterErr) {
-            console.error(`Не удалось добавить колонку ${name} в таблицу users:`, alterErr);
+            console.error(`Ошибка добавления колонки ${name} в таблицу users:`, alterErr);
           } else {
             console.log(`Колонка ${name} добавлена в таблицу users`);
           }
@@ -87,12 +87,13 @@ db.serialize(() => {
         remoteBirthDate TEXT,
         remoteGender TEXT,
         remoteMedcard TEXT,
-        docLastDigits TEXT
+        docLastDigits TEXT,
+        purpose TEXT DEFAULT 'register'
       )
     `,
     (err) => {
       if (err) {
-        console.error("Не удалось создать таблицу login_sessions:", err);
+        console.error("Ошибка создания таблицы login_sessions:", err);
       }
     },
   );
@@ -103,10 +104,32 @@ db.serialize(() => {
     `,
     (err) => {
       if (err) {
-        console.error("Не удалось создать индекс idx_login_sessions_phone:", err);
+        console.error("Ошибка создания индекса idx_login_sessions_phone:", err);
       }
     },
   );
+
+  const loginSessionColumnsToEnsure = [{ name: "purpose", definition: "TEXT DEFAULT 'register'" }];
+
+  db.all(`PRAGMA table_info(login_sessions)`, (err, rows) => {
+    if (err) {
+      console.error("Ошибка получения списка столбцов таблицы login_sessions:", err);
+      return;
+    }
+
+    const existingColumns = new Set<string>((rows ?? []).map((row) => row.name as string));
+    loginSessionColumnsToEnsure.forEach(({ name, definition }) => {
+      if (!existingColumns.has(name)) {
+        db.run(`ALTER TABLE login_sessions ADD COLUMN ${name} ${definition}`, (alterErr) => {
+          if (alterErr) {
+            console.error(`Ошибка добавления колонки ${name} в таблицу login_sessions:`, alterErr);
+          } else {
+            console.log(`Колонка ${name} добавлена в таблицу login_sessions`);
+          }
+        });
+      }
+    });
+  });
 });
 
 export default db;

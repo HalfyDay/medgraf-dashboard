@@ -2,19 +2,21 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   finalizeLoginPassword,
+  finalizePasswordReset,
   resendLoginOtp,
+  startPasswordReset,
   startRemoteLogin,
   verifyLoginOtp,
   verifyPassportDigits,
 } from "@/utils/authClient";
 import { extractPhoneDigits, formatPhoneInput, normalizePhone } from "@/utils/phone";
 
-type LoginStep = "phone" | "doc" | "password" | "otp" | "setPassword";
+type LoginStep = "phone" | "doc" | "password" | "otp" | "setPassword" | "resetOtp" | "resetPassword";
 
 const MIN_PASSWORD_LENGTH = 8;
 const LOGIN_OTP_LENGTH = 4;
@@ -152,16 +154,9 @@ export default function AuthPage() {
   const [loginOtpHint, setLoginOtpHint] = useState<string | null>(null);
   const [loginSetupPassword, setLoginSetupPassword] = useState("");
   const [loginSetupPasswordConfirm, setLoginSetupPasswordConfirm] = useState("");
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [loginStepLoading, setLoginStepLoading] = useState(false);
-  const [loginDisplayName, setLoginDisplayName] = useState<string | null>(null);
-
-  const helperName = useMemo(() => {
-    if (!loginDisplayName) return null;
-    const parts = loginDisplayName.split(/\s+/).filter(Boolean);
-    if (!parts.length) return null;
-    if (parts.length === 1) return parts[0];
-    return `${parts[0]} ${parts[1]}`;
-  }, [loginDisplayName]);
 
   const resetLoginFlow = () => {
     setLoginStep("phone");
@@ -170,9 +165,10 @@ export default function AuthPage() {
     setLoginOtpHint(null);
     setLoginSetupPassword("");
     setLoginSetupPasswordConfirm("");
+    setResetPasswordValue("");
+    setResetPasswordConfirm("");
     setLoginPassword("");
     setLoginPassportDigits("");
-    setLoginDisplayName(null);
     setLoginError(null);
     setInfoMessage(null);
   };
@@ -212,14 +208,9 @@ export default function AuthPage() {
     setLoginStepLoading(true);
     try {
       const result = await startRemoteLogin(loginPhoneDigits);
-      setLoginDisplayName(result.displayName ?? null);
       if (result.hasLocalPassword) {
         setLoginStep("password");
-        setInfoMessage(
-          result.displayName
-            ? `Нашли вашу учетную запись ${result.displayName}. Введите пароль.`
-            : "Нашли вашу учетную запись. Введите пароль.",
-        );
+        setInfoMessage("Введите пароль для входа.");
         setLoginSessionId(null);
         return;
       }
@@ -234,6 +225,30 @@ export default function AuthPage() {
       setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось начать вход";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
+  const handleForgotPasswordStart = async () => {
+    if (loginPhoneDigits.length !== 10) {
+      setLoginError("Введите номер телефона полностью");
+      return;
+    }
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      const result = await startPasswordReset(loginPhoneDigits);
+      setLoginSessionId(result.sessionId);
+      setLoginOtpCode("");
+      setLoginOtpHint(result.debugCode ?? null);
+      setResetPasswordValue("");
+      setResetPasswordConfirm("");
+      setLoginStep("resetOtp");
+      setInfoMessage("Мы отправили код подтверждения. Введите его из SMS, чтобы сбросить пароль.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось отправить код";
       setLoginError(message);
     } finally {
       setLoginStepLoading(false);
@@ -328,6 +343,32 @@ export default function AuthPage() {
     }
   };
 
+  const handleResetOtpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginSessionId) {
+      setLoginError("Сессия не найдена. Попробуйте снова.");
+      return;
+    }
+    if (loginOtpCode.length !== LOGIN_OTP_LENGTH) {
+      setLoginError("Введите полный код из SMS");
+      return;
+    }
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      await verifyLoginOtp(loginSessionId, loginOtpCode);
+      setResetPasswordValue("");
+      setResetPasswordConfirm("");
+      setLoginStep("resetPassword");
+      setInfoMessage("Код подтвержден. Придумайте новый пароль.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось подтвердить код";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
   const handleSetPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!loginSessionId) {
@@ -346,6 +387,35 @@ export default function AuthPage() {
     setLoginStepLoading(true);
     try {
       const user = await finalizeLoginPassword(loginSessionId, loginSetupPassword);
+      setUser(user);
+      resetLoginFlow();
+      router.replace("/home");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Не удалось сохранить пароль";
+      setLoginError(message);
+    } finally {
+      setLoginStepLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!loginSessionId) {
+      setLoginError("Сессия не найдена. Начните заново.");
+      return;
+    }
+    if (resetPasswordValue.length < MIN_PASSWORD_LENGTH) {
+      setLoginError(`Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов`);
+      return;
+    }
+    if (resetPasswordValue !== resetPasswordConfirm) {
+      setLoginError("Пароли не совпадают");
+      return;
+    }
+    setLoginError(null);
+    setLoginStepLoading(true);
+    try {
+      const user = await finalizePasswordReset(loginSessionId, resetPasswordValue);
       setUser(user);
       resetLoginFlow();
       router.replace("/home");
@@ -446,9 +516,7 @@ export default function AuthPage() {
             {loginStep === "password" && (
               <form onSubmit={handleExistingPasswordSubmit} className="space-y-4">
                 <div className="rounded-2xl bg-[#EEF6FF] px-4 py-3 text-sm text-[#456388]">
-                  <p className="font-semibold text-[#16345A]">
-                    {helperName ?? "Пациент найден"}
-                  </p>
+                  <p className="font-semibold text-[#16345A]">Аккаунт найден</p>
                   <p>{loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : ""}</p>
                 </div>
                 <AuthField
@@ -461,6 +529,16 @@ export default function AuthPage() {
                     setLoginError(null);
                   }}
                 />
+                <div className="text-right">
+                  <button
+                    type="button"
+                    className="text-sm font-semibold text-[#0C8FE8] hover:underline"
+                    onClick={handleForgotPasswordStart}
+                    disabled={loginStepLoading || actionPending}
+                  >
+                    Забыли пароль?
+                  </button>
+                </div>
                 <div className="flex items-center gap-3">
                   <Button
                     type="button"
@@ -495,9 +573,7 @@ export default function AuthPage() {
                   maxLength={LOGIN_OTP_LENGTH}
                   inputMode="numeric"
                 />
-                {loginOtpHint && (
-                  <p className="text-xs text-[#5A719B]">Тестовый код: {loginOtpHint}</p>
-                )}
+                {loginOtpHint && <p className="text-xs text-[#5A719B]">Тестовый код: {loginOtpHint}</p>}
                 <div className="flex items-center gap-3">
                   <Button
                     type="button"
@@ -509,14 +585,57 @@ export default function AuthPage() {
                   >
                     Отправить снова
                   </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="flex-1 py-2.5"
-                    disabled={loginStepLoading}
-                  >
+                  <Button type="submit" size="sm" className="flex-1 py-2.5" disabled={loginStepLoading}>
                     Подтвердить
                   </Button>
+                </div>
+              </form>
+            )}
+
+            {loginStep === "resetOtp" && (
+              <form onSubmit={handleResetOtpSubmit} className="space-y-4">
+                <AuthField
+                  label="Код из SMS"
+                  value={loginOtpCode}
+                  onChange={(value) => {
+                    setLoginOtpCode(value.replace(/\D/g, "").slice(0, LOGIN_OTP_LENGTH));
+                    setLoginError(null);
+                  }}
+                  placeholder="Введите код"
+                  maxLength={LOGIN_OTP_LENGTH}
+                  inputMode="numeric"
+                />
+                {loginOtpHint && <p className="text-xs text-[#5A719B]">Тестовый код: {loginOtpHint}</p>}
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1 whitespace-nowrap py-2.5"
+                    onClick={handleResendLoginCode}
+                    disabled={loginStepLoading}
+                  >
+                    Отправить снова
+                  </Button>
+                  <Button type="submit" size="sm" className="flex-1 py-2.5" disabled={loginStepLoading}>
+                    Подтвердить
+                  </Button>
+                </div>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[#0C8FE8] hover:underline"
+                    onClick={() => {
+                      setLoginSessionId(null);
+                      setLoginOtpCode("");
+                      setLoginOtpHint(null);
+                      setInfoMessage(null);
+                      setLoginError(null);
+                      setLoginStep("password");
+                    }}
+                  >
+                    Вернуться к паролю
+                  </button>
                 </div>
               </form>
             )}
@@ -541,11 +660,58 @@ export default function AuthPage() {
                     setLoginSetupPasswordConfirm(value);
                     setLoginError(null);
                   }}
-                  placeholder="Введите ещё раз"
+                  placeholder="Введите еще раз"
                 />
                 <Button type="submit" className="w-full" disabled={loginStepLoading}>
                   Сохранить пароль
                 </Button>
+              </form>
+            )}
+
+            {loginStep === "resetPassword" && (
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                <AuthField
+                  label="Новый пароль"
+                  type="password"
+                  value={resetPasswordValue}
+                  onChange={(value) => {
+                    setResetPasswordValue(value);
+                    setLoginError(null);
+                  }}
+                  placeholder={`${MIN_PASSWORD_LENGTH} символов`}
+                />
+                <AuthField
+                  label="Повторите пароль"
+                  type="password"
+                  value={resetPasswordConfirm}
+                  onChange={(value) => {
+                    setResetPasswordConfirm(value);
+                    setLoginError(null);
+                  }}
+                  placeholder="Введите еще раз"
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1 whitespace-nowrap px-3 py-2.5 text-sm"
+                    onClick={() => {
+                      setLoginSessionId(null);
+                      setLoginOtpCode("");
+                      setLoginOtpHint(null);
+                      setInfoMessage(null);
+                      setLoginError(null);
+                      setResetPasswordValue("");
+                      setResetPasswordConfirm("");
+                      setLoginStep("password");
+                    }}
+                  >
+                    Назад
+                  </Button>
+                  <Button type="submit" className="flex-1" disabled={loginStepLoading}>
+                    Сохранить пароль
+                  </Button>
+                </div>
               </form>
             )}
 

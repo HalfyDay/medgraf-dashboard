@@ -10,6 +10,8 @@ export type RemoteProfileSnapshot = {
   gender?: string | null;
 };
 
+export type LoginSessionPurpose = "register" | "reset";
+
 export type LoginSession = {
   sessionId: string;
   phone: string;
@@ -26,6 +28,7 @@ export type LoginSession = {
   remoteGender?: string | null;
   remoteMedcard?: string | null;
   docLastDigits?: string | null;
+  purpose: LoginSessionPurpose;
 };
 
 type LoginSessionRow = {
@@ -44,6 +47,7 @@ type LoginSessionRow = {
   remoteGender?: string | null;
   remoteMedcard?: string | null;
   docLastDigits?: string | null;
+  purpose?: LoginSessionPurpose | null;
 };
 
 export const SESSION_TTL_MS = 15 * 60 * 1000;
@@ -68,10 +72,15 @@ function mapRow(row: LoginSessionRow): LoginSession {
     remoteGender: row.remoteGender ?? null,
     remoteMedcard: row.remoteMedcard ?? null,
     docLastDigits: row.docLastDigits ?? null,
+    purpose: row.purpose ?? "register",
   };
 }
 
-export function createLoginSession(phone: string, remote: RemoteProfileSnapshot) {
+export function createLoginSession(
+  phone: string,
+  remote: RemoteProfileSnapshot,
+  purpose: LoginSessionPurpose = "register",
+) {
   const sessionId = randomUUID();
   const createdAt = Date.now();
   const expiresAt = createdAt + SESSION_TTL_MS;
@@ -90,18 +99,20 @@ export function createLoginSession(phone: string, remote: RemoteProfileSnapshot)
             phone,
             createdAt,
             expiresAt,
+            purpose,
             remoteCode,
             remoteFullName,
             remoteBirthDate,
             remoteGender,
             remoteMedcard
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           sessionId,
           phone,
           createdAt,
           expiresAt,
+          purpose,
           remote.code ?? null,
           remote.fullName ?? null,
           remote.birthDate ?? null,
@@ -128,6 +139,7 @@ export function createLoginSession(phone: string, remote: RemoteProfileSnapshot)
             remoteGender: remote.gender ?? null,
             remoteMedcard: remote.medcardNumber ?? null,
             docLastDigits: null,
+            purpose,
           });
         },
       );
@@ -154,7 +166,8 @@ export function getLoginSession(sessionId: string) {
           remoteBirthDate,
           remoteGender,
           remoteMedcard,
-          docLastDigits
+          docLastDigits,
+          purpose
         FROM login_sessions
         WHERE sessionId = ?
       `,

@@ -3,10 +3,10 @@ import { fetchOnecDocuments, OnecLogicalError } from "@/server/onecAuthClient";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const patientId = url.searchParams.get("patientId");
+  const patientId = url.searchParams.get("id") ?? url.searchParams.get("patientId");
 
   if (!patientId) {
-    return NextResponse.json({ error: "Параметр patientId обязателен" }, { status: 400 });
+    return NextResponse.json({ error: "Не указан id пациента" }, { status: 400 });
   }
 
   try {

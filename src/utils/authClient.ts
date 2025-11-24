@@ -21,6 +21,14 @@ export type LoginOtpResponse = {
   debugCode?: string | null;
 };
 
+export type PasswordResetStartResponse = {
+  success: boolean;
+  sessionId: string;
+  otpExpiresAt?: number | null;
+  debugCode?: string | null;
+  displayName?: string | null;
+};
+
 export async function startRemoteLogin(phone: string) {
   return postJson<LoginStartResponse>("/api/auth/login/start", {
     phone: normalizePhone(phone),
@@ -49,6 +57,20 @@ export async function verifyLoginOtp(sessionId: string, code: string) {
 
 export async function finalizeLoginPassword(sessionId: string, password: string) {
   const result = await postJson<{ user: AuthUser }>("/api/auth/login/set-password", {
+    sessionId,
+    password,
+  });
+  return result.user;
+}
+
+export async function startPasswordReset(phone: string) {
+  return postJson<PasswordResetStartResponse>("/api/auth/login/forgot/start", {
+    phone: normalizePhone(phone),
+  });
+}
+
+export async function finalizePasswordReset(sessionId: string, password: string) {
+  const result = await postJson<{ user: AuthUser }>("/api/auth/login/reset-password", {
     sessionId,
     password,
   });

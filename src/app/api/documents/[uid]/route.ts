@@ -9,12 +9,12 @@ function parseFilenameFromDisposition(disposition: string | null) {
   if (!disposition) {
     return null;
   }
-  const match = /filename\*?=(?:UTF-8'')?\"?([^\";]+)\"?/i.exec(disposition);
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
   return match?.[1] ? sanitizeFilename(match[1]) : null;
 }
 
-export async function GET(req: NextRequest, { params }: { params: { uid: string } }) {
-  const uid = params.uid;
+export async function GET(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
+  const { uid } = await params;
   if (!uid) {
     return NextResponse.json({ error: "Не указан uid документа" }, { status: 400 });
   }
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: { uid: string 
     if (error instanceof OnecLogicalError && error.code === "2") {
       return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
     }
-    const message = error instanceof Error ? error.message : "Не удалось скачать документ";
+    const message = error instanceof Error ? error.message : "Не удалось получить документ";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
