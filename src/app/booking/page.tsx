@@ -442,30 +442,40 @@ export default function BookingPage() {
                       key={`${specialty}-${doctor.id}`}
                       type="button"
                       onClick={() => setSelectedDoctorId(doctor.id)}
-                      className={`min-w-[220px] snap-center rounded-2xl bg-white p-4 text-left shadow-soft transition ${
+                      className={`flex h-[300px] w-[230px] snap-center flex-col rounded-2xl bg-white p-4 text-left shadow-soft transition ${
                         selected ? "ring-2 ring-primary" : "ring-1 ring-transparent"
                       }`}
                     >
-                      <img
-                        src={photo}
-                        alt={doctor.fullName}
-                        className="mx-auto h-20 w-20 rounded-full object-cover"
-                      />
-                      <p className="mt-3 text-sm font-semibold text-slate-900">
-                        {doctor.fullName}
-                      </p>
-                      {doctor.specialties.length > 0 && (
-                        <p className="mt-1 text-[13px] text-slate-500">
-                          {doctor.specialties.join(" · ")}
+                      <div className="flex flex-col items-center gap-2 text-center">
+                        <div className="relative h-20 w-20 overflow-hidden rounded-full bg-slate-100">
+                          <img
+                            src={photo}
+                            alt={doctor.fullName}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <p className="text-sm font-semibold text-slate-900 truncate whitespace-nowrap">
+                          {doctor.fullName}
                         </p>
-                      )}
-                      {doctor.phone && (
-                        <p className="mt-1 text-[13px] text-slate-500">{doctor.phone}</p>
-                      )}
-                      {doctor.email && (
-                        <p className="text-[13px] text-slate-500">{doctor.email}</p>
-                      )}
-                      <div className="mt-3 rounded-xl bg-slate-100 px-3 py-1 text-center text-sm font-semibold text-slate-600">
+                        {doctor.specialties.length > 0 && (
+                          <p
+                            className="text-[13px] text-slate-500"
+                            style={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                          >
+                            {doctor.specialties.join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="mt-3 space-y-1 text-[13px] text-slate-500">
+                        {doctor.phone && <p className="truncate">{doctor.phone}</p>}
+                        {doctor.email && <p className="truncate">{doctor.email}</p>}
+                      </div>
+                      <div className="mt-auto rounded-xl bg-slate-100 px-3 py-1 text-center text-sm font-semibold text-slate-600">
                         {selected ? "Выбран" : "Выбрать"}
                       </div>
                     </button>

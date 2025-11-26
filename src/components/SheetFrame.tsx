@@ -164,6 +164,16 @@ export default function SheetFrame({
     };
   }, [open, initialVH]);
 
+  // When the sheet closes, drop focus from its contents to avoid focus living inside a hidden tree.
+  useEffect(() => {
+    if (open) return;
+    const frame = frameRef.current;
+    const active = document.activeElement as HTMLElement | null;
+    if (frame && active && frame.contains(active)) {
+      active.blur();
+    }
+  }, [open]);
+
   useEffect(() => {
     const el = frameRef.current;
     if (!open || !el) return;
@@ -375,7 +385,6 @@ export default function SheetFrame({
     <div
       role={open ? "dialog" : undefined}
       aria-modal={open ? true : undefined}
-      aria-hidden={open ? undefined : true}
       className={clsx(
         "fixed inset-0 z-[1000] flex flex-col justify-end",
         open ? "pointer-events-auto" : "pointer-events-none"
@@ -384,6 +393,7 @@ export default function SheetFrame({
         contain: "layout paint size style",
         visibility: open ? "visible" : "hidden",
       }}
+      {...(!open ? { inert: "" } : undefined)}
     >
       {/* затемнение */}
       <div

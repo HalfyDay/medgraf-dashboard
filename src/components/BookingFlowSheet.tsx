@@ -522,77 +522,87 @@ export default function BookingFlowSheet({
         {...horizontalHandlers}
       >
         <div className="-mx-2 flex w-max gap-3 px-2 pb-2 pr-4">
-          {filteredDoctors.map((doctor) => {
-            const selected = doctor.id === selectedDoctorId;
-            return (
-              <button
-                key={doctor.id}
-                type="button"
-                onClick={() => setSelectedDoctorId(doctor.id)}
-                className={clsx(
-                  "min-w-[240px] shrink-0 rounded-[24px] bg-white text-left transition-all duration-150 active:translate-y-[1px]",
-                  selected
-                    ? "shadow-xl ring-2 ring-sky-400"
-                    : "shadow-sm ring-1 ring-slate-200 hover:ring-sky-200",
-                )}
-                aria-pressed={selected}
-              >
-                <div className="relative h-48 overflow-hidden rounded-[22px] bg-slate-100">
-                  <img
-                    src={doctor.photoUrl}
-                    alt=""
-                    className="h-full w-full object-cover object-top"
-                  />
-                  {doctor.isAvailable && (
-                    <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold text-sky-600 shadow">
-                      <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
-                      Доступен
-                    </span>
+            {filteredDoctors.map((doctor) => {
+              const selected = doctor.id === selectedDoctorId;
+              const photoSrc =
+                doctor.photoUrl && doctor.photoUrl.length > 0 ? doctor.photoUrl : "/doctor.svg";
+              return (
+                <button
+                  key={doctor.id}
+                  type="button"
+                  onClick={() => setSelectedDoctorId(doctor.id)}
+                  className={clsx(
+                    "flex h-[360px] w-[260px] shrink-0 flex-col rounded-[24px] bg-white text-left transition-all duration-150 active:translate-y-[1px]",
+                    selected
+                      ? "shadow-xl ring-2 ring-sky-400"
+                      : "shadow-sm ring-1 ring-slate-200 hover:ring-sky-200",
                   )}
-                </div>
+                  aria-pressed={selected}
+                >
+                  <div className="relative h-[200px] w-full overflow-hidden rounded-[22px] bg-slate-100">
+                    <img
+                      src={photoSrc}
+                      alt=""
+                      className="h-full w-full object-cover object-top"
+                    />
+                    {doctor.isAvailable && (
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold text-sky-600 shadow">
+                        <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
+                        Доступен
+                      </span>
+                    )}
+                  </div>
 
-                <div className="space-y-3 px-4 pb-4 pt-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-baseline justify-between gap-1.5">
-                      <p className="text-[17px] font-semibold leading-tight text-slate-900">
-                        {formatDoctorShortName(doctor.fullName)}
-                      </p>
+                  <div className="flex flex-1 flex-col space-y-3 px-4 pb-4 pt-3">
+                    <div className="space-y-1.5">
+                      <div className="flex items-baseline justify-between gap-1.5">
+                        <p className="text-[17px] font-semibold leading-tight text-slate-900 truncate whitespace-nowrap">
+                          {formatDoctorShortName(doctor.fullName)}
+                        </p>
                       <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-amber-500">
                         <svg
                           width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          className="shrink-0"
-                          aria-hidden="true"
-                        >
-                          <path
-                            d="m12 2.75 2.31 5.41 5.94.5-4.52 3.84 1.38 5.78L12 15.8l-5.11 2.48 1.38-5.78-4.52-3.84 5.94-.5L12 2.75Z"
-                            stroke="currentColor"
-                            strokeWidth="1.4"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                        {doctor.rating.toFixed(1)}
-                      </span>
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            className="shrink-0"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="m12 2.75 2.31 5.41 5.94.5-4.52 3.84 1.38 5.78L12 15.8l-5.11 2.48 1.38-5.78-4.52-3.84 5.94-.5L12 2.75Z"
+                              stroke="currentColor"
+                              strokeWidth="1.4"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          {doctor.rating.toFixed(1)}
+                        </span>
+                      </div>
+                      <p
+                        className="text-[14px] font-medium text-slate-500"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {doctor.specialty}
+                      </p>
                     </div>
-                    <p className="text-[14px] font-medium text-slate-500">
-                      {doctor.specialty}
-                    </p>
-                  </div>
 
-                  <div className="text-[14px] font-semibold text-rose-500">
-                    {formatMoney(doctor.price)} · {doctor.pricePeriod}
-                  </div>
+                    <div className="text-[14px] font-semibold text-rose-500">
+                      {formatMoney(doctor.price)} · {doctor.pricePeriod}
+                    </div>
 
-                  <div className="rounded-[16px] bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-center text-[15px] font-semibold text-white shadow">
-                    {selected ? "Выбрано" : "Записаться"}
+                    <div className="mt-auto rounded-[16px] bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-center text-[15px] font-semibold text-white shadow">
+                      {selected ? "Выбрано" : "Записаться"}
+                    </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
       </div>
     </div>
   );

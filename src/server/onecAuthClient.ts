@@ -246,7 +246,15 @@ async function requestJson<T>(
   }
 
   const payload = await parseJson<OnecEnvelope<T>>(res, context);
-  return ensureSuccess(payload, context);
+  const result = ensureSuccess(payload, context);
+  console.log("[onec] response", {
+    context,
+    path,
+    query: query ?? null,
+    status: res.status,
+    payload: result,
+  });
+  return result;
 }
 
 async function requestBinary(
@@ -396,6 +404,7 @@ type OnecDoctorRaw = {
   phone?: string;
   specialties?: string[] | string | null;
   photo?: string;
+  image?: string;
 };
 
 const normalizeSpecialties = (value: OnecDoctorRaw["specialties"]) => {
@@ -422,13 +431,20 @@ const mapDoctorRecord = (raw: OnecDoctorRaw): DoctorDirectoryEntry | null => {
     middle_name: undefined,
   });
 
+  const photo =
+    typeof raw.image === "string"
+      ? raw.image.trim()
+      : typeof raw.photo === "string"
+        ? raw.photo.trim()
+        : undefined;
+
   return {
     id,
     fullName: fullName || raw.full_name?.toString().trim() || id,
     email: typeof raw.email === "string" ? raw.email.trim() : undefined,
     phone: typeof raw.phone === "string" ? raw.phone.trim() : undefined,
     specialties: normalizeSpecialties(raw.specialties),
-    photoUrl: typeof raw.photo === "string" ? raw.photo.trim() : undefined,
+    photoUrl: photo && photo.length > 0 ? photo : undefined,
   };
 };
 
