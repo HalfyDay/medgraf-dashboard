@@ -225,10 +225,13 @@ export default function SheetFrame({
     if (!open || !swipeToClose) return;
     const el = frameRef.current!;
     const sc = scrollRef.current!;
+    const headerEl = headerRef.current;
+    const startedOnHeader = { current: false };
 
-    const canStartFromTop = () => (sc.scrollTop || 0) <= 1;
+    const canStartFromTop = (fromHeader: boolean) => fromHeader || (sc.scrollTop || 0) <= 1;
 
-    const onDown = (x: number, y: number) => {
+    const onDown = (x: number, y: number, fromHeader: boolean) => {
+      startedOnHeader.current = fromHeader;
       startY.current = y;
       startX.current = x;
       lastY.current = y;
@@ -246,7 +249,9 @@ export default function SheetFrame({
 
       if (!draggingDown.current && !expandingUp.current && dx > ady) return;
 
-      if (dy < 0 && canStartFromTop() && !isFull) {
+      const atTop = canStartFromTop(startedOnHeader.current);
+
+      if (dy < 0 && atTop && !isFull) {
         const enoughPull = Math.abs(dy) > expandUpThresholdPx;
         if (enoughPull && !tooSmallForFull.current) {
           expandingUp.current = true;
@@ -256,7 +261,7 @@ export default function SheetFrame({
         return;
       }
 
-      if (dy > 10 && canStartFromTop()) {
+      if (dy > 10 && atTop) {
         draggingDown.current = true;
         sc.style.overflowY = "hidden";
         preventDefault();
@@ -306,8 +311,8 @@ export default function SheetFrame({
       }
     };
 
-    const down = (e: PointerEvent) => {
-      onDown(e.clientX, e.clientY);
+    const down = (e: PointerEvent, fromHeader: boolean) => {
+      onDown(e.clientX, e.clientY, fromHeader);
       try {
         (e.target as Element).setPointerCapture?.(e.pointerId);
       } catch {}
@@ -315,10 +320,10 @@ export default function SheetFrame({
     const move = (e: PointerEvent) => onMove(e.clientX, e.clientY, e.timeStamp, () => e.preventDefault());
     const up = (e: PointerEvent) => onUp(e.clientY, e.timeStamp);
 
-    const tStart = (e: TouchEvent) => {
+    const tStart = (e: TouchEvent, fromHeader: boolean) => {
       const t = e.touches[0];
       if (!t) return;
-      onDown(t.clientX, t.clientY);
+      onDown(t.clientX, t.clientY, fromHeader);
     };
     const tMove = (e: TouchEvent) => {
       const t = e.touches[0];
@@ -327,16 +332,30 @@ export default function SheetFrame({
     };
     const tEnd = (e: TouchEvent) => onUp(lastY.current, e.timeStamp);
 
-    const opts: AddEventListenerOptions = { passive: false };
-    el.addEventListener("pointerdown", down, opts);
-    el.addEventListener("pointermove", move, opts);
-    el.addEventListener("pointerup", up, opts);
-    el.addEventListener("pointercancel", up, opts);
+    const opts: AddEventListenerOptions = { passive: false, capture: true };
+    const targets: Array<{ el: HTMLElement; fromHeader: boolean }> = [
+      { el, fromHeader: false },
+      ...(headerEl ? [{ el: headerEl, fromHeader: true }] : []),
+      { el: sc, fromHeader: false },
+    ];
+    targets.forEach((target) => {
+      const { el: targetEl, fromHeader } = target;
+      const downHandler = (e: PointerEvent) => down(e, fromHeader);
+      const tStartHandler = (e: TouchEvent) => tStart(e, fromHeader);
 
-    el.addEventListener("touchstart", tStart, opts);
-    el.addEventListener("touchmove", tMove, opts);
-    el.addEventListener("touchend", tEnd, opts);
-    el.addEventListener("touchcancel", tEnd, opts);
+      targetEl.addEventListener("pointerdown", downHandler, opts);
+      targetEl.addEventListener("pointermove", move, opts);
+      targetEl.addEventListener("pointerup", up, opts);
+      targetEl.addEventListener("pointercancel", up, opts);
+
+      targetEl.addEventListener("touchstart", tStartHandler, opts);
+      targetEl.addEventListener("touchmove", tMove, opts);
+      targetEl.addEventListener("touchend", tEnd, opts);
+      targetEl.addEventListener("touchcancel", tEnd, opts);
+
+      // store handlers for cleanup
+      (targetEl as any).__sheetHandlers = { downHandler, tStartHandler };
+    });
 
     const onVisibility = () => {
       if (document.hidden) {
@@ -347,15 +366,26 @@ export default function SheetFrame({
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
-      el.removeEventListener("pointerdown", down);
-      el.removeEventListener("pointermove", move);
-      el.removeEventListener("pointerup", up);
-      el.removeEventListener("pointercancel", up);
+      targets.forEach((target) => {
+        const { el: targetEl, fromHeader } = target;
+        const stored = (targetEl as any).__sheetHandlers as
+          | { downHandler: (e: PointerEvent) => void; tStartHandler: (e: TouchEvent) => void }
+          | undefined;
 
-      el.removeEventListener("touchstart", tStart);
-      el.removeEventListener("touchmove", tMove);
-      el.removeEventListener("touchend", tEnd);
-      el.removeEventListener("touchcancel", tEnd);
+        targetEl.removeEventListener("pointerdown", stored?.downHandler ?? ((e) => down(e, fromHeader)));
+        targetEl.removeEventListener("pointermove", move);
+        targetEl.removeEventListener("pointerup", up);
+        targetEl.removeEventListener("pointercancel", up);
+
+        targetEl.removeEventListener("touchstart", stored?.tStartHandler ?? ((e) => tStart(e, fromHeader)));
+        targetEl.removeEventListener("touchmove", tMove);
+        targetEl.removeEventListener("touchend", tEnd);
+        targetEl.removeEventListener("touchcancel", tEnd);
+
+        if ((targetEl as any).__sheetHandlers) {
+          delete (targetEl as any).__sheetHandlers;
+        }
+      });
 
       document.removeEventListener("visibilitychange", onVisibility);
       sc.style.overflowY = "";
@@ -435,6 +465,7 @@ export default function SheetFrame({
               : "px-4 pt-5 pb-10 text-white bg-[linear-gradient(135deg,#00A6FF_0%,#24E38E_100%)]",
             headerClassName
           )}
+          style={{ touchAction: "none" }}
         >
           {headerContent ?? (
             <div className="flex items-center gap-3">
