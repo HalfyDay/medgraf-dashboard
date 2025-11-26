@@ -393,7 +393,7 @@ export default function SheetFrame({
         contain: "layout paint size style",
         visibility: open ? "visible" : "hidden",
       }}
-      {...(!open ? { inert: "" } : undefined)}
+      inert={open ? undefined : true}
     >
       {/* затемнение */}
       <div

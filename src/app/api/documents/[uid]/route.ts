@@ -13,10 +13,16 @@ function parseFilenameFromDisposition(disposition: string | null) {
   return match?.[1] ? sanitizeFilename(match[1]) : null;
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ uid: string }> }) {
-  const { uid } = await params;
+export async function GET(req: NextRequest, { params }: { params: { uid: string } }) {
+  const { uid } = params;
   if (!uid) {
-    return NextResponse.json({ error: "Не указан uid документа" }, { status: 400 });
+    return NextResponse.json({ error: "Нет параметра uid" }, { status: 400 });
+  }
+
+  // 1C не принимает символы вне однобайтного диапазона (ByteString) — отсекаем такие uid.
+  const byteSafe = Array.from(uid).every((ch) => ch.charCodeAt(0) <= 0xff);
+  if (!byteSafe) {
+    return NextResponse.json({ error: "Неверный идентификатор документа" }, { status: 400 });
   }
 
   const filenameParam = req.nextUrl.searchParams.get("filename");
@@ -37,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ uid:
     if (error instanceof OnecLogicalError && error.code === "2") {
       return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
     }
-    const message = error instanceof Error ? error.message : "Не удалось получить документ";
+    const message = error instanceof Error ? error.message : "Не удалось скачать документ";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
