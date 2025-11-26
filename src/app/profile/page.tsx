@@ -52,7 +52,7 @@ export default function ProfilePage() {
     <div className="flex min-h-dvh flex-col bg-[#EEF3FF]">
       <main className="flex-1">
         <div className="mx-auto max-w-[420px] px-5 py-10">
-          <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#0F99FF] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">
+          <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#28D07C] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">
             <div className="rounded-[32px] bg-gradient-to-r from-[#0D7BFF] via-[#20C269] to-[#28D07C] px-6 pt-7 pb-14 text-white">
               <div className="flex -translate-y-2 items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
@@ -72,12 +72,7 @@ export default function ProfilePage() {
                   </svg>
                 </div>
                 <div className="-mt-1">
-                  <h1 className="text-2xl font-semibold leading-tight">
-                    {user?.fullName ?? "Мой профиль"}
-                  </h1>
-                  <p className="mt-1 text-sm text-white/80">
-                    Проверяйте личные данные и настройки уведомлений
-                  </p>
+                  <h1 className="text-2xl font-semibold leading-tight">Профиль</h1>
                 </div>
               </div>
             </div>

@@ -65,7 +65,7 @@ export default function CardPage() {
     <div className="min-h-dvh flex flex-col bg-[#EEF3FF]">
       <main className="flex-1">
         <div className="mx-auto max-w-[420px] px-5 py-10">
-          <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#0F99FF] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">
+          <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#28D07C] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">
             <div className="rounded-[32px] bg-gradient-to-r from-[#0D7BFF] via-[#20C269] to-[#28D07C] px-6 pt-7 pb-14 text-white">
               <div className="flex items-center gap-4 -translate-y-2">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
