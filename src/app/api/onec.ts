@@ -10,6 +10,28 @@ const USE_MOCK_ALWAYS = true;
 const BASE_URL = process.env.NEXT_PUBLIC_ONEC_URL || ""; // например: https://sandbox.1c.your-domain.ru
 const API_TOKEN = process.env.NEXT_PUBLIC_ONEC_TOKEN || ""; // Bearer
 const USE_MOCK = USE_MOCK_ALWAYS || !BASE_URL;
+const ACTIONS_URL =
+  process.env.NEXT_PUBLIC_ACTIONS_URL ||
+  "https://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/actions/action";
+
+type OneCAction = {
+  id?: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
+  start?: string;
+  end?: string;
+  mainimage?: string;
+  mainImage?: string;
+  banner?: string;
+  image?: string;
+};
+
+type OneCActionResponse = {
+  error?: string;
+  code?: string;
+  details?: OneCAction[];
+};
 
 // Небольшая искусственная задержка для имитации сети
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -61,10 +83,14 @@ export type ContactInfo = {
 };
 
 export type Promotion = {
+  id?: string;
   title: string;
   subtitle?: string;
-  cardImage: string; // превью на главной
-  banner?: string; // картинка внутри шита
+  description?: string;
+  start?: string;
+  end?: string;
+  cardImage: string; // preview image for the main card
+  banner?: string; // banner image inside the sheet
   bullets?: string[];
   ctaHref?: string;
   ctaText?: string;
@@ -98,6 +124,8 @@ export type UserPreview = {
 // MOCK-ДАННЫЕ (синхронизированы с актуальной разметкой в page.tsx)
 // ————————————————————————————————————————————————————————————————————————
 
+let actionsInFlight: Promise<Promotion[]> | null = null;
+
 const MOCK_CONTACTS: ContactInfo = {
   phone: "+7 (3953) 21-64-22",
   siteLabel: "медграфт.рф",
@@ -106,40 +134,7 @@ const MOCK_CONTACTS: ContactInfo = {
   telegramUrl: "https://t.me/medgraft",
 };
 
-const MOCK_PROMOTIONS: Promotion[] = [
-  {
-    title: "Скидка 15% на второй глаз",
-    subtitle: "При операции катаракты на второй глаз в этом месяце действует спецпредложение",
-    cardImage: "/promo-1.png",
-    banner: "/banner_promo_1.svg",
-    bullets: [
-      "Скидку 15% на хирургию",
-      "Скидку 15% на интраокулярную линзу (ИОЛ)",
-      "Экономия около 10 000 ₽ при операции обоих глаз в течение месяца",
-      // продублировано как в текущем макете, чтобы проверить скролл внутри шита
-      "Скидку 15% на хирургию",
-      "Скидку 15% на интраокулярную линзу (ИОЛ)",
-      "Экономия около 10 000 ₽ при операции обоих глаз в течение месяца",
-    ],
-    ctaHref: "/booking",
-    ctaText: "Записаться",
-  },
-  {
-    title: "Пакет диагностики зрения",
-    subtitle: "Комплексное обследование за 1 визит",
-    cardImage: "/promo-2.png",
-    banner: "/banner_promo_2.svg",
-    bullets: ["Консультация офтальмолога", "Оптика и УЗИ-биометрия"],
-    ctaHref: "/booking",
-  },
-  {
-    title: "Скидка на лазерные процедуры",
-    cardImage: "/promo-3.png",
-    banner: "/banner_promo_3.svg",
-    bullets: ["-10% на ЛК", "Бесплатная консультация перед процедурой"],
-    ctaHref: "/booking",
-  },
-];
+const MOCK_PROMOTIONS: Promotion[] = [];
 
 const MOCK_CHECKUPS: Checkup[] = [
   {
@@ -333,6 +328,125 @@ const MOCK_USER: UserPreview = {
 // Публичный клиент
 // ————————————————————————————————————————————————————————————————————————
 
+function pickField(obj: Record<string, unknown>, candidates: string[]): string | undefined {
+  for (const key of candidates) {
+    const found = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+    const value = found ? obj[found] : undefined;
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function mapActionToPromotion(action: OneCAction): Promotion | null {
+  const safeAction = action as Record<string, unknown>;
+  const title = pickField(safeAction, ["title", "name", "header"]);
+  let image = pickField(safeAction, ["mainimage", "mainImage", "image", "banner", "picture"]);
+
+  if (image) {
+    try {
+      image = new URL(image).toString();
+    } catch {
+      // keep as-is if URL parsing fails
+    }
+  } else {
+    image = "/clinic.svg";
+  }
+
+  if (!title) {
+    return null;
+  }
+
+  const subtitle = pickField(safeAction, ["subtitle", "caption"]);
+  const description = pickField(safeAction, ["description", "text", "body"]);
+  const start = pickField(safeAction, ["start", "dateStart", "date_from"]);
+  const end = pickField(safeAction, ["end", "dateEnd", "date_to"]);
+  return {
+    id: action.id?.toString(),
+    title,
+    subtitle,
+    description,
+    start,
+    end,
+    cardImage: image,
+    banner: pickField(safeAction, ["banner", "mainimage", "mainImage", "image"]) || image,
+  };
+}
+
+async function fetchActionsFromOneC(): Promise<Promotion[]> {
+  if (actionsInFlight) {
+    return actionsInFlight;
+  }
+
+  actionsInFlight = (async () => {
+  try {
+    const endpoint = "/api/actions";
+    console.log("[actions] → request", { endpoint });
+
+    const response = await fetch(endpoint, { cache: "no-store" });
+    let payload: OneCActionResponse | null = null;
+
+    try {
+      payload = (await response.json()) as OneCActionResponse;
+    } catch (parseError) {
+      console.error("[actions] × parse error", parseError);
+    }
+
+    console.log("[actions] ← response", {
+      status: response.status,
+      ok: response.ok,
+      payload,
+    });
+
+    if (!response.ok) {
+      const message = `HTTP ${response.status} ${response.statusText}`;
+      console.error("[actions] × upstream not ok", { message, payload });
+      throw new Error(message);
+    }
+
+    const items = Array.isArray(payload?.details) ? payload.details : [];
+    console.log("[actions] details raw", items);
+
+    let mapped = items
+      .map((action) => mapActionToPromotion(action))
+      .filter((item): item is Promotion => Boolean(item));
+
+    if (mapped.length === 0 && items.length > 0) {
+      // fallback: minimal mapping to avoid empty UI if fields differ
+      mapped = items.map((action, index) => ({
+        id: (action.id ?? index).toString(),
+        title: (action as Record<string, unknown>).title?.toString() || "Акция",
+        subtitle: (action as Record<string, unknown>).subtitle?.toString(),
+        description: (action as Record<string, unknown>).description?.toString(),
+        start: (action as Record<string, unknown>).start?.toString(),
+        end: (action as Record<string, unknown>).end?.toString(),
+        cardImage:
+          pickField(action as Record<string, unknown>, ["mainimage", "mainImage", "image", "banner", "picture"]) ||
+          "/clinic.svg",
+        banner:
+          pickField(action as Record<string, unknown>, ["banner", "mainimage", "mainImage", "image"]) ||
+          "/clinic.svg",
+      }));
+    }
+
+    console.log("[actions] mapped", mapped);
+
+    return mapped;
+  } catch (error) {
+    console.error("[actions] × failed", error);
+    return [];
+  }
+}
+)();
+
+  try {
+    return await actionsInFlight;
+  } finally {
+    actionsInFlight = null;
+  }
+}
+
 export const onec = {
   // Пациент (краткая сводка для главной)
   user: {
@@ -353,18 +467,7 @@ export const onec = {
   // Акции — список
   promotions: {
     async list(): Promise<Promotion[]> {
-      if (USE_MOCK) {
-        return cloneWithDelay(MOCK_PROMOTIONS, 120);
-      }
-      try {
-        const data = await fetchJson<Promotion[]>("/v1/promotions?active=true");
-        return data;
-      } catch (error) {
-        if (!isMockFallback(error)) {
-          console.warn("onec.promotions.list fallback", error);
-        }
-        return cloneWithDelay(MOCK_PROMOTIONS, 150);
-      }
+      return fetchActionsFromOneC();
     },
   },
 

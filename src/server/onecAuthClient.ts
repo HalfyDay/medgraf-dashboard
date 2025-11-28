@@ -212,6 +212,19 @@ async function getBearerToken(): Promise<string> {
   return token;
 }
 
+export async function buildOnecAuthHeader(prefer: "bearer" | "basic" = "bearer"): Promise<string> {
+  if (prefer === "basic") {
+    return basicAuthHeader();
+  }
+  try {
+    const token = await getBearerToken();
+    return `Bearer ${token}`;
+  } catch (error) {
+    console.warn("[onec auth] bearer token fetch failed, falling back to basic", error);
+    return basicAuthHeader();
+  }
+}
+
 function buildQuery(query?: Record<string, string>) {
   return query ? `?${new URLSearchParams(query).toString()}` : "";
 }

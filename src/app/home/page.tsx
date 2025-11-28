@@ -178,7 +178,7 @@ export default function HomePage() {
     const cache = promoImageCache.current;
 
     promos.forEach((promo) => {
-      [promo.cardImage, promo.banner].forEach((src) => {
+      [promo.cardImage, promo.banner || promo.cardImage].forEach((src) => {
         if (!src) return;
         if (cache.has(src)) return;
         const img = new Image();
@@ -350,7 +350,7 @@ export default function HomePage() {
             <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
               {promos.map((p, i) => (
                 <button
-                  key={i}
+                  key={p.id ?? i}
                   type="button"
                   onClick={() => { setActivePromo(p); setPromoOpen(true); }}
                   className="shrink-0 overflow-hidden rounded-[20px] ring-1 ring-black/5 focus:outline-none active:translate-y-[1px]"
