@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import iconv from "iconv-lite";
 import {
   downloadOnecAppointmentDocument,
@@ -8,6 +8,30 @@ import {
 
 function sanitizeFilename(name: string) {
   return name.replace(/["\\\r\n]/g, "").trim() || "document";
+}
+
+const BYTE_MAX = 0xff;
+const DASH_VARIANTS_REGEX = /[\u2010-\u2015\u2212]/g;
+
+function normalizeUid(raw: string) {
+  return raw.replace(DASH_VARIANTS_REGEX, "-").replace(/[\u0000-\u001F\u007F]/g, "").trim();
+}
+
+function makeByteSafeUid(raw: string) {
+  const normalized = normalizeUid(raw);
+  if (!normalized) {
+    return null;
+  }
+
+  const byteSafe = Array.from(normalized).every((ch) => ch.charCodeAt(0) <= BYTE_MAX);
+  if (byteSafe) {
+    return { uid: normalized, reencoded: false };
+  }
+
+  // 1C expects only single-byte characters inside uid; recode to cp1251 byte set to avoid ByteString errors.
+  const recoded = iconv.encode(normalized, "win1251").toString("latin1");
+  const recodedSafe = Array.from(recoded).every((ch) => ch.charCodeAt(0) <= BYTE_MAX);
+  return recodedSafe ? { uid: recoded, reencoded: true } : null;
 }
 
 function parseFilenameFromDisposition(disposition: string | null) {
@@ -38,7 +62,7 @@ function decodeHtml(buffer: Buffer) {
 }
 
 async function renderHtmlToPdf(html: string) {
-  // Lazy-load тяжелую зависимость, чтобы не держать ее в cold start.
+  // Lazy-load С‚СЏР¶РµР»СѓСЋ Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ, С‡С‚РѕР±С‹ РЅРµ РґРµСЂР¶Р°С‚СЊ РµРµ РІ cold start.
   const { default: puppeteer } = await import("puppeteer");
   const browser = await puppeteer.launch({
     headless: "new",
@@ -64,13 +88,12 @@ export async function GET(
 ) {
   const { uid } = await params;
   if (!uid) {
-    return NextResponse.json({ error: "Нет параметра uid" }, { status: 400 });
+    return NextResponse.json({ error: "UID is required" }, { status: 400 });
   }
 
-  // 1C не принимает символы вне однобайтного диапазона (ByteString) — отсекаем такие uid.
-  const byteSafe = Array.from(uid).every((ch) => ch.charCodeAt(0) <= 0xff);
-  if (!byteSafe) {
-    return NextResponse.json({ error: "Неверный идентификатор документа" }, { status: 400 });
+  const preparedUid = makeByteSafeUid(uid);
+  if (!preparedUid) {
+    return NextResponse.json({ error: "UID contains unsupported characters" }, { status: 400 });
   }
 
   const docType = (req.nextUrl.searchParams.get("type") || req.nextUrl.searchParams.get("kind") || "").toLowerCase();
@@ -78,7 +101,7 @@ export async function GET(
 
   try {
     const loader = docType === "appointment" ? downloadOnecAppointmentDocument : downloadOnecDocument;
-    const { buffer, contentType, disposition } = await loader(uid);
+    const { buffer, contentType, disposition } = await loader(preparedUid.uid);
     const fallbackName = filenameParam ? sanitizeFilename(filenameParam) : sanitizeFilename(uid);
     const filename = parseFilenameFromDisposition(disposition) ?? fallbackName;
     const isHtml =
@@ -92,7 +115,7 @@ export async function GET(
         status: 200,
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": buildContentDisposition(filename.endsWith(".pdf") ? filename : `${filename}.pdf`),
+          "Content-Disposition": buildContentDisposition(filename.endsWith(".pdf") ? filename : filename + ".pdf"),
         },
       });
     }
@@ -106,9 +129,9 @@ export async function GET(
     });
   } catch (error) {
     if (error instanceof OnecLogicalError && error.code === "2") {
-      return NextResponse.json({ error: "Документ не найден" }, { status: 404 });
+      return NextResponse.json({ error: "Document not found" }, { status: 404 });
     }
-    const message = error instanceof Error ? error.message : "Не удалось скачать документ";
+    const message = error instanceof Error ? error.message : "Failed to download document";
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

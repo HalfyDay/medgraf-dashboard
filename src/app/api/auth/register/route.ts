@@ -15,14 +15,14 @@ export async function POST(req: Request) {
 
   if (!phone || !password || !passportLastDigits) {
     return NextResponse.json(
-      { error: "Укажите телефон, пароль и последние 3 цифры документа" },
+      { error: "Укажите телефон, пароль и последние 3 цифры паспорта" },
       { status: 400 },
     );
   }
 
   const digits = passportLastDigits.replace(/\D/g, "").slice(-3);
   if (digits.length !== 3) {
-    return NextResponse.json({ error: "Введите последние 3 цифры документа" }, { status: 400 });
+    return NextResponse.json({ error: "Введите последние 3 цифры паспорта" }, { status: 400 });
   }
 
   const normalizedPhone = normalizePhone(phone);

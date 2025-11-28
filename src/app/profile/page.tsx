@@ -41,7 +41,7 @@ export default function ProfilePage() {
         value: user?.medcardNumber || "-",
       },
       {
-        label: "Последние 3 цифры документа",
+        label: "Последние 3 цифры паспорта",
         value: user?.passportNumber ? `*** ${user.passportNumber}` : "-",
       },
     ],
