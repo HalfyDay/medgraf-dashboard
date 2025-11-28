@@ -147,20 +147,25 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setDocumentsLoading(true);
     const patientId = user?.onecId?.toString().trim() || null;
     try {
+      const appointmentsPromise = patientId
+        ? fetchAppointments(patientId).catch((error) => {
+            console.warn("appointments fallback:", error);
+            return [] as Appointment[];
+          })
+        : Promise.resolve([] as Appointment[]);
+      const documentsPromise = patientId
+        ? fetchDocuments(patientId).catch((error) => {
+            console.warn("documents fallback:", error);
+            return [] as DocumentItem[];
+          })
+        : Promise.resolve([] as DocumentItem[]);
+
       const [promoItems, checkupItems, contactsData, appointmentItems, documentItems] = await Promise.all([
         onec.promotions.list(),
         onec.checkups.list(),
         onec.contacts.get(),
-        fetchAppointments().catch((error) => {
-          console.warn("appointments fallback:", error);
-          return [] as Appointment[];
-        }),
-        patientId
-          ? fetchDocuments(patientId).catch((error) => {
-              console.warn("documents fallback:", error);
-              return [] as DocumentItem[];
-            })
-          : Promise.resolve([] as DocumentItem[]),
+        appointmentsPromise,
+        documentsPromise,
       ]);
       setPromos(promoItems);
       setCheckups(checkupItems);

@@ -11,6 +11,11 @@ type AppointmentDetailsSheetProps = {
   onCancel?: (appointment: Appointment) => void;
 };
 
+const CLINIC_NAME = "МедГрафт";
+const CLINIC_CITY = "г.Братск";
+const CLINIC_ADDRESS = "улица Крупской, 58";
+const DOWNLOAD_LABEL = "Скачать PDF";
+
 function formatDate(dateIso: string) {
   return new Date(dateIso).toLocaleDateString("ru-RU", {
     weekday: "short",
@@ -40,7 +45,13 @@ export default function AppointmentDetailsSheet({
   const isPlanned = appointment.status === "planned";
   const dateLabel = formatDate(appointment.date);
   const timeLabel = formatTime(appointment.date);
-  const clinic = appointment.clinic;
+  const clinicName = appointment.clinic?.name || CLINIC_NAME;
+  const clinicRoom = appointment.clinic?.room;
+  const downloadUrl =
+    appointment.documentUrl ||
+    (appointment.id
+      ? `/api/documents/${encodeURIComponent(appointment.id)}?filename=${encodeURIComponent(`appointment-${appointment.id}.pdf`)}&type=appointment`
+      : null);
 
   return (
     <SheetFrame
@@ -78,43 +89,41 @@ export default function AppointmentDetailsSheet({
             </div>
           </li>
 
-          {clinic?.name && (
-            <li className="px-4 py-2.5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="leading-tight">
-                  <div className="text-[17px] font-semibold text-slate-900">
-                    {clinic.name}
-                  </div>
-                  {(clinic.city || clinic.address) && (
-                    <div className="mt-1 text-[15px] font-medium text-slate-600">
-                      {[clinic.city, clinic.address].filter(Boolean).join(", ")}
-                    </div>
-                  )}
-                  {clinic.room && (
-                    <div className="mt-1 text-[13px] font-medium text-slate-500">
-                      {clinic.room}
-                    </div>
-                  )}
+          <li className="px-4 py-2.5">
+            <div className="flex items-center justify-between gap-4">
+              <div className="leading-tight">
+                <div className="text-[17px] font-semibold text-slate-900">
+                  {clinicName}
                 </div>
-                <img src="/clinic.svg" alt="" className="h-7 w-7 shrink-0 opacity-70" />
+                <div className="mt-1 text-[15px] font-medium text-slate-600">
+                  {[CLINIC_CITY, CLINIC_ADDRESS].filter(Boolean).join(", ")}
+                </div>
+                {clinicRoom && (
+                  <div className="mt-1 text-[13px] font-medium text-slate-500">
+                    {clinicRoom}
+                  </div>
+                )}
               </div>
-            </li>
-          )}
+              <img src="/clinic.svg" alt="" className="h-7 w-7 shrink-0 opacity-70" />
+            </div>
+          </li>
 
-          {appointment.conclusion && (
+          {downloadUrl && (
             <li className="px-4 py-2.5">
               <div className="flex items-center justify-between gap-4">
                 <div className="leading-tight">
-                  <div className="text-[17px] font-semibold text-slate-900">
-                    {appointment.conclusion}
-                  </div>
-                  {appointment.recommendations && (
-                    <div className="mt-1 text-[13px] text-slate-600">
-                      {appointment.recommendations}
-                    </div>
-                  )}
+                  <div className="text-[14px] text-slate-600">Описание</div>
+                  <div className="mt-1 text-[17px] font-semibold text-slate-900">Файл приёма (PDF)</div>
                 </div>
-                <img src="/list.svg" alt="" className="h-7 w-7 shrink-0 opacity-70" />
+                <a
+                  href={downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-7 w-7 items-center justify-center text-sky-600 transition hover:opacity-80"
+                  aria-label={DOWNLOAD_LABEL}
+                >
+                  <img src="/download.svg" alt="" className="h-7 w-7 shrink-0" />
+                </a>
               </div>
             </li>
           )}
@@ -141,7 +150,7 @@ export default function AppointmentDetailsSheet({
         </span>
       </div>
 
-      {appointment.recommendations && !appointment.conclusion && (
+      {appointment.recommendations && (
         <div className="mx-1 mt-4 rounded-[18px] bg-slate-50 px-4 py-3 text-[14.5px] text-slate-600">
           {appointment.recommendations}
         </div>

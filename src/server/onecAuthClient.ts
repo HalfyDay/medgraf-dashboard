@@ -1,4 +1,4 @@
-import iconv from "iconv-lite";
+﻿import iconv from "iconv-lite";
 import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
 
 const DEFAULT_BASE_URL = "http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs";
@@ -312,7 +312,14 @@ function shouldRetryWithBasic(error: unknown) {
     return false;
   }
   const body = error.body.toLowerCase();
-  return body.includes("параметра 'iss'") || body.includes("token") || body.includes("токен");
+  return (
+    body.includes("token") ||
+    body.includes("iss") ||
+    body.includes("токен") ||
+    body.includes("некорректное значение параметра 'iss'") ||
+    body.includes("просрочен") ||
+    body.includes("просрочено")
+  );
 }
 
 async function requestOnec<T>(path: string, context: string, query?: Record<string, string>) {
@@ -544,15 +551,16 @@ export type OnecDocumentRecord = {
 };
 
 export async function fetchOnecDocuments(patientId: string): Promise<OnecDocumentRecord[]> {
-  if (!patientId) {
+  const safePatientId = patientId.toString().trim().replace(/[^\w-]/g, "");
+  if (!safePatientId) {
     throw new Error("Не указан id пациента для загрузки документов");
   }
   try {
-    console.log("[onec] /umc_client_users/results request", { patientId });
+    console.log("[onec] /umc_client_users/results request", { patientId: safePatientId });
     const docs = await requestOnec<OnecDocumentRecord[]>(
       "/umc_client_users/results",
       "results",
-      { id: patientId },
+      { id: safePatientId },
     );
     if (!Array.isArray(docs)) {
       return [];
@@ -561,7 +569,43 @@ export async function fetchOnecDocuments(patientId: string): Promise<OnecDocumen
     return docs;
   } catch (error) {
     if (error instanceof OnecLogicalError && error.code === "2") {
-      console.warn("[onec] /umc_client_users/results logical error code=2", { patientId });
+      console.warn("[onec] /umc_client_users/results logical error code=2", { patientId: safePatientId });
+      return [];
+    }
+    throw error;
+  }
+}
+
+export type OnecAppointmentRecord = {
+  id?: string | null;
+  patient_id?: string | null;
+  date?: string | null;
+  doctor?: string | null;
+  doctor_id?: string | null;
+  specialties?: string[] | string | null;
+  image?: string | null;
+};
+
+export async function fetchOnecAppointments(patientId: string): Promise<OnecAppointmentRecord[]> {
+  const safePatientId = patientId.toString().trim().replace(/[^\w-]/g, "");
+  if (!safePatientId) {
+    throw new Error("Не указан id пациента для загрузки приемов");
+  }
+  try {
+    console.log("[onec] /umc_client_users/appointments request", { patientId: safePatientId });
+    const appointments = await requestOnec<OnecAppointmentRecord[]>(
+      "/umc_client_users/appointments",
+      "appointments",
+      { id: safePatientId },
+    );
+    if (!Array.isArray(appointments)) {
+      return [];
+    }
+    console.log("[onec] /umc_client_users/appointments response", appointments);
+    return appointments;
+  } catch (error) {
+    if (error instanceof OnecLogicalError && error.code === "2") {
+      console.warn("[onec] /umc_client_users/appointments logical error code=2", { patientId: safePatientId });
       return [];
     }
     throw error;
@@ -573,4 +617,11 @@ export async function downloadOnecDocument(uid: string) {
     throw new Error("Не указан uid документа");
   }
   return requestOnecBinary("/umc_client_users/document", "document", { uid });
+}
+
+export async function downloadOnecAppointmentDocument(uid: string) {
+  if (!uid) {
+    throw new Error("Не указан uid документа");
+  }
+  return requestOnecBinary("/umc_client_users/appointment_html", "appointment_html", { uid });
 }

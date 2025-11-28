@@ -1,21 +1,45 @@
-"use client";
+﻿"use client";
 import React, { useEffect, useState } from "react";
-import { fetchAppointments, Appointment } from "@/utils/api";
+import { fetchAppointments, type Appointment } from "@/utils/api";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { Layout } from "@/components/Layout";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function AppointmentsPage() {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  // "planned" или "past"
+  // "planned" РёР»Рё "past"
   const [tab, setTab] = useState<"planned" | "past">("planned");
 
   useEffect(() => {
-    fetchAppointments().then((data) => {
-      setAppointments(data);
+    const patientId = user?.onecId?.toString().trim();
+    if (!patientId) {
+      setAppointments([]);
       setLoading(false);
-    });
-  }, []);
+      return;
+    }
+
+    let alive = true;
+    setLoading(true);
+    fetchAppointments(patientId)
+      .then((data) => {
+        if (!alive) return;
+        setAppointments(data);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setAppointments([]);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [user?.onecId]);
 
   const handleCancel = (id: string) => {
     setAppointments((prev) =>
@@ -34,9 +58,9 @@ export default function AppointmentsPage() {
 
   return (
     <Layout>
-      <h1 className="text-3xl font-semibold mb-6 text-primary">Мои приёмы</h1>
+      <h1 className="text-3xl font-semibold mb-6 text-primary">РњРѕРё РїСЂРёС‘РјС‹</h1>
 
-      {/* Вкладки */}
+      {/* Р’РєР»Р°РґРєРё */}
       <div className="inline-flex mb-8 bg-gray-200 rounded-full overflow-hidden">
         <button
           onClick={() => setTab("planned")}
@@ -46,7 +70,7 @@ export default function AppointmentsPage() {
               : "text-gray-600"
           }`}
         >
-          Планируемые
+          РџР»Р°РЅРёСЂСѓРµРјС‹Рµ
         </button>
         <button
           onClick={() => setTab("past")}
@@ -56,16 +80,16 @@ export default function AppointmentsPage() {
               : "text-gray-600"
           }`}
         >
-          Прошедшие
+          РџСЂРѕС€РµРґС€РёРµ
         </button>
       </div>
 
-      {loading && <p>Загрузка…</p>}
+      {loading && <p>Р—Р°РіСЂСѓР·РєР°вЂ¦</p>}
 
       {!loading && tab === "planned" && (
         <>
           {planned.length === 0 ? (
-            <p className="text-gray-600">Нет планируемых приёмов.</p>
+            <p className="text-gray-600">РќРµС‚ РїР»Р°РЅРёСЂСѓРµРјС‹С… РїСЂРёС‘РјРѕРІ.</p>
           ) : (
             planned.map((app) => (
               <AppointmentCard
@@ -81,7 +105,7 @@ export default function AppointmentsPage() {
       {!loading && tab === "past" && (
         <>
           {past.length === 0 ? (
-            <p className="text-gray-600">Нет прошедших приёмов.</p>
+            <p className="text-gray-600">РќРµС‚ РїСЂРѕС€РµРґС€РёС… РїСЂРёС‘РјРѕРІ.</p>
           ) : (
             past.map((app) => (
               <AppointmentCard
@@ -96,3 +120,5 @@ export default function AppointmentsPage() {
     </Layout>
   );
 }
+
+

@@ -1,10 +1,10 @@
-// src/utils/api.ts
+﻿// src/utils/api.ts
 import type { DoctorDirectoryEntry } from "@/types/clinic";
 
 export const DOCTOR_AVATAR_PLACEHOLDER = "/doctor.svg";
 export interface Appointment {
   id: string;
-  date: string;       // ISO 8601, например "2025-07-20T14:30:00+03:00"
+  date: string;       // ISO 8601, РЅР°РїСЂРёРјРµСЂ "2025-07-20T14:30:00+03:00"
   serviceName: string;
   doctorName: string;
   specialty: string;
@@ -19,86 +19,33 @@ export interface Appointment {
   patients?: string[];
   recommendations?: string;
   conclusion?: string;
+  documentUrl?: string;
 }
 
-export async function fetchAppointments(): Promise<Appointment[]> {
-  // Эмуляция задержки
-  await new Promise((res) => setTimeout(res, 400));
+export async function fetchAppointments(patientId?: string): Promise<Appointment[]> {
+  if (!patientId) {
+    return [];
+  }
 
-  return [
-    {
-      id: "a-001",
-      date: "2025-08-31T13:00:00+03:00",
-      serviceName: "Контрольный осмотр",
-      doctorName: "Былим И. А.",
-      specialty: "Офтальмолог",
-      clinic: {
-        name: "Медграфт",
-        city: "Иркутск",
-        address: "ул. Декабрьских Событий, 90",
-        room: "Кабинет 204",
-      },
-      status: "planned",
-      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
-      patients: ["Иванов Иван Иванович"],
-      recommendations: "Принести предыдущие выписки и результаты обследований.",
-      conclusion: "Проверка динамики после операции.",
-    },
-    {
-      id: "a-002",
-      date: "2025-09-21T16:30:00+03:00",
-      serviceName: "Первичный приём",
-      doctorName: "Хохлова М. А.",
-      specialty: "Гинеколог",
-      clinic: {
-        name: "Медграфт",
-        city: "Иркутск",
-        address: "ул. Декабрьских Событий, 90",
-        room: "Кабинет 307",
-      },
-      status: "planned",
-      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
-      patients: ["Иванов Иван Иванович"],
-      recommendations: "Заполнить анкету здоровья заранее в личном кабинете.",
-      conclusion: "Обследование и составление плана лечения.",
-    },
-    {
-      id: "a-003",
-      date: "2025-06-10T10:00:00+03:00",
-      serviceName: "УЗИ органов малого таза",
-      doctorName: "Сидорова Е. К.",
-      specialty: "УЗИ-специалист",
-      clinic: {
-        name: "Медграфт",
-        city: "Иркутск",
-        address: "ул. Декабрьских Событий, 90",
-        room: "Кабинет 112",
-      },
-      status: "completed",
-      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
-      patients: ["Иванов Иван Иванович"],
-      recommendations: "Повторное обследование при появлении жалоб.",
-      conclusion: "Патологий не выявлено.",
-    },
-    {
-      id: "a-004",
-      date: "2025-05-24T09:30:00+03:00",
-      serviceName: "Консультация офтальмолога",
-      doctorName: "Былим И. А.",
-      specialty: "Офтальмолог",
-      clinic: {
-        name: "Медграфт",
-        city: "Иркутск",
-        address: "ул. Декабрьских Событий, 90",
-        room: "Кабинет 204",
-      },
-      status: "cancelled",
-      doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
-      patients: ["Иванов Иван Иванович"],
-      recommendations: "Перенести визит при заболевании ОРВИ.",
-      conclusion: "Отменено пациентом.",
-    },
-  ];
+  const res = await fetch(`/api/appointments?patientId=${encodeURIComponent(patientId)}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const payload = (await res.json().catch(() => null)) as
+    | { appointments?: Appointment[]; error?: string }
+    | null;
+
+  if (!res.ok) {
+    const message = payload?.error || "Failed to load appointments";
+    throw new Error(message);
+  }
+
+  if (!payload || !Array.isArray(payload.appointments)) {
+    return [];
+  }
+
+  return payload.appointments;
 }
 
 export interface Profile {
@@ -110,33 +57,33 @@ export interface Profile {
   notifyEmail: boolean;
 }
 
-// Получить профиль
+// РџРѕР»СѓС‡РёС‚СЊ РїСЂРѕС„РёР»СЊ
 export async function fetchProfile(): Promise<Profile> {
   await new Promise(res => setTimeout(res, 300));
   return {
-    fullName: "Иванов Иван Иванович",
+    fullName: "РРІР°РЅРѕРІ РРІР°РЅ РРІР°РЅРѕРІРёС‡",
     birthDate: "1985-04-12",
     email: "ivanov@example.com",
-    phone: "+7 900 123‑45‑67",
+    phone: "+7 900 123вЂ‘45вЂ‘67",
     medCard: "1234567890",
     notifySms: true,
     notifyEmail: false,
   };
 }
 
-// Обновить профиль
+// РћР±РЅРѕРІРёС‚СЊ РїСЂРѕС„РёР»СЊ
 export async function updateProfile(data: Profile): Promise<Profile> {
   await new Promise(res => setTimeout(res, 300));
-  // — здесь в реале отправка в API
+  // вЂ” Р·РґРµСЃСЊ РІ СЂРµР°Р»Рµ РѕС‚РїСЂР°РІРєР° РІ API
   return data;
 }
 
-// Сменить пароль
+// РЎРјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ
 export async function changePassword(_oldPwd: string, _newPwd: string): Promise<void> {
   void _oldPwd;
   void _newPwd;
   await new Promise(res => setTimeout(res, 300));
-  // на проде проверка старого и сохранение нового
+  // РЅР° РїСЂРѕРґРµ РїСЂРѕРІРµСЂРєР° СЃС‚Р°СЂРѕРіРѕ Рё СЃРѕС…СЂР°РЅРµРЅРёРµ РЅРѕРІРѕРіРѕ
 }
 
 // src/utils/api.ts
@@ -144,13 +91,13 @@ export async function changePassword(_oldPwd: string, _newPwd: string): Promise<
 export interface DocumentItem {
   id: string;
   date: string;       // YYYY-MM-DD
-  title: string;      // Название файла
-  downloadUrl: string; // API-ссылка на скачивание
+  title: string;      // РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р°
+  downloadUrl: string; // API-СЃСЃС‹Р»РєР° РЅР° СЃРєР°С‡РёРІР°РЅРёРµ
   patientId?: string | null;
   description?: string | null;
 }
 
-// Получение списка документов пациента
+// РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° РґРѕРєСѓРјРµРЅС‚РѕРІ РїР°С†РёРµРЅС‚Р°
 export async function fetchDocuments(patientId?: string): Promise<DocumentItem[]> {
   if (!patientId) {
     return [];
@@ -163,7 +110,7 @@ export async function fetchDocuments(patientId?: string): Promise<DocumentItem[]
 
   const payload = (await res.json().catch(() => null)) as { documents?: DocumentItem[]; error?: string } | null;
   if (!res.ok) {
-    const message = payload?.error || "Не удалось загрузить документы";
+    const message = payload?.error || "Failed to load documents";
     throw new Error(message);
   }
 
@@ -206,156 +153,156 @@ export interface BookAppointmentPayload {
 const MOCK_DOCTORS: Doctor[] = [
   {
     id: "doc-neuro-1",
-    fullName: "Зырьянова Ольга Сергеевна",
-    specialty: "Невролог",
-    category: "Невролог",
+    fullName: "Р—С‹СЂСЊСЏРЅРѕРІР° РћР»СЊРіР° РЎРµСЂРіРµРµРІРЅР°",
+    specialty: "РќРµРІСЂРѕР»РѕРі",
+    category: "РќРµРІСЂРѕР»РѕРі",
     rating: 4.8,
     reviews: 125,
     price: 2400,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-neuro-2",
-    fullName: "Кузьмина Ирина Павловна",
-    specialty: "Невролог",
-    category: "Невролог",
+    fullName: "РљСѓР·СЊРјРёРЅР° РСЂРёРЅР° РџР°РІР»РѕРІРЅР°",
+    specialty: "РќРµРІСЂРѕР»РѕРі",
+    category: "РќРµРІСЂРѕР»РѕРі",
     rating: 4.7,
     reviews: 88,
     price: 2600,
-    pricePeriod: "45 минут",
+    pricePeriod: "45 РјРёРЅСѓС‚",
     durationMinutes: 45,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-neuro-3",
-    fullName: "Сорокин Дмитрий Олегович",
-    specialty: "Невролог",
-    category: "Невролог",
+    fullName: "РЎРѕСЂРѕРєРёРЅ Р”РјРёС‚СЂРёР№ РћР»РµРіРѕРІРёС‡",
+    specialty: "РќРµРІСЂРѕР»РѕРі",
+    category: "РќРµРІСЂРѕР»РѕРі",
     rating: 4.6,
     reviews: 74,
     price: 2100,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: false,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-thera-1",
-    fullName: "Леонова Мария Павловна",
-    specialty: "Терапевт",
-    category: "Терапевт",
+    fullName: "Р›РµРѕРЅРѕРІР° РњР°СЂРёСЏ РџР°РІР»РѕРІРЅР°",
+    specialty: "РўРµСЂР°РїРµРІС‚",
+    category: "РўРµСЂР°РїРµРІС‚",
     rating: 4.7,
     reviews: 98,
     price: 2200,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-thera-2",
-    fullName: "Никитина Софья Викторовна",
-    specialty: "Терапевт",
-    category: "Терапевт",
+    fullName: "РќРёРєРёС‚РёРЅР° РЎРѕС„СЊСЏ Р’РёРєС‚РѕСЂРѕРІРЅР°",
+    specialty: "РўРµСЂР°РїРµРІС‚",
+    category: "РўРµСЂР°РїРµРІС‚",
     rating: 4.5,
     reviews: 65,
     price: 2100,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-thera-3",
-    fullName: "Гаврилов Алексей Сергеевич",
-    specialty: "Терапевт",
-    category: "Терапевт",
+    fullName: "Р“Р°РІСЂРёР»РѕРІ РђР»РµРєСЃРµР№ РЎРµСЂРіРµРµРІРёС‡",
+    specialty: "РўРµСЂР°РїРµРІС‚",
+    category: "РўРµСЂР°РїРµРІС‚",
     rating: 4.8,
     reviews: 142,
     price: 2400,
-    pricePeriod: "45 минут",
+    pricePeriod: "45 РјРёРЅСѓС‚",
     durationMinutes: 45,
     isAvailable: false,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-ophtha-1",
-    fullName: "Петров Андрей Сергеевич",
-    specialty: "Офтальмолог",
-    category: "Офтальмолог",
+    fullName: "РџРµС‚СЂРѕРІ РђРЅРґСЂРµР№ РЎРµСЂРіРµРµРІРёС‡",
+    specialty: "РћС„С‚Р°Р»СЊРјРѕР»РѕРі",
+    category: "РћС„С‚Р°Р»СЊРјРѕР»РѕРі",
     rating: 4.9,
     reviews: 156,
     price: 2400,
-    pricePeriod: "час",
+    pricePeriod: "С‡Р°СЃ",
     durationMinutes: 60,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-ophtha-2",
-    fullName: "Савельева Ксения Юрьевна",
-    specialty: "Офтальмолог",
-    category: "Офтальмолог",
+    fullName: "РЎР°РІРµР»СЊРµРІР° РљСЃРµРЅРёСЏ Р®СЂСЊРµРІРЅР°",
+    specialty: "РћС„С‚Р°Р»СЊРјРѕР»РѕРі",
+    category: "РћС„С‚Р°Р»СЊРјРѕР»РѕРі",
     rating: 4.7,
     reviews: 93,
     price: 2500,
-    pricePeriod: "45 минут",
+    pricePeriod: "45 РјРёРЅСѓС‚",
     durationMinutes: 45,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-ophtha-3",
-    fullName: "Горюнов Максим Вадимович",
-    specialty: "Офтальмолог",
-    category: "Офтальмолог",
+    fullName: "Р“РѕСЂСЋРЅРѕРІ РњР°РєСЃРёРј Р’Р°РґРёРјРѕРІРёС‡",
+    specialty: "РћС„С‚Р°Р»СЊРјРѕР»РѕРі",
+    category: "РћС„С‚Р°Р»СЊРјРѕР»РѕРі",
     rating: 4.5,
     reviews: 61,
     price: 2300,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: false,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-gyno-1",
-    fullName: "Калинина Светлана Игоревна",
-    specialty: "Гинеколог",
-    category: "Гинеколог",
+    fullName: "РљР°Р»РёРЅРёРЅР° РЎРІРµС‚Р»Р°РЅР° РРіРѕСЂРµРІРЅР°",
+    specialty: "Р“РёРЅРµРєРѕР»РѕРі",
+    category: "Р“РёРЅРµРєРѕР»РѕРі",
     rating: 4.6,
     reviews: 87,
     price: 2600,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: false,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-gyno-2",
-    fullName: "Щербакова Анастасия Сергеевна",
-    specialty: "Гинеколог",
-    category: "Гинеколог",
+    fullName: "Р©РµСЂР±Р°РєРѕРІР° РђРЅР°СЃС‚Р°СЃРёСЏ РЎРµСЂРіРµРµРІРЅР°",
+    specialty: "Р“РёРЅРµРєРѕР»РѕРі",
+    category: "Р“РёРЅРµРєРѕР»РѕРі",
     rating: 4.8,
     reviews: 112,
     price: 2800,
-    pricePeriod: "45 минут",
+    pricePeriod: "45 РјРёРЅСѓС‚",
     durationMinutes: 45,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
   },
   {
     id: "doc-gyno-3",
-    fullName: "Громов Артём Николаевич",
-    specialty: "Гинеколог",
-    category: "Гинеколог",
+    fullName: "Р“СЂРѕРјРѕРІ РђСЂС‚С‘Рј РќРёРєРѕР»Р°РµРІРёС‡",
+    specialty: "Р“РёРЅРµРєРѕР»РѕРі",
+    category: "Р“РёРЅРµРєРѕР»РѕРі",
     rating: 4.4,
     reviews: 53,
     price: 2400,
-    pricePeriod: "30 минут",
+    pricePeriod: "30 РјРёРЅСѓС‚",
     durationMinutes: 30,
     isAvailable: true,
     photoUrl: DOCTOR_AVATAR_PLACEHOLDER,
@@ -667,13 +614,13 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
 };
 
 const APPOINTMENT_CLINIC = {
-  name: "МедГраф Клиника",
-  city: "Иркутск",
-  address: "ул. Ленина, 58",
+  name: "РњРµРґР“СЂР°С„ РљР»РёРЅРёРєР°",
+  city: "РСЂРєСѓС‚СЃРє",
+  address: "СѓР». Р›РµРЅРёРЅР°, 58",
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const DOCTOR_FALLBACK_SPECIALTY = "Врач клиники";
+const DOCTOR_FALLBACK_SPECIALTY = "Р’СЂР°С‡ РєР»РёРЅРёРєРё";
 const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
   const specialties = entry.specialties?.length ? entry.specialties : [DOCTOR_FALLBACK_SPECIALTY];
   const primarySpecialty = specialties[0] ?? DOCTOR_FALLBACK_SPECIALTY;
@@ -686,7 +633,7 @@ const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
     rating: 4.9,
     reviews: 0,
     price: 0,
-    pricePeriod: "30 мин",
+    pricePeriod: "30 РјРёРЅ",
     durationMinutes: 30,
     isAvailable: true,
     photoUrl:
@@ -751,7 +698,7 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
   const appointment: Appointment = {
     id: `new-${Date.now()}`,
     date: matched.slot.start,
-    serviceName: `Приём у врача ${doctor.specialty}`,
+    serviceName: `РџСЂРёС‘Рј Сѓ РІСЂР°С‡Р° ${doctor.specialty}`,
     doctorName: doctor.fullName,
     specialty: doctor.specialty,
     clinic: { ...APPOINTMENT_CLINIC },
@@ -761,4 +708,8 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
 
   return appointment;
 }
+
+
+
+
 
