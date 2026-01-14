@@ -31,7 +31,7 @@ export async function GET() {
     console.warn("[api/actions] using auto 1C auth header (set ACTIONS_TOKEN or ACTIONS_USER/ACTIONS_PASS to override)");
   }
 
-  console.log("[api/actions] → request", {
+  console.log("[api/actions] -> request", {
     endpoint,
     auth: primaryAuth ? (primaryAuth.startsWith("Basic ") ? "basic" : "bearer") : "none",
   });
@@ -88,7 +88,7 @@ export async function GET() {
       }
     }
 
-    console.log("[api/actions] ← response", {
+    console.log("[api/actions] <- response", {
       status: upstream.status,
       ok: upstream.ok,
       payload,
@@ -103,7 +103,7 @@ export async function GET() {
 
     return NextResponse.json(payload, { status: upstream.status });
   } catch (error) {
-    console.error("[api/actions] × failed", error);
+    console.error("[api/actions] failed", error);
     return NextResponse.json(
       { error: "proxy_failed", message: (error as Error).message },
       { status: 500 },

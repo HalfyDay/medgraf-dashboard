@@ -15,6 +15,8 @@ function formatDate(value?: string | null) {
   return date.toLocaleDateString("ru-RU");
 }
 
+const POLICY_URL = "/files/politics.pdf";
+
 export default function ProfilePage() {
   const { user, logout } = useAuth();
 
@@ -88,6 +90,16 @@ export default function ProfilePage() {
                   </li>
                 ))}
               </ul>
+              <div className="mt-4 rounded-2xl bg-[#F4F7FF] px-4 py-3 text-sm text-[#2B4C7A]">
+                <a
+                  href={POLICY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[#0C8FE8] hover:underline"
+                >
+                  Политика обработки персональных данных (PDF)
+                </a>
+              </div>
             </section>
 
             <section className="rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">

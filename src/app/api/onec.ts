@@ -382,7 +382,7 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
   actionsInFlight = (async () => {
   try {
     const endpoint = "/api/actions";
-    console.log("[actions] → request", { endpoint });
+    console.log("[actions] -> request", { endpoint });
 
     const response = await fetch(endpoint, { cache: "no-store" });
     let payload: OneCActionResponse | null = null;
@@ -390,10 +390,10 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
     try {
       payload = (await response.json()) as OneCActionResponse;
     } catch (parseError) {
-      console.error("[actions] × parse error", parseError);
+      console.error("[actions] parse error", parseError);
     }
 
-    console.log("[actions] ← response", {
+    console.log("[actions] <- response", {
       status: response.status,
       ok: response.ok,
       payload,
@@ -401,7 +401,7 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
 
     if (!response.ok) {
       const message = `HTTP ${response.status} ${response.statusText}`;
-      console.error("[actions] × upstream not ok", { message, payload });
+      console.error("[actions] upstream not ok", { message, payload });
       throw new Error(message);
     }
 
@@ -434,7 +434,7 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
 
     return mapped;
   } catch (error) {
-    console.error("[actions] × failed", error);
+    console.error("[actions] failed", error);
     return [];
   }
 }

@@ -20,6 +20,7 @@ type LoginStep = "phone" | "doc" | "password" | "otp" | "setPassword" | "resetOt
 
 const MIN_PASSWORD_LENGTH = 8;
 const LOGIN_OTP_LENGTH = 4;
+const POLICY_URL = "/files/politics.pdf";
 
 const WAVE_LINE_COUNT = 20; // Increase to render more decorative wave lines.
 const WAVE_STROKE_WIDTH = 5; // Thickness of each SVG stroke.
@@ -157,6 +158,8 @@ export default function AuthPage() {
   const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [loginStepLoading, setLoginStepLoading] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [policyError, setPolicyError] = useState<string | null>(null);
 
   const resetLoginFlow = () => {
     setLoginStep("phone");
@@ -171,6 +174,16 @@ export default function AuthPage() {
     setLoginPassportDigits("");
     setLoginError(null);
     setInfoMessage(null);
+    setPolicyError(null);
+  };
+
+  const ensurePolicyAccepted = () => {
+    if (!policyAccepted) {
+      setPolicyError("Подтвердите согласие с политикой обработки персональных данных.");
+      return false;
+    }
+    setPolicyError(null);
+    return true;
   };
 
   const handleLoginPhoneChange = (value: string) => {
@@ -195,11 +208,17 @@ export default function AuthPage() {
   const cleanDocDigits = (value: string) => value.replace(/\D/g, "").slice(-3);
 
   const handleGosuslugiLogin = () => {
+    if (!ensurePolicyAccepted()) {
+      return;
+    }
     window.location.href = "/api/auth/gosuslugi";
   };
 
   const handleLoginPhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!ensurePolicyAccepted()) {
+      return;
+    }
     if (loginPhoneDigits.length !== 10) {
       setLoginError("Введите номер телефона полностью");
       return;
@@ -283,6 +302,9 @@ export default function AuthPage() {
 
   const handleExistingPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!ensurePolicyAccepted()) {
+      return;
+    }
     if (loginPhoneDigits.length !== 10) {
       setLoginError("Введите номер телефона полностью");
       return;
@@ -371,6 +393,9 @@ export default function AuthPage() {
 
   const handleSetPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!ensurePolicyAccepted()) {
+      return;
+    }
     if (!loginSessionId) {
       setLoginError("Сессия не найдена. Начните заново.");
       return;
@@ -400,6 +425,9 @@ export default function AuthPage() {
 
   const handleResetPasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!ensurePolicyAccepted()) {
+      return;
+    }
     if (!loginSessionId) {
       setLoginError("Сессия не найдена. Начните заново.");
       return;
@@ -719,6 +747,33 @@ export default function AuthPage() {
               Если не получается войти, свяжитесь со службой поддержки клиники.
             </p>
           </div>
+          <div className="space-y-3">
+            <label className="flex items-start gap-3 rounded-2xl bg-[#F0F6FF] px-4 py-3 text-left text-xs text-[#35557A]">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-[#0C8FE8]"
+                checked={policyAccepted}
+                onChange={(event) => {
+                  setPolicyAccepted(event.target.checked);
+                  setPolicyError(null);
+                }}
+              />
+              <span>
+                Я ознакомился(ась) с{" "}
+                <a
+                  href={POLICY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[#0C8FE8] hover:underline"
+                >
+                  политикой обработки персональных данных
+                </a>{" "}
+                и принимаю ее.
+              </span>
+            </label>
+            {policyError && <p className="text-xs font-semibold text-red-500">{policyError}</p>}
+          </div>
+
           <div className="mt-8 border-t border-[#E3F0FF] pt-6 text-center">
             <p className="mb-3 text-sm text-[#5A719B]">или через Госуслуги</p>
             <Button
