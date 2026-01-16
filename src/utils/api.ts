@@ -14,7 +14,7 @@ export interface Appointment {
     address?: string;
     room?: string;
   };
-  status: "planned" | "cancelled" | "completed";
+  status: "planned" | "confirmed" | "cancelled" | "completed";
   doctorAvatar?: string;
   patients?: string[];
   recommendations?: string;
@@ -53,6 +53,8 @@ export interface Profile {
   birthDate: string;        // "YYYY-MM-DD"
   email: string;
   phone: string;
+  medCard: string;
+  city: string;
   notifySms: boolean;
   notifyEmail: boolean;
 }
@@ -66,6 +68,7 @@ export async function fetchProfile(): Promise<Profile> {
     email: "ivanov@example.com",
     phone: "+7 900 123вЂ‘45вЂ‘67",
     medCard: "1234567890",
+    city: "Bratsk",
     notifySms: true,
     notifyEmail: false,
   };
@@ -138,6 +141,8 @@ export interface Doctor {
 export interface DoctorScheduleSlot {
   id: string;
   start: string; // ISO 8601 datetime
+  end?: string;
+  durationMinutes?: number;
 }
 
 export interface DoctorScheduleDay {
@@ -148,6 +153,12 @@ export interface DoctorScheduleDay {
 export interface BookAppointmentPayload {
   doctorId: string;
   slotId: string;
+  patientId?: string | null;
+  slotStart?: string | null;
+  slotEnd?: string | null;
+  serviceId?: string | null;
+  doctorName?: string | null;
+  specialty?: string | null;
 }
 
 const MOCK_DOCTORS: Doctor[] = [
@@ -614,9 +625,9 @@ const MOCK_DOCTOR_SCHEDULE: Record<string, DoctorScheduleDay[]> = {
 };
 
 const APPOINTMENT_CLINIC = {
-  name: "РњРµРґР“СЂР°С„ РљР»РёРЅРёРєР°",
-  city: "РСЂРєСѓС‚СЃРє",
-  address: "СѓР». Р›РµРЅРёРЅР°, 58",
+  name: "MedGraft Clinic",
+  city: "Bratsk",
+  address: "58 Krasnoyarskaya St.",
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -699,7 +710,8 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
   const flatSlots = schedule.flatMap((day) => day.slots.map((slot) => ({ day: day.date, slot })));
   const matched = flatSlots.find((entry) => entry.slot.id === payload.slotId);
 
-  let slotStart = matched?.slot.start;
+  let slotStart = payload.slotStart || matched?.slot.start;
+  let slotEnd = payload.slotEnd || null;
   if (!slotStart) {
     const match = payload.slotId.match(/(\d{4}-\d{2}-\d{2})-(\d{4})$/);
     if (match) {
@@ -709,13 +721,50 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
       throw new Error("Slot not found");
     }
   }
+  if (!slotEnd && slotStart) {
+    const date = new Date(slotStart);
+    if (!Number.isNaN(date.getTime())) {
+      date.setMinutes(date.getMinutes() + 30);
+      const yyyy = date.getFullYear().toString().padStart(4, "0");
+      const mm = (date.getMonth() + 1).toString().padStart(2, "0");
+      const dd = date.getDate().toString().padStart(2, "0");
+      const hh = date.getHours().toString().padStart(2, "0");
+      const min = date.getMinutes().toString().padStart(2, "0");
+      slotEnd = `${yyyy}-${mm}-${dd}T${hh}:${min}:00`;
+    }
+  }
+
+  if (payload.patientId && slotStart) {
+    const startDate = slotStart.replace("T", " ").slice(0, 16);
+    const endDate = slotEnd
+      ? slotEnd.replace("T", " ").slice(0, 16)
+      : startDate;
+    const res = await fetch("/api/schedule/request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doctorId: payload.doctorId,
+        patientId: payload.patientId,
+        serviceId: payload.serviceId ?? undefined,
+        startDate,
+        endDate,
+      }),
+    });
+    const response = (await res.json().catch(() => null)) as { requestId?: string; error?: string } | null;
+    if (!res.ok) {
+      throw new Error(response?.error || "Failed to book appointment");
+    }
+  }
+
+  const resolvedDoctorName = payload.doctorName || doctor?.fullName || payload.doctorId;
+  const resolvedSpecialty = payload.specialty || doctor?.specialty || "General";
 
   const appointment: Appointment = {
     id: `new-${Date.now()}`,
     date: slotStart,
-    serviceName: `Service: ${doctor?.specialty ?? "General"}`,
-    doctorName: doctor?.fullName ?? payload.doctorId,
-    specialty: doctor?.specialty ?? "General",
+    serviceName: `Service: ${resolvedSpecialty}`,
+    doctorName: resolvedDoctorName,
+    specialty: resolvedSpecialty,
     clinic: { ...APPOINTMENT_CLINIC },
     status: "planned",
     doctorAvatar: doctor?.photoUrl || DOCTOR_AVATAR_PLACEHOLDER,

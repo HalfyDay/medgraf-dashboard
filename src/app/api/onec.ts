@@ -10,9 +10,6 @@ const USE_MOCK_ALWAYS = true;
 const BASE_URL = process.env.NEXT_PUBLIC_ONEC_URL || ""; // например: https://sandbox.1c.your-domain.ru
 const API_TOKEN = process.env.NEXT_PUBLIC_ONEC_TOKEN || ""; // Bearer
 const USE_MOCK = USE_MOCK_ALWAYS || !BASE_URL;
-const ACTIONS_URL =
-  process.env.NEXT_PUBLIC_ACTIONS_URL ||
-  "https://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/actions/action";
 
 type OneCAction = {
   id?: string;
@@ -135,7 +132,6 @@ const MOCK_CONTACTS: ContactInfo = {
   telegramUrl: "https://t.me/medgraft",
 };
 
-const MOCK_PROMOTIONS: Promotion[] = [];
 
 const MOCK_CHECKUPS: Checkup[] = [
   {

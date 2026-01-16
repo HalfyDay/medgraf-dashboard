@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchOnecSchedule, type OnecScheduleClinic } from "@/server/onecAuthClient";
 
-type ApiSlot = { id: string; start: string };
+type ApiSlot = { id: string; start: string; end: string; durationMinutes: number };
 type ApiDay = { date: string; slots: ApiSlot[] };
 
 function parseTimeToMinutes(value: string | null | undefined): number | null {
@@ -61,10 +61,13 @@ function buildSlots(
   const slots: ApiSlot[] = [];
   for (let cursor = fromMinutes; cursor + durationMinutes <= toMinutes; cursor += durationMinutes) {
     const time = formatMinutes(cursor);
+    const endTime = formatMinutes(cursor + durationMinutes);
     const id = `${doctorId}-${date}-${time.replace(":", "")}`;
     slots.push({
       id,
       start: `${date}T${time}:00`,
+      end: `${date}T${endTime}:00`,
+      durationMinutes,
     });
   }
 

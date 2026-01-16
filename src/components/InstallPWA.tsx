@@ -46,27 +46,27 @@ export default function InstallPWA() {
   useEffect(() => {
     if (!mounted || !isMobile || isStandalone) return;
 
-    let fallbackTimer: ReturnType<typeof window.setTimeout> | undefined;
+    let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
 
     const onBIP = (e: DeferredPromptEvent) => {
       e.preventDefault();
       setDeferredPrompt(e);
       setShow(true);             // показать с кнопкой «Установить»
-      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
     };
 
     window.addEventListener("beforeinstallprompt", onBIP as EventListener);
 
     // ФОЛЛБЭК: на Android через 3 сек. показать подсказку, если BIP не пришёл
     if (isAndroid) {
-      fallbackTimer = window.setTimeout(() => {
+      fallbackTimer = setTimeout(() => {
         if (!deferredPrompt) setShow(true);  // покажем карточку с инструкцией
       }, 3000);
     }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBIP as EventListener);
-      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
     };
   }, [mounted, isMobile, isAndroid, isStandalone, deferredPrompt]);
 

@@ -21,6 +21,7 @@ import {
   type DoctorScheduleDay,
   type DoctorScheduleSlot,
 } from "@/utils/api";
+import { useAuth } from "@/providers/AuthProvider";
 
 type BookingFlowStep = "doctor" | "date" | "time";
 
@@ -166,6 +167,7 @@ export default function BookingFlowSheet({
   onClose,
   onBooked,
 }: BookingFlowSheetProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState<BookingFlowStep>("doctor");
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -417,11 +419,22 @@ export default function BookingFlowSheet({
     }
 
     if (!selectedDoctorId || !selectedSlotId) return;
+    if (!user?.onecId) {
+      setBookingError("Не указан пациент для записи.");
+      return;
+    }
     setBookingLoading(true);
     setBookingError(null);
+    const selectedSlot = slotsForSelectedDate.find((slot) => slot.id === selectedSlotId) ?? null;
+    const selectedDoctor = doctors.find((doctor) => doctor.id === selectedDoctorId) ?? null;
     const payload: BookAppointmentPayload = {
       doctorId: selectedDoctorId,
       slotId: selectedSlotId,
+      patientId: user.onecId,
+      slotStart: selectedSlot?.start ?? null,
+      slotEnd: selectedSlot?.end ?? null,
+      doctorName: selectedDoctor?.fullName ?? null,
+      specialty: selectedDoctor?.specialty ?? null,
     };
 
     try {

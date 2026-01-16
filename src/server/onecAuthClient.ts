@@ -175,7 +175,7 @@ function normalizeRelative(raw: OnecRawRecord | null | undefined): OnecRelative 
 function ensureSuccess<T>(body: OnecEnvelope<T>, context: string): T {
   const statusText = body.error ?? body.error_message ?? "unknown";
   const code = body.code ?? body.error_code ?? "unknown";
-  if (statusText === "success" && code === "0") {
+  if (code === "0") {
     return body.details;
   }
   if (code === "2") {
@@ -274,7 +274,7 @@ export async function buildOnecAuthHeader(prefer: "bearer" | "basic" = "bearer")
 }
 
 function buildQuery(query?: Record<string, string>) {
-  return query ? `?${new URLSearchParams(query).toString()}` : "";
+  return query ? `?${new URLSearchParams(query).toString().replace(/\+/g, "%20")}` : "";
 }
 
 async function requestJson<T>(
@@ -293,6 +293,47 @@ async function requestJson<T>(
 
   const res = await fetch(`${baseUrl}${path}${buildQuery(query)}`, {
     method: "GET",
+    headers,
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new OnecRequestError(
+      `Ошибка запроса 1С (${context}): ${text || res.statusText}`,
+      res.status,
+      text || "",
+    );
+  }
+
+  const payload = await parseJson<OnecEnvelope<T>>(res, context);
+  const result = ensureSuccess(payload, context);
+  console.log("[onec] response", {
+    context,
+    path,
+    query: query ?? null,
+    status: res.status,
+    payload: result,
+  });
+  return result;
+}
+
+async function requestJsonPost<T>(
+  path: string,
+  context: string,
+  authMode: "basic" | "bearer",
+  query?: Record<string, string>,
+) {
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (authMode === "basic") {
+    headers.Authorization = basicAuthHeader();
+  } else {
+    const token = await getBearerToken();
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${baseUrl}${path}${buildQuery(query)}`, {
+    method: "POST",
     headers,
     cache: "no-store",
   });
@@ -737,6 +778,19 @@ export async function fetchOnecAppointments(patientId: string): Promise<OnecAppo
   }
 }
 
+async function requestOnecPost<T>(path: string, context: string, query?: Record<string, string>) {
+  try {
+    return await requestJsonPost<T>(path, context, "bearer", query);
+  } catch (error) {
+    if (shouldRetryWithBasic(error)) {
+      console.warn(`Bearer-запрос 1С (${context}) отклонён, выполняем повтор по Basic Auth`);
+      cachedToken = null;
+      return requestJsonPost<T>(path, context, "basic", query);
+    }
+    throw error;
+  }
+}
+
 export async function fetchOnecSchedule(doctorId: string): Promise<OnecScheduleClinic[]> {
   const safeDoctorId = doctorId.toString().trim().replace(/[^\w-]/g, "");
   if (!safeDoctorId) {
@@ -751,6 +805,35 @@ export async function fetchOnecSchedule(doctorId: string): Promise<OnecScheduleC
   }
   console.log("[onec] /schedule/schedule response", schedule);
   return schedule;
+}
+
+export async function submitOnecScheduleRequest(params: {
+  doctorID: string;
+  patientID: string;
+  startDate: string;
+  endDate: string;
+  serviceID?: string;
+}): Promise<string> {
+  const query: Record<string, string> = {
+    doctorID: params.doctorID,
+    patientID: params.patientID,
+    startDate: params.startDate,
+    endDate: params.endDate,
+  };
+  if (params.serviceID) {
+    query.serviceID = params.serviceID;
+  }
+  console.log("[onec] /schedule/request request", query);
+  try {
+    const requestId = await requestOnecPost<string>("/schedule/request", "schedule_request", query);
+    console.log("[onec] /schedule/request response", requestId);
+    return requestId;
+  } catch (error) {
+    console.warn("[onec] /schedule/request POST failed, retrying with GET", error);
+    const requestId = await requestOnec<string>("/schedule/request", "schedule_request", query);
+    console.log("[onec] /schedule/request response", requestId);
+    return requestId;
+  }
 }
 
 export async function downloadOnecDocument(uid: string) {

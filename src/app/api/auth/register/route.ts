@@ -9,7 +9,7 @@ type RegisterPayload = {
   passportLastDigits: string;
 };
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
   const body = (await req.json()) as RegisterPayload;
   const { phone, password, passportLastDigits } = body;
 
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 
   const hash = await bcrypt.hash(password, 10);
 
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     db.run(
       `
         INSERT INTO users (

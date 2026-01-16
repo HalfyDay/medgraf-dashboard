@@ -23,9 +23,10 @@ export function initPWAInstallListener() {
   if (win.__pwaInit) return;
   win.__pwaInit = true;
 
-  win.addEventListener("beforeinstallprompt", (event: DeferredPromptEvent) => {
-    event.preventDefault();
-    win.__deferredPrompt = event;
+  win.addEventListener("beforeinstallprompt", (event) => {
+    const promptEvent = event as DeferredPromptEvent;
+    promptEvent.preventDefault();
+    win.__deferredPrompt = promptEvent;
     win.dispatchEvent(new CustomEvent("pwa:bip-available"));
   });
 

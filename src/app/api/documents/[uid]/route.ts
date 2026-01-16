@@ -65,7 +65,7 @@ async function renderHtmlToPdf(html: string) {
   // Lazy-load С‚СЏР¶РµР»СѓСЋ Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ, С‡С‚РѕР±С‹ РЅРµ РґРµСЂР¶Р°С‚СЊ РµРµ РІ cold start.
   const { default: puppeteer } = await import("puppeteer");
   const browser = await puppeteer.launch({
-    headless: "new",
+    headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
   try {

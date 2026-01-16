@@ -14,6 +14,8 @@ export function ProfileForm() {
     medCard: string;
     birthDate: string;
     city: string;
+    notifySms: boolean;
+    notifyEmail: boolean;
   }>({
     fullName: "",
     email: "",
@@ -21,6 +23,8 @@ export function ProfileForm() {
     medCard: "",
     birthDate: "",
     city: "",
+    notifySms: false,
+    notifyEmail: false,
   });
   const [loading, setLoading] = useState(true);
 

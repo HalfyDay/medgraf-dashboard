@@ -68,7 +68,7 @@ export function buildAuthorizationUrl(params: {
   return url.toString();
 }
 
-async function requestAccessToken(code: string, codeVerifier: string, redirectUri: string) {
+async function requestAccessToken(code: string, codeVerifier: string, redirectUri: string): Promise<{ access_token: string }> {
   if (MOCK_MODE || !TOKEN_URL || !CLIENT_ID) {
     return { access_token: "mock-access-token" };
   }
@@ -103,7 +103,7 @@ async function requestAccessToken(code: string, codeVerifier: string, redirectUr
   if (!payload.access_token) {
     throw new Error("Р’ РѕС‚РІРµС‚Рµ Р“РѕСЃСѓСЃР»СѓРі РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ access_token");
   }
-  return payload;
+  return { access_token: payload.access_token };
 }
 
 type ProfileRecord = {

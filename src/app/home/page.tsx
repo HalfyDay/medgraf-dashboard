@@ -561,7 +561,9 @@ export default function HomePage() {
                   </div>
 
                   <div
-                    ref={(el) => (titleRefs.current[i] = el)}
+                    ref={(el) => {
+                      titleRefs.current[i] = el;
+                    }}
                     className="font-semibold leading-tight overflow-hidden text-ellipsis whitespace-nowrap"
                   >
                     {c.title}

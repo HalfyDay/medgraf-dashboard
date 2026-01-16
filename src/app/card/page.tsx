@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 
 type Relative = {
@@ -161,7 +162,7 @@ export default function CardPage() {
             <div className="rounded-[32px] bg-gradient-to-r from-[#0D7BFF] via-[#20C269] to-[#28D07C] px-6 pt-7 pb-14 text-white">
               <div className="flex items-center gap-4 -translate-y-2">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
-                  <img src="/list.svg" alt="" className="h-12 w-12" />
+                  <Image src="/list.svg" alt="" width={48} height={48} className="h-12 w-12" />
                 </div>
                 <div className="-mt-1">
                   <h1 className="text-2xl font-semibold leading-tight">
@@ -195,7 +196,7 @@ export default function CardPage() {
                   className="flex h-10 w-10 items-center justify-center text-[#0F86FF] transition hover:text-[#0C6FD9]"
                   aria-label="\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u043C\u0435\u0434\u043A\u0430\u0440\u0442\u0443"
                 >
-                  <img src="/download.svg" alt="" className="h-5 w-5" />
+                  <Image src="/download.svg" alt="" width={20} height={20} className="h-5 w-5" />
                 </button>
               </header>
               <div className="mt-6 h-px w-full bg-[#E9EDF8]" />

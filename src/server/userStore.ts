@@ -60,7 +60,7 @@ export function getUserByPhone(phone: string) {
           reject(err);
           return;
         }
-        resolve(row ?? null);
+        resolve(row ? (row as DbUserRow) : null);
       },
     );
   });

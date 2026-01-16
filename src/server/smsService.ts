@@ -35,15 +35,16 @@ function sendSmsRu(to: string, text: string) {
   }
 
   return new Promise<void>((resolve, reject) => {
-    smsRuClient.sms_send({ to, text }, (response: SmsRuResponse | undefined) => {
-      if (response?.code === "100") {
+    smsRuClient.sms_send({ to, text }, (response) => {
+      const payload = response as SmsRuResponse | undefined;
+      if (payload?.code === "100") {
         resolve();
         return;
       }
       const description =
-        response?.description ||
-        response?.status_text ||
-        `Неизвестная ошибка ответа SMS.RU (${response?.code ?? "без кода"})`;
+        payload?.description ||
+        payload?.status_text ||
+        `Неизвестная ошибка ответа SMS.RU (${payload?.code ?? "без кода"})`;
       reject(new Error(`SMS.RU: не удалось отправить SMS: ${description}`));
     });
   });

@@ -90,8 +90,8 @@ export default function SheetFrame({
   const dragYRef = useRef(0);
   const expandingUp = useRef(false);
 
-  const preventWheel = useRef<(e: WheelEvent) => void>();
-  const preventTouchMove = useRef<(e: TouchEvent) => void>();
+  const preventWheel = useRef<((e: WheelEvent) => void) | null>(null);
+  const preventTouchMove = useRef<((e: TouchEvent) => void) | null>(null);
 
   const lockInnerScroll = () => {
     const sc = scrollRef.current;
@@ -332,6 +332,12 @@ export default function SheetFrame({
     };
     const tEnd = (e: TouchEvent) => onUp(lastY.current, e.timeStamp);
 
+    type StoredHandlers = {
+      downHandler: (e: PointerEvent) => void;
+      tStartHandler: (e: TouchEvent) => void;
+    };
+    const handlers = new Map<HTMLElement, StoredHandlers>();
+
     const opts: AddEventListenerOptions = { passive: false, capture: true };
     const targets: Array<{ el: HTMLElement; fromHeader: boolean }> = [
       { el, fromHeader: false },
@@ -354,7 +360,7 @@ export default function SheetFrame({
       targetEl.addEventListener("touchcancel", tEnd, opts);
 
       // store handlers for cleanup
-      (targetEl as any).__sheetHandlers = { downHandler, tStartHandler };
+      handlers.set(targetEl, { downHandler, tStartHandler });
     });
 
     const onVisibility = () => {
@@ -368,9 +374,7 @@ export default function SheetFrame({
     return () => {
       targets.forEach((target) => {
         const { el: targetEl, fromHeader } = target;
-        const stored = (targetEl as any).__sheetHandlers as
-          | { downHandler: (e: PointerEvent) => void; tStartHandler: (e: TouchEvent) => void }
-          | undefined;
+        const stored = handlers.get(targetEl);
 
         targetEl.removeEventListener("pointerdown", stored?.downHandler ?? ((e) => down(e, fromHeader)));
         targetEl.removeEventListener("pointermove", move);
@@ -381,11 +385,8 @@ export default function SheetFrame({
         targetEl.removeEventListener("touchmove", tMove);
         targetEl.removeEventListener("touchend", tEnd);
         targetEl.removeEventListener("touchcancel", tEnd);
-
-        if ((targetEl as any).__sheetHandlers) {
-          delete (targetEl as any).__sheetHandlers;
-        }
       });
+      handlers.clear();
 
       document.removeEventListener("visibilitychange", onVisibility);
       sc.style.overflowY = "";

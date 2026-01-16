@@ -41,13 +41,13 @@ export default function FullscreenOverlay({
 }: FullscreenOverlayProps) {
   const [mounted, setMounted] = useState(open);
   const [visible, setVisible] = useState(false);
-  const exitTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const entryFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (open) {
       if (exitTimerRef.current) {
-        window.clearTimeout(exitTimerRef.current);
+        clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
       }
       if (entryFrameRef.current !== null) {
@@ -70,14 +70,14 @@ export default function FullscreenOverlay({
       window.cancelAnimationFrame(entryFrameRef.current);
       entryFrameRef.current = null;
     }
-    exitTimerRef.current = window.setTimeout(() => {
+    exitTimerRef.current = setTimeout(() => {
       setMounted(false);
       exitTimerRef.current = null;
     }, transitionMs);
 
     return () => {
       if (exitTimerRef.current) {
-        window.clearTimeout(exitTimerRef.current);
+        clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
       }
       if (entryFrameRef.current !== null) {
@@ -100,7 +100,7 @@ export default function FullscreenOverlay({
   useEffect(() => {
     return () => {
       if (exitTimerRef.current) {
-        window.clearTimeout(exitTimerRef.current);
+        clearTimeout(exitTimerRef.current);
         exitTimerRef.current = null;
       }
       if (entryFrameRef.current !== null) {

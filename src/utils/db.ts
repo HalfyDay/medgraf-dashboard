@@ -56,7 +56,11 @@ db.serialize(() => {
       return;
     }
 
-    const existingColumns = new Set<string>((rows ?? []).map((row) => row.name as string));
+    const existingColumns = new Set<string>(
+      (rows ?? [])
+        .map((row) => (row as { name?: unknown }).name)
+        .filter((name): name is string => typeof name === "string"),
+    );
     columnsToEnsure.forEach(({ name, definition }) => {
       if (!existingColumns.has(name)) {
         db.run(`ALTER TABLE users ADD COLUMN ${name} ${definition}`, (alterErr) => {
@@ -117,7 +121,11 @@ db.serialize(() => {
       return;
     }
 
-    const existingColumns = new Set<string>((rows ?? []).map((row) => row.name as string));
+    const existingColumns = new Set<string>(
+      (rows ?? [])
+        .map((row) => (row as { name?: unknown }).name)
+        .filter((name): name is string => typeof name === "string"),
+    );
     loginSessionColumnsToEnsure.forEach(({ name, definition }) => {
       if (!existingColumns.has(name)) {
         db.run(`ALTER TABLE login_sessions ADD COLUMN ${name} ${definition}`, (alterErr) => {

@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { fetchOnecAppointments, type OnecAppointmentRecord, OnecLogicalError } from "@/server/onecAuthClient";
 import type { Appointment } from "@/utils/api";
 
-const CLINIC_NAME = "МедГрафт";
-const CLINIC_CITY = "г.Братск";
-const CLINIC_ADDRESS = "улица Крупской, 58";
-const TITLE_FALLBACK = "Приём у врача";
+const CLINIC_NAME = "MedGraft Clinic";
+const CLINIC_CITY = "Bratsk";
+const CLINIC_ADDRESS = "58 Krasnoyarskaya St.";
+const TITLE_FALLBACK = "Appointment";
 
 const normalizeSpecialties = (value: OnecAppointmentRecord["specialties"]) => {
   if (!value) {
@@ -49,7 +49,7 @@ function mapAppointment(raw: OnecAppointmentRecord): Appointment | null {
 
   const specialties = normalizeSpecialties(raw.specialties);
   const primarySpecialty = specialties[0] ?? "";
-  const doctorName = raw.doctor?.toString().trim() || "Врач";
+  const doctorName = raw.doctor?.toString().trim() || "Doctor";
   const serviceName = primarySpecialty || `${TITLE_FALLBACK} ${doctorName ? `(${doctorName})` : ""}`.trim();
   const doctorAvatar =
     typeof raw.image === "string" && raw.image.trim().length > 0 ? raw.image.trim() : undefined;
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
   const patientId = url.searchParams.get("id") ?? url.searchParams.get("patientId");
 
   if (!patientId) {
-    return NextResponse.json({ error: "Не передан id пациента" }, { status: 400 });
+    return NextResponse.json({ error: "Missing patient id" }, { status: 400 });
   }
 
   try {
@@ -85,8 +85,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ appointments });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Не удалось получить список приёмов в 1C";
+    const message = error instanceof Error ? error.message : "Failed to load appointments from 1C";
     const status = error instanceof OnecLogicalError && error.code === "2" ? 200 : 502;
     return NextResponse.json({ error: message, appointments: [] }, { status });
   }

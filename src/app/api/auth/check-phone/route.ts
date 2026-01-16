@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import db from "@/utils/db";
 import { normalizePhone } from "@/utils/phone";
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<Response> {
   const { phone } = await req.json();
 
   if (!phone) {
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
   const normalized = normalizePhone(phone);
 
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     db.get(`SELECT id FROM users WHERE phone = ?`, [normalized], (err, row) => {
       if (err) {
         resolve(NextResponse.json({ error: "Не удалось проверить номер" }, { status: 500 }));

@@ -169,7 +169,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ]);
       setPromos(promoItems);
       setCheckups(checkupItems);
-      setContacts(contactsData);
+      setContacts({ ...DEFAULT_CONTACTS, ...contactsData });
       setAppointments(appointmentItems);
       setDocuments(documentItems);
     } catch (error) {

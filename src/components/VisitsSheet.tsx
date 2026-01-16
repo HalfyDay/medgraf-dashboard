@@ -22,15 +22,19 @@ const STATUS_META: Record<
   { label: string; chipClass: string }
 > = {
   planned: {
-    label: "Запланирован",
+    label: "??????????????????????????",
     chipClass: "bg-sky-500/15 text-sky-600 ring-1 ring-sky-500/20",
   },
+  confirmed: {
+    label: "????????????????????????",
+    chipClass: "bg-indigo-500/15 text-indigo-600 ring-1 ring-indigo-500/20",
+  },
   completed: {
-    label: "Завершён",
+    label: "??????????????????",
     chipClass: "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/20",
   },
   cancelled: {
-    label: "Отменён",
+    label: "????????????????",
     chipClass: "bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/20",
   },
 };
@@ -61,9 +65,9 @@ export default function VisitsSheet({
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
 
-    const activeItems = sorted.filter((item) => item.status === "planned");
+    const activeItems = sorted.filter((item) => item.status === "planned" || item.status === "confirmed");
     const historyItems = sorted
-      .filter((item) => item.status !== "planned")
+      .filter((item) => item.status !== "planned" && item.status !== "confirmed")
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return { active: activeItems, history: historyItems };
