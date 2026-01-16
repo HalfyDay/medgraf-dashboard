@@ -30,6 +30,20 @@ export type OnecPerson = {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  docSer?: string | null;
+  docNum?: string | null;
+};
+
+export type OnecRelative = {
+  member?: string | null;
+  relationship?: string | null;
+  memberID?: string | null;
+  memberBirthDate?: string | null;
+  memberCardNumber?: string | null;
+};
+
+export type OnecPatientDetails = OnecPerson & {
+  relatives: OnecRelative[];
 };
 
 export type OnecUserProfile = {
@@ -121,6 +135,40 @@ function normalizeRecord(raw: OnecRawRecord | null | undefined): OnecPerson | un
     email: trimString(get("email")) || null,
     phone: trimString(get("phone")) || null,
     address: trimString(get("address")) || null,
+    docSer: trimString(get("docSer")) || trimString(get("doc_ser")) || null,
+    docNum: trimString(get("docNum")) || trimString(get("doc_num")) || null,
+  };
+}
+
+function normalizeRelative(raw: OnecRawRecord | null | undefined): OnecRelative | null {
+  if (!raw) {
+    return null;
+  }
+  const get = (key: string) => {
+    const lower = key.toLowerCase();
+    const entry = Object.keys(raw).find((k) => k.toLowerCase() === lower);
+    if (!entry) {
+      return undefined;
+    }
+    return raw[entry];
+  };
+
+  const member = trimString(get("member")) || null;
+  const relationship = trimString(get("relationship")) || null;
+  const memberID = trimString(get("memberID")) || trimString(get("member_id")) || null;
+  const memberBirthDate = trimString(get("memberBirthDate")) || trimString(get("member_birth_date")) || null;
+  const memberCardNumber = trimString(get("memberCardNumber")) || trimString(get("member_card_number")) || null;
+
+  if (!member && !relationship && !memberID && !memberBirthDate && !memberCardNumber) {
+    return null;
+  }
+
+  return {
+    member,
+    relationship,
+    memberID,
+    memberBirthDate,
+    memberCardNumber,
   };
 }
 
@@ -399,7 +447,7 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
   const codeToLookup = summary.code ?? summary.id ?? undefined;
   if (codeToLookup) {
     console.log("[onec auth] /umc_client_users/patients request", { id: codeToLookup });
-    const patientResponse = await requestOnec<OnecRawRecord[]>(
+    const patientResponse = await requestOnec<OnecRawRecord | OnecRawRecord[]>(
       "/umc_client_users/patients",
       "patients",
       { id: codeToLookup },
@@ -408,13 +456,69 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
       return [];
     });
 
-    if (Array.isArray(patientResponse) && patientResponse.length > 0) {
-      patient = normalizeRecord(patientResponse[0]);
+    const patientList = Array.isArray(patientResponse) ? patientResponse : [patientResponse];
+    if (patientList.length > 0) {
+      patient = normalizeRecord(patientList[0]);
     }
     console.log("[onec auth] /umc_client_users/patients response", patientResponse);
   }
 
   return { summary, patient };
+}
+
+export async function fetchOnecAuthUserMatches(phoneValue: string): Promise<OnecPerson[]> {
+  const digits = phoneValue.replace(/\D/g, "");
+  let queryPhone = "";
+  if (digits.length >= 10) {
+    const last10 = digits.slice(-10);
+    queryPhone = `8${last10}`;
+  } else {
+    throw new Error("Некорректный телефон для запроса 1С");
+  }
+
+  console.log("[onec auth] /umc_client/auth_user request", { phone: queryPhone });
+  const rawMatches = await requestOnec<OnecRawRecord[]>("/umc_client/auth_user", "auth_user", {
+    phone: queryPhone,
+  });
+  if (!Array.isArray(rawMatches)) {
+    return [];
+  }
+  return rawMatches.map((item) => normalizeRecord(item) ?? {}).filter((item) => item.id || item.code);
+}
+
+export async function fetchOnecPatientDetails(patientId: string): Promise<OnecPatientDetails | null> {
+  const safePatientId = patientId.toString().trim().replace(/[^\w-]/g, "");
+  if (!safePatientId) {
+    throw new Error("Не указан id пациента для загрузки медкарты");
+  }
+  console.log("[onec] /umc_client_users/patients request", { patientId: safePatientId });
+  const rawPayload = await requestOnec<OnecRawRecord | OnecRawRecord[]>(
+    "/umc_client_users/patients",
+    "patients",
+    {
+      id: safePatientId,
+    },
+  );
+  const rawList = Array.isArray(rawPayload) ? rawPayload : [rawPayload];
+  if (!rawList[0]) {
+    return null;
+  }
+
+  const raw = rawList[0];
+  const person = normalizeRecord(raw) ?? { id: safePatientId };
+  const relativesRaw = Array.isArray((raw as Record<string, unknown>).relatives)
+    ? ((raw as Record<string, unknown>).relatives as OnecRawRecord[])
+    : [];
+  const relatives = relativesRaw
+    .map((item) => normalizeRelative(item))
+    .filter((entry): entry is OnecRelative => Boolean(entry));
+
+  console.log("[onec] /umc_client_users/patients response", { patient: person, relativesCount: relatives.length });
+
+  return {
+    ...person,
+    relatives,
+  };
 }
 
 type OnecDoctorRaw = {
@@ -586,6 +690,27 @@ export type OnecAppointmentRecord = {
   image?: string | null;
 };
 
+export type OnecScheduleSlot = {
+  from?: string | null;
+  to?: string | null;
+  duration?: number | string | null;
+};
+
+export type OnecScheduleDate = {
+  date?: string | null;
+  slots?: OnecScheduleSlot[] | null;
+};
+
+export type OnecScheduleDoctor = {
+  doctor_id?: string | null;
+  dates?: OnecScheduleDate[] | null;
+};
+
+export type OnecScheduleClinic = {
+  clinic_id?: string | null;
+  doctors?: OnecScheduleDoctor[] | null;
+};
+
 export async function fetchOnecAppointments(patientId: string): Promise<OnecAppointmentRecord[]> {
   const safePatientId = patientId.toString().trim().replace(/[^\w-]/g, "");
   if (!safePatientId) {
@@ -612,6 +737,22 @@ export async function fetchOnecAppointments(patientId: string): Promise<OnecAppo
   }
 }
 
+export async function fetchOnecSchedule(doctorId: string): Promise<OnecScheduleClinic[]> {
+  const safeDoctorId = doctorId.toString().trim().replace(/[^\w-]/g, "");
+  if (!safeDoctorId) {
+    throw new Error("Не указан id врача для загрузки расписания");
+  }
+  console.log("[onec] /schedule/schedule request", { doctorId: safeDoctorId });
+  const schedule = await requestOnec<OnecScheduleClinic[]>("/schedule/schedule", "schedule", {
+    id: safeDoctorId,
+  });
+  if (!Array.isArray(schedule)) {
+    return [];
+  }
+  console.log("[onec] /schedule/schedule response", schedule);
+  return schedule;
+}
+
 export async function downloadOnecDocument(uid: string) {
   if (!uid) {
     throw new Error("Не указан uid документа");
@@ -623,5 +764,5 @@ export async function downloadOnecAppointmentDocument(uid: string) {
   if (!uid) {
     throw new Error("Не указан uid документа");
   }
-  return requestOnecBinary("/umc_client_users/appointment_html", "appointment_html", { uid });
+  return requestOnecBinary("/umc_client_users/appointment_pdf", "appointment_pdf", { uid });
 }

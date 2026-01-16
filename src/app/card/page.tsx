@@ -1,66 +1,158 @@
 "use client";
 
-const MAIN_CARD_INFO = [
-  {
-    label: "\u0424\u0418\u041E",
-    value: "\u0418\u0432\u0430\u043D\u043E\u0432 \u0418\u0432\u0430\u043D \u0418\u0432\u0430\u043D\u043E\u0432\u0438\u0447",
-  },
-  {
-    label: "\u041D\u043E\u043C\u0435\u0440 \u0422\u0435\u043B\u0435\u0444\u043E\u043D\u0430",
-    value: "+7 (987) 545 54 54",
-  },
-  {
-    label: "\u041F\u043E\u0447\u0442\u0430",
-    value: "\u0414\u043E\u043F\u0438\u0441\u0430\u0442\u044C",
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/providers/AuthProvider";
 
-const PATIENTS = [
-  {
-    title: "\u041F\u0430\u0446\u0438\u0435\u043D\u0442 \u21161",
-    data: [
-      {
-        label: "\u0424\u0418\u041E",
-        value: "\u0418\u0432\u0430\u043D\u043E\u0432\u0430 \u0415\u043B\u0435\u043D\u0430 \u041F\u0435\u0442\u0440\u043E\u0432\u043D\u0430",
-      },
-      {
-        label: "\u041D\u043E\u043C\u0435\u0440 \u041A\u0430\u0440\u0442\u044B",
-        value: "957496-7548965-76",
-      },
-      {
-        label: "\u0414\u0430\u0442\u0430 \u0420\u043E\u0436\u0434\u0435\u043D\u0438\u044F",
-        value: "12.04.1995",
-      },
-      {
-        label: "\u0420\u043E\u0434\u0441\u0442\u0432\u0435\u043D\u043D\u0430\u044F \u0421\u0432\u044F\u0437\u044C",
-        value: "\u0421\u0443\u043F\u0440\u0443\u0433\u0430",
-      },
-    ],
-  },
-  {
-    title: "\u041F\u0430\u0446\u0438\u0435\u043D\u0442 \u21162",
-    data: [
-      {
-        label: "\u0424\u0418\u041E",
-        value: "\u0418\u0432\u0430\u043D\u043E\u0432 \u041C\u0430\u043A\u0441\u0438\u043C \u0418\u0432\u0430\u043D\u043E\u0432\u0438\u0447",
-      },
-      {
-        label: "\u041D\u043E\u043C\u0435\u0440 \u041A\u0430\u0440\u0442\u044B",
-        value: "957496-7548965-77",
-      },
-      {
-        label: "\u0414\u0430\u0442\u0430 \u0420\u043E\u0436\u0434\u0435\u043D\u0438\u044F",
-        value: "06.09.2015",
-      },
-      {
-        label: "\u0420\u043E\u0434\u0441\u0442\u0432\u0435\u043D\u043D\u0430\u044F \u0421\u0432\u044F\u0437\u044C",
-        value: "\u0421\u044B\u043D",
-      },
-    ],
-  },
-];
+type Relative = {
+  member?: string | null;
+  relationship?: string | null;
+  memberID?: string | null;
+  memberBirthDate?: string | null;
+  memberCardNumber?: string | null;
+};
+
+type PatientDetails = {
+  id?: string | null;
+  fullName?: string | null;
+  birthDate?: string | null;
+  gender?: string | null;
+  medcardNumber?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  relatives?: Relative[] | null;
+};
+
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleDateString("ru-RU");
+}
 
 export default function CardPage() {
+  const { user, setUser } = useAuth();
+  const [patient, setPatient] = useState<PatientDetails | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [switchingId, setSwitchingId] = useState<string | null>(null);
+
+  const patientId = user?.onecId?.trim() || null;
+
+  useEffect(() => {
+    if (!patientId) {
+      setPatient(null);
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      const cached = window.sessionStorage.getItem(`medcard:${patientId}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached) as PatientDetails;
+          setPatient(parsed);
+          return;
+        } catch {
+          window.sessionStorage.removeItem(`medcard:${patientId}`);
+        }
+      }
+    }
+
+    const controller = new AbortController();
+    setLoading(true);
+    fetch(`/api/patients?patientId=${encodeURIComponent(patientId)}`, {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const payload = (await res.json().catch(() => null)) as { patient?: PatientDetails | null } | null;
+        if (!res.ok) {
+          throw new Error("Не удалось получить данные пациента");
+        }
+        return payload?.patient ?? null;
+      })
+      .then((data) => {
+        setPatient(data);
+        if (typeof window !== "undefined" && data) {
+          window.sessionStorage.setItem(`medcard:${patientId}`, JSON.stringify(data));
+        }
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        console.warn("Ошибка загрузки медкарты:", error);
+        setPatient(null);
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [patientId]);
+
+  const mainInfo = useMemo(
+    () => [
+      {
+        label: "ФИО",
+        value: patient?.fullName || user?.fullName || "-",
+      },
+      {
+        label: "Номер телефона",
+        value: patient?.phone || user?.phone || "-",
+      },
+      {
+        label: "Почта",
+        value: patient?.email || user?.email || "-",
+      },
+      {
+        label: "Номер карты",
+        value: patient?.medcardNumber || user?.medcardNumber || "-",
+      },
+      {
+        label: "Дата рождения",
+        value: formatDate(patient?.birthDate || user?.birthDate),
+      },
+    ],
+    [patient?.birthDate, patient?.email, patient?.fullName, patient?.medcardNumber, patient?.phone, user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.phone],
+  );
+
+  const relatives = useMemo(() => patient?.relatives?.filter(Boolean) ?? [], [patient?.relatives]);
+
+  const handleSwitch = async (relative: Relative) => {
+    if (!user || !relative.memberID) {
+      return;
+    }
+    if (user.onecId && user.onecId === relative.memberID) {
+      return;
+    }
+    setSwitchingId(relative.memberID);
+    try {
+      const res = await fetch("/api/auth/switch-relative", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone: user.phone,
+          memberId: relative.memberID,
+        }),
+      });
+      const payload = (await res.json().catch(() => null)) as { user?: Partial<typeof user> } | null;
+      if (!res.ok || !payload?.user) {
+        throw new Error("Не удалось сменить аккаунт");
+      }
+      setUser({
+        ...user,
+        ...payload.user,
+      });
+    } catch (error) {
+      console.warn("Ошибка смены аккаунта:", error);
+    } finally {
+      setSwitchingId(null);
+    }
+  };
+
   return (
     <div className="min-h-dvh flex flex-col bg-[#EEF3FF]">
       <main className="flex-1">
@@ -88,7 +180,7 @@ export default function CardPage() {
                     {"\u041C\u0435\u0434\u043A\u0430\u0440\u0442\u0430:"}
                   </p>
                   <ul className="mt-3 space-y-2 text-sm text-neutral-700">
-                    {MAIN_CARD_INFO.map((item) => (
+                    {mainInfo.map((item) => (
                       <li key={item.label}>
                         <span className="font-semibold text-neutral-800">
                           {item.label}
@@ -108,28 +200,59 @@ export default function CardPage() {
               </header>
               <div className="mt-6 h-px w-full bg-[#E9EDF8]" />
               <div className="mt-6 space-y-6">
-                {PATIENTS.map((patient, index) => (
-                  <article key={patient.title}>
-                    <h2 className="text-base font-semibold text-neutral-800">
-                      {patient.title}
-                    </h2>
-                    <ul className="mt-3 space-y-2 text-sm text-neutral-700">
-                      {patient.data.map((item) => (
-                        <li key={item.label}>
-                          <span className="font-semibold text-neutral-800">
-                            {item.label}
-                          </span>{" "}
+                {loading && (
+                  <p className="text-sm font-medium text-neutral-500">Загружаем данные...</p>
+                )}
+                {!loading && relatives.length === 0 && (
+                  <p className="text-sm font-medium text-neutral-500">Родственники не найдены.</p>
+                )}
+                {!loading &&
+                  relatives.map((relative, index) => (
+                    <article key={`${relative.memberID || "relative"}-${index}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-base font-semibold text-neutral-800">
+                          {relative.relationship || "Родственник"}
+                        </h2>
+                        <button
+                          type="button"
+                          onClick={() => handleSwitch(relative)}
+                          disabled={switchingId === relative.memberID}
+                          className="rounded-full border border-[#0F86FF]/30 px-3 py-1 text-xs font-semibold text-[#0F86FF] transition hover:border-[#0F86FF] hover:text-[#0C6FD9]"
+                        >
+                          {switchingId === relative.memberID ? "Входим..." : "Войти как"}
+                        </button>
+                      </div>
+                      <ul className="mt-3 space-y-2 text-sm text-neutral-700">
+                        <li>
+                          <span className="font-semibold text-neutral-800">ФИО</span>{" "}
                           <span className="font-medium text-neutral-600">
-                            {item.value}
+                            {relative.member || "-"}
                           </span>
                         </li>
-                      ))}
-                    </ul>
-                    {index < PATIENTS.length - 1 && (
-                      <div className="mt-5 h-px w-full bg-[#E9EDF8]" />
-                    )}
-                  </article>
-                ))}
+                        <li>
+                          <span className="font-semibold text-neutral-800">Номер карты</span>{" "}
+                          <span className="font-medium text-neutral-600">
+                            {relative.memberCardNumber || "-"}
+                          </span>
+                        </li>
+                        <li>
+                          <span className="font-semibold text-neutral-800">Дата рождения</span>{" "}
+                          <span className="font-medium text-neutral-600">
+                            {formatDate(relative.memberBirthDate)}
+                          </span>
+                        </li>
+                        <li>
+                          <span className="font-semibold text-neutral-800">Родственная связь</span>{" "}
+                          <span className="font-medium text-neutral-600">
+                            {relative.relationship || "-"}
+                          </span>
+                        </li>
+                      </ul>
+                      {index < relatives.length - 1 && (
+                        <div className="mt-5 h-px w-full bg-[#E9EDF8]" />
+                      )}
+                    </article>
+                  ))}
               </div>
             </section>
           </div>

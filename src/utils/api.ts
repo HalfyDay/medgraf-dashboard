@@ -1,4 +1,4 @@
-﻿// src/utils/api.ts
+// src/utils/api.ts
 import type { DoctorDirectoryEntry } from "@/types/clinic";
 
 export const DOCTOR_AVATAR_PLACEHOLDER = "/doctor.svg";
@@ -671,39 +671,54 @@ export async function fetchDoctors(): Promise<Doctor[]> {
 }
 
 export async function fetchDoctorSchedule(doctorId: string): Promise<DoctorScheduleDay[]> {
-  await delay(320);
-  const schedule = MOCK_DOCTOR_SCHEDULE[doctorId] ?? [];
-  return schedule.map((day) => ({
-    date: day.date,
-    slots: day.slots.map((slot) => ({ ...slot })),
-  }));
+  if (!doctorId) {
+    return [];
+  }
+  const res = await fetch(`/api/schedule?doctorId=${encodeURIComponent(doctorId)}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+  const payload = (await res.json().catch(() => null)) as
+    | { schedule?: DoctorScheduleDay[]; error?: string }
+    | null;
+  if (!res.ok) {
+    const message = payload?.error || "Failed to load schedule";
+    throw new Error(message);
+  }
+  if (!payload || !Array.isArray(payload.schedule)) {
+    return [];
+  }
+  return payload.schedule;
 }
 
 export async function bookAppointment(payload: BookAppointmentPayload): Promise<Appointment> {
   await delay(500);
 
   const doctor = MOCK_DOCTORS.find((item) => item.id === payload.doctorId);
-  if (!doctor) {
-    throw new Error("Doctor not found");
-  }
-
   const schedule = MOCK_DOCTOR_SCHEDULE[payload.doctorId] ?? [];
   const flatSlots = schedule.flatMap((day) => day.slots.map((slot) => ({ day: day.date, slot })));
   const matched = flatSlots.find((entry) => entry.slot.id === payload.slotId);
 
-  if (!matched) {
-    throw new Error("Slot not found");
+  let slotStart = matched?.slot.start;
+  if (!slotStart) {
+    const match = payload.slotId.match(/(\d{4}-\d{2}-\d{2})-(\d{4})$/);
+    if (match) {
+      const hhmm = match[2];
+      slotStart = `${match[1]}T${hhmm.slice(0, 2)}:${hhmm.slice(2)}:00`;
+    } else {
+      throw new Error("Slot not found");
+    }
   }
 
   const appointment: Appointment = {
     id: `new-${Date.now()}`,
-    date: matched.slot.start,
-    serviceName: `РџСЂРёС‘Рј Сѓ РІСЂР°С‡Р° ${doctor.specialty}`,
-    doctorName: doctor.fullName,
-    specialty: doctor.specialty,
+    date: slotStart,
+    serviceName: `Service: ${doctor?.specialty ?? "General"}`,
+    doctorName: doctor?.fullName ?? payload.doctorId,
+    specialty: doctor?.specialty ?? "General",
     clinic: { ...APPOINTMENT_CLINIC },
     status: "planned",
-    doctorAvatar: doctor.photoUrl || DOCTOR_AVATAR_PLACEHOLDER,
+    doctorAvatar: doctor?.photoUrl || DOCTOR_AVATAR_PLACEHOLDER,
   };
 
   return appointment;

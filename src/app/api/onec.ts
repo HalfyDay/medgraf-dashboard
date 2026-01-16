@@ -25,6 +25,7 @@ type OneCAction = {
   mainImage?: string;
   banner?: string;
   image?: string;
+  images?: string[];
 };
 
 type OneCActionResponse = {
@@ -342,7 +343,14 @@ function pickField(obj: Record<string, unknown>, candidates: string[]): string |
 function mapActionToPromotion(action: OneCAction): Promotion | null {
   const safeAction = action as Record<string, unknown>;
   const title = pickField(safeAction, ["title", "name", "header"]);
-  let image = pickField(safeAction, ["mainimage", "mainImage", "image", "banner", "picture"]);
+  const images =
+    Array.isArray((safeAction as { images?: unknown }).images)
+      ? ((safeAction as { images: unknown[] }).images
+          .map((value) => (typeof value === "string" ? value.trim() : String(value ?? "")))
+          .filter((value) => value.length > 0))
+      : [];
+  let image = images[0] || pickField(safeAction, ["mainimage", "mainImage", "image", "banner", "picture"]);
+  let bannerImage = images[1] || pickField(safeAction, ["banner", "mainimage", "mainImage", "image", "picture"]);
 
   if (image) {
     try {
@@ -352,6 +360,14 @@ function mapActionToPromotion(action: OneCAction): Promotion | null {
     }
   } else {
     image = "/clinic.svg";
+  }
+
+  if (bannerImage) {
+    try {
+      bannerImage = new URL(bannerImage).toString();
+    } catch {
+      // keep as-is if URL parsing fails
+    }
   }
 
   if (!title) {
@@ -370,7 +386,7 @@ function mapActionToPromotion(action: OneCAction): Promotion | null {
     start,
     end,
     cardImage: image,
-    banner: pickField(safeAction, ["banner", "mainimage", "mainImage", "image"]) || image,
+    banner: bannerImage || image,
   };
 }
 
