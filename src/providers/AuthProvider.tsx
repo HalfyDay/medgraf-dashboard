@@ -4,6 +4,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { postJson } from "@/utils/http";
 import { normalizePhone } from "@/utils/phone";
 import { AUTH_STORAGE_KEY } from "@/constants/auth";
+import { useTheme } from "@/providers/ThemeProvider";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -36,11 +37,34 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const THEME_BY_USER_KEY = "medgraf-theme-by-user";
+
+const readThemeMap = (): Record<string, "light" | "dark"> => {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  try {
+    const raw = window.localStorage.getItem(THEME_BY_USER_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, "light" | "dark">;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeThemeMap = (map: Record<string, "light" | "dark">) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(THEME_BY_USER_KEY, JSON.stringify(map));
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [actionPending, setActionPending] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -63,6 +87,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus("unauthenticated");
     }
   }, []);
+
+  useEffect(() => {
+    if (!user || status !== "authenticated" || typeof window === "undefined") {
+      return;
+    }
+    const userKey = user.id ? String(user.id) : user.phone;
+    if (!userKey) return;
+    const map = readThemeMap();
+    if (map[userKey] === theme) return;
+    map[userKey] = theme;
+    writeThemeMap(map);
+  }, [status, theme, user]);
+
+  useEffect(() => {
+    if (!user || status !== "authenticated" || typeof window === "undefined") {
+      return;
+    }
+    const userKey = user.id ? String(user.id) : user.phone;
+    if (!userKey) return;
+    const map = readThemeMap();
+    const stored = map[userKey];
+    if (stored && stored !== theme) {
+      setTheme(stored);
+    }
+  }, [setTheme, status, theme, user]);
 
   const persistUser = useCallback((next: AuthUser | null) => {
     setUserState(next);
@@ -87,6 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
         });
         persistUser(result.user);
+        const userKey = result.user.id ? String(result.user.id) : result.user.phone;
+        const map = readThemeMap();
+        const nextTheme = (userKey && map[userKey]) ? map[userKey] : "light";
+        if (nextTheme !== theme) {
+          setTheme(nextTheme);
+        }
         return { success: true, user: result.user };
       } catch (error) {
         console.warn("Авторизация не удалась:", error);
@@ -97,12 +152,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setActionPending(false);
       }
     },
-    [persistUser],
+    [persistUser, setTheme, theme],
   );
 
   const logout = useCallback(() => {
     persistUser(null);
-  }, [persistUser]);
+    setTheme("light");
+  }, [persistUser, setTheme]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
