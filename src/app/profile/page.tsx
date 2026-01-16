@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { extractPhoneDigits, formatPhoneInput } from "@/utils/phone";
+import { useTheme } from "@/providers/ThemeProvider";
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -19,6 +20,8 @@ const POLICY_URL = "/files/politics.pdf";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
 
   const details = useMemo(
     () => [
@@ -51,7 +54,7 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#EEF3FF]">
+    <div className="flex min-h-dvh flex-col bg-background">
       <main className="flex-1">
         <div className="mx-auto max-w-[420px] px-5 py-10">
           <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#28D07C] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">
@@ -82,7 +85,7 @@ export default function ProfilePage() {
 
           <div className="-mt-14 space-y-6">
             <section className="relative rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">
-              <ul className="divide-y divide-[#E9EDF8]">
+              <ul className="divide-y divide-slate-100">
                 {details.map((item) => (
                   <li key={item.label} className="py-3 first:pt-0 last:pb-0">
                     <div className="text-sm font-bold text-neutral-800">{item.label}</div>
@@ -90,15 +93,43 @@ export default function ProfilePage() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-4 rounded-2xl bg-[#F4F7FF] px-4 py-3 text-sm text-[#2B4C7A]">
+              <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                 <a
                   href={POLICY_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-[#0C8FE8] hover:underline"
+                  className="font-semibold text-sky-600 hover:underline"
                 >
                   Политика обработки персональных данных (PDF)
                 </a>
+              </div>
+            </section>
+
+            <section className="rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-bold text-neutral-800">Темная тема</div>
+                  <div className="mt-1 text-sm text-neutral-600">
+                    Переключите оформление приложения
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isDark}
+                  onClick={toggleTheme}
+                  className={[
+                    "relative inline-flex h-8 w-14 items-center rounded-full transition",
+                    isDark ? "bg-sky-500" : "bg-slate-200",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "theme-switch-knob h-6 w-6 translate-x-1 rounded-full shadow transition",
+                      isDark ? "translate-x-7" : "",
+                    ].join(" ")}
+                  />
+                </button>
               </div>
             </section>
 

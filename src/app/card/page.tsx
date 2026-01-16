@@ -155,7 +155,7 @@ export default function CardPage() {
   };
 
   return (
-    <div className="min-h-dvh flex flex-col bg-[#EEF3FF]">
+    <div className="min-h-dvh flex flex-col bg-background">
       <main className="flex-1">
         <div className="mx-auto max-w-[420px] px-5 py-10">
           <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#28D07C] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">

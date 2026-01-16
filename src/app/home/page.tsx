@@ -339,7 +339,7 @@ export default function HomePage() {
 
 
   return (
-    <main className="min-h-dvh bg-[#F7FAFF]">
+    <main className="min-h-dvh bg-background">
       {/* <Header onNotificationsClick={() => setNotifOpen(true)} /> */}
 
 
@@ -626,7 +626,7 @@ export default function HomePage() {
 
             {/* Белая карточка поверх карты */}
             <div className="pointer-events-none absolute left-1/2 bottom-4 w-[92%] -translate-x-1/2">
-              <div className="mx-auto flex items-center justify-between gap-4 rounded-[22px] bg-white/95 p-4 shadow-xl ring-1 ring-slate-100 backdrop-blur">
+              <div className="mx-auto flex items-center justify-between gap-4 rounded-[22px] bg-white/95 p-4 shadow-xl ring-1 ring-slate-100 backdrop-blur dark:bg-slate-900/90 dark:ring-slate-800 dark:shadow-[0_12px_30px_rgba(0,0,0,0.45)]">
                 <div className="flex min-w-0 items-center gap-3">
                   {/* ⬇️ заменили контейнер с фоном на сам маркер */}
                   <img
@@ -635,15 +635,15 @@ export default function HomePage() {
                     className="h-12 w-12 shrink-0"
                   />
                   <div className="min-w-0">
-                    <div className="truncate text-[18px] font-semibold text-slate-900">Медграфт</div>
-                    <div className="truncate text-[14px] text-slate-500">Братск, Россия</div>
+                    <div className="truncate text-[18px] font-semibold text-slate-900 dark:text-slate-100">Медграфт</div>
+                    <div className="truncate text-[14px] text-slate-500 dark:text-slate-400">Братск, Россия</div>
                   </div>
                 </div>
                 <a
                   href="https://yandex.ru/maps/-/CLuL7Jmp"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="pointer-events-auto shrink-0 text-[15px] font-semibold text-sky-600 hover:underline"
+                  className="pointer-events-auto shrink-0 text-[15px] font-semibold text-sky-600 hover:underline dark:text-sky-400"
                 >
                   На карте
                 </a>
@@ -656,8 +656,8 @@ export default function HomePage() {
           <div className="grid gap-3 [grid-template-columns:minmax(0,1fr)_auto] max-[340px]:gap-2">
             {/* ЛЕВАЯ колонка */}
             <div className="min-w-0 space-y-3 pr-1 self-start">
-              <a href={`tel:${contacts.phone.replace(/[^\d+]/g, "")}`} className="flex items-start gap-2.5">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100">
+              <a href={`tel:${contacts.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2.5">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
                   <img src="/phone.svg" alt="" className="h-4.5 w-4.5" />
                 </span>
                 <span className="text-[16px] font-bold text-slate-900">
@@ -666,12 +666,9 @@ export default function HomePage() {
               </a>
 
               {/* АДРЕС: теперь без truncate, можно переносить строки */}
-              <div className="flex items-start gap-2.5 min-w-0">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                    <path d="M12 22s7-5.33 7-12a7 7 0 1 0-14 0c0 6.67 7 12 7 12Z" stroke="currentColor" strokeWidth="1.6"/>
-                    <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="1.6"/>
-                  </svg>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
+                  <img src="/location.svg" alt="" className="h-4.5 w-4.5" />
                 </span>
                 <div className="min-w-0 leading-tight">
                   <span className="block text-[15px] font-bold text-slate-900 whitespace-normal">
@@ -686,8 +683,8 @@ export default function HomePage() {
 
             {/* ПРАВАЯ колонка — одна строка, не влияет на ширину адреса слева */}
             <div className="pl-1 self-start">
-              <div className="flex items-start gap-2.5 whitespace-nowrap">
-                <span className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100">
+              <div className="flex items-center gap-2.5 whitespace-nowrap">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
                   <img src="/globe.svg" alt="" className="h-4.5 w-4.5" />
                 </span>
                 <a

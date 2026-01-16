@@ -4,6 +4,8 @@ import "./globals.css";
 import Script from "next/script";
 import AppShell from "@/components/AppShell";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
+import { cookies } from "next/headers";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
@@ -34,17 +36,27 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  colorScheme: "light",
+  colorScheme: "light dark",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1220" },
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const themeCookie = (await cookies()).get("medgraf-theme")?.value;
+  const isDark = themeCookie === "dark";
+
   return (
-    <html lang="ru" style={{ WebkitTapHighlightColor: "transparent" }}>
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-[#F7FAFF] antialiased`}>
+    <html
+      lang="ru"
+      className={isDark ? "dark" : undefined}
+      style={{
+        WebkitTapHighlightColor: "transparent",
+        colorScheme: isDark ? "dark" : "light",
+      }}
+    >
+      <body className={`${geistSans.variable} ${geistMono.variable} bg-background antialiased`}>
         {/* pwa-bip Script — оставить как есть */}
         <Script id="pwa-bip" strategy="beforeInteractive">
           {`
@@ -60,9 +72,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             })();
           `}
         </Script>
-        <AuthProvider>
-          <AppShell>{children}</AppShell>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppShell>{children}</AppShell>
+          </AuthProvider>
+        </ThemeProvider>
      </body>
     </html>
   );

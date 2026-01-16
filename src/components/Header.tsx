@@ -43,7 +43,7 @@ export default function Header({
   const title = userName ?? apiName ?? "";
 
   return (
-    <header className="fixed inset-x-0 top-0 z-[1000] bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 pointer-events-auto">
+    <header className="fixed inset-x-0 top-0 z-[1000] bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-900/80 dark:supports-[backdrop-filter]:bg-slate-900/60 pointer-events-auto">
       <div className="mx-auto max-w-[520px] px-4 py-3">
         <div className="relative flex items-center justify-between">
           {/* ЛОГО */}
@@ -56,10 +56,10 @@ export default function Header({
             {loading ? (
               <span
                 aria-hidden
-                className="h-[20px] w-[180px] rounded-full bg-white/50 backdrop-blur-sm supports-[backdrop-filter]:bg-white/30 animate-pulse pointer-events-none"
+                className="h-[20px] w-[180px] rounded-full bg-white/50 backdrop-blur-sm supports-[backdrop-filter]:bg-white/30 animate-pulse pointer-events-none dark:bg-slate-700/40 dark:supports-[backdrop-filter]:bg-slate-700/30"
               />
             ) : (
-              <div className="truncate text-[17px] font-semibold text-slate-900 pointer-events-none">
+              <div className="truncate text-[17px] font-semibold text-slate-900 pointer-events-none dark:text-slate-100">
                 {title || "—"}
               </div>
             )}
@@ -82,13 +82,13 @@ export default function Header({
                     : "/notifications.svg"
                 }
                 alt="Уведомления"
-                className="h-15 w-15"
+                className="h-15 w-15 dark:invert dark:brightness-110"
               />
             </button>
           </div>
         </div>
       </div>
-      <div className="h-px w-full bg-slate-100" />
+      <div className="h-px w-full bg-slate-100 dark:bg-slate-800" />
     </header>
   );
 }

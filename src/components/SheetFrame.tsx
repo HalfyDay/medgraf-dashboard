@@ -440,7 +440,7 @@ export default function SheetFrame({
         ref={frameRef}
         className={clsx(
           "relative z-[1] w-full",
-          "rounded-t-[24px] bg-white",
+          "rounded-t-[24px] bg-white dark:bg-slate-900",
           "shadow-[0_-4px_24px_rgba(0,0,0,0.18)]"
         )}
         style={{
@@ -487,7 +487,7 @@ export default function SheetFrame({
         <div
           ref={scrollRef}
           className={clsx(
-            "-mt-6 w-full overflow-y-auto rounded-t-[24px] bg-white px-4 pb-8 pt-6",
+            "-mt-6 w-full overflow-y-auto rounded-t-[24px] bg-white px-4 pb-8 pt-6 dark:bg-slate-900",
             "relative z-[2]",
             "overscroll-contain touch-pan-y",
             innerClassName
@@ -511,7 +511,7 @@ export function SectionCard({
   className = "",
 }: PropsWithChildren<{ className?: string }>) {
   return (
-    <div className={clsx("mx-1 rounded-[18px] bg-white p-2 shadow-md ring-1 ring-slate-100", className)}>
+    <div className={clsx("mx-1 rounded-[18px] bg-white p-2 shadow-md ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800", className)}>
       {children}
     </div>
   );

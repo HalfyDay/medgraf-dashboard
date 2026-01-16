@@ -150,9 +150,9 @@ export default function BottomNav() {
         <motion.div
           aria-label="Навигация"
           className={[
-            "relative mx-auto rounded-2xl ring-1 ring-slate-100",
-            "bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60",
-            "shadow-[0_8px_30px_rgba(0,0,0,0.05)]",
+            "relative mx-auto rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800",
+            "bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-900/80 dark:supports-[backdrop-filter]:bg-slate-900/60",
+            "shadow-[0_8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
             "will-change-transform",
           ].join(" ")}
           initial={false}
@@ -248,6 +248,7 @@ export default function BottomNav() {
                       <motion.img
                         src={iconActive ? it.iconActive : it.icon}
                         alt={it.label}
+                        className={!iconActive ? "dark:invert dark:brightness-110" : undefined}
                         draggable={false}
                         initial={false}
                         animate={{

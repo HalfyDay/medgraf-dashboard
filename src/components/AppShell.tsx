@@ -9,7 +9,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { AppDataProvider } from "@/providers/AppDataProvider";
 
 const loader = (
-  <div className="flex min-h-dvh items-center justify-center bg-[#F7FAFF]">
+  <div className="flex min-h-dvh items-center justify-center bg-background">
     <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/40 border-t-primary" />
   </div>
 );
@@ -60,12 +60,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   }
 
   if (isAuthScreen) {
-    return <div className="min-h-dvh bg-[#F7FAFF]">{children}</div>;
+    return <div className="min-h-dvh bg-background">{children}</div>;
   }
 
   return (
     <AppDataProvider>
-      <div className="relative min-h-dvh">
+      <div className="relative min-h-dvh bg-background text-text">
         <Header
           onNotificationsClick={() => setNotifOpen(true)}
           notificationsOpen={notifOpen}

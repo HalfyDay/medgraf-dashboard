@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg: #f7faff;
+  --color-text: #0f172a;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-muted: #64748b;
+}
+
+.dark {
+  --color-bg: #0b1220;
+  --color-text: #e2e8f0;
+  --color-surface: #111827;
+  --color-surface-muted: #0f172a;
+  --color-border: #1f2937;
+  --color-muted: #94a3b8;
+}
 
 body {
   @apply bg-background text-text antialiased;
@@ -17,7 +34,16 @@ body {
 }
 
 .card-rounded {
-  @apply bg-white rounded-2xl shadow-soft p-6;
+  background-color: var(--color-surface);
+  @apply rounded-2xl shadow-soft p-6;
+}
+
+.theme-switch-knob {
+  background-color: #ffffff;
+}
+
+.dark .theme-switch-knob {
+  background-color: #ffffff;
 }
 
 /* 1. Ключевые кадры для анимации фонового градиента */
@@ -58,5 +84,76 @@ html, body, a, button, input, textarea {
 @supports (scrollbar-gutter: stable) {
   .page-overscroll {
     scrollbar-gutter: stable both-edges;
+  }
+}
+
+@layer utilities {
+  .dark .bg-white {
+    background-color: var(--color-surface);
+  }
+
+  .dark .bg-slate-50 {
+    background-color: #0f172a;
+  }
+
+  .dark .bg-slate-100 {
+    background-color: #111827;
+  }
+
+  .dark .bg-slate-200 {
+    background-color: #1f2937;
+  }
+
+  .dark .bg-gray-50 {
+    background-color: #0f172a;
+  }
+
+  .dark .bg-gray-100 {
+    background-color: #111827;
+  }
+
+  .dark .bg-gray-200 {
+    background-color: #1f2937;
+  }
+
+  .dark .text-slate-900,
+  .dark .text-slate-800,
+  .dark .text-neutral-800,
+  .dark .text-gray-900 {
+    color: #e2e8f0;
+  }
+
+  .dark .text-slate-700 {
+    color: #cbd5f5;
+  }
+
+  .dark .text-slate-600,
+  .dark .text-slate-500,
+  .dark .text-neutral-600,
+  .dark .text-gray-700,
+  .dark .text-gray-600 {
+    color: #94a3b8;
+  }
+
+  .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #1f2937;
+  }
+
+  .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #334155;
+  }
+
+  .dark .ring-slate-100 {
+    --tw-ring-color: #1f2937;
+  }
+
+  .dark .ring-slate-200 {
+    --tw-ring-color: #334155;
+  }
+
+  .dark .border-slate-200,
+  .dark .border-gray-300,
+  .dark .border-gray-200 {
+    border-color: #334155;
   }
 }
