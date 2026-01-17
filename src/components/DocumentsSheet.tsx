@@ -50,13 +50,13 @@ export default function DocumentsSheet({
       innerClassName="space-y-4"
     >
       {loading && (
-        <div className="rounded-[18px] bg-slate-100/80 px-5 py-6 text-center text-[15px] text-slate-600">
+        <div className="rounded-[18px] bg-slate-100/80 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
           {LOADING_TEXT}
         </div>
       )}
 
       {!loading && !hasDocuments && (
-        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600">
+        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
           {EMPTY_TEXT}
         </div>
       )}

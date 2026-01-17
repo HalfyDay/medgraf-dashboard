@@ -82,7 +82,12 @@ export default function Header({
                     : "/notifications.svg"
                 }
                 alt="Уведомления"
-                className="h-15 w-15 dark:invert dark:brightness-110"
+                className={[
+                  "h-15 w-15",
+                  notificationsOpen ? "" : "dark:invert dark:brightness-110",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               />
             </button>
           </div>

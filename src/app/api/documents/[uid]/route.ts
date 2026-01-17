@@ -104,10 +104,18 @@ export async function GET(
     const { buffer, contentType, disposition } = await loader(preparedUid.uid);
     const fallbackName = filenameParam ? sanitizeFilename(filenameParam) : sanitizeFilename(uid);
     const filename = parseFilenameFromDisposition(disposition) ?? fallbackName;
-    const isHtml =
-      docType === "appointment" ||
-      (contentType ? /text\/html|application\/xhtml\+xml/i.test(contentType) : false);
+    if (docType === "appointment") {
+      const pdfName = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+      return new NextResponse(buffer, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": buildContentDisposition(pdfName),
+        },
+      });
+    }
 
+    const isHtml = contentType ? /text\/html|application\/xhtml\+xml/i.test(contentType) : false;
     if (isHtml) {
       const html = decodeHtml(buffer);
       const pdf = await renderHtmlToPdf(html);

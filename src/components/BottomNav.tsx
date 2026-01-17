@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useTheme } from "@/providers/ThemeProvider";
 
 
 
@@ -14,12 +15,14 @@ export default function BottomNav() {
   const pathname = usePathname();
   const items = useMemo(
     () => [
-      { href: "/home",        icon: "/main.svg",    iconActive: "/highlighted_main.svg",    label: "Главная" },
-      { href: "/card",        icon: "/records.svg", iconActive: "/highlighted_records.svg", label: "Медкарта"  },
-      { href: "/profile",     icon: "/profile.svg", iconActive: "/highlighted_profile.svg", label: "Профиль" },
+      { href: "/home",        icon: "/main.svg",    iconDark: "/main_light.svg",    iconActive: "/highlighted_main.svg",    label: "Главная" },
+      { href: "/card",        icon: "/records.svg", iconDark: "/records_light.svg", iconActive: "/highlighted_records.svg", label: "Медкарта"  },
+      { href: "/profile",     icon: "/profile.svg", iconDark: "/profile_light.svg", iconActive: "/highlighted_profile.svg", label: "Профиль" },
     ],
     []
   );
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
 
   // ==== НАСТРОЙКИ (меняй здесь) ===========================================
   const FULL_HEIGHT = 70;        // высота панели в нормальном состоянии
@@ -246,9 +249,8 @@ export default function BottomNav() {
                       }}
                     >
                       <motion.img
-                        src={iconActive ? it.iconActive : it.icon}
+                        src={iconActive ? it.iconActive : (isDark ? it.iconDark : it.icon)}
                         alt={it.label}
-                        className={!iconActive ? "dark:invert dark:brightness-110" : undefined}
                         draggable={false}
                         initial={false}
                         animate={{

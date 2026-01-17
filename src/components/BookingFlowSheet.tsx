@@ -511,7 +511,7 @@ export default function BookingFlowSheet({
       )}
 
       {doctorsLoading && (
-        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600">
+        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
           Загружаем специалистов…
         </div>
       )}
@@ -523,7 +523,7 @@ export default function BookingFlowSheet({
       )}
 
       {!doctorsLoading && !doctorsError && filteredDoctors.length === 0 && (
-        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600">
+        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
           Для этой специализации пока нет доступных врачей.
         </div>
       )}
@@ -559,7 +559,7 @@ export default function BookingFlowSheet({
                       className="h-full w-full object-cover object-top"
                     />
                     {doctor.isAvailable && (
-                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold text-sky-600 shadow">
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1 text-[12px] font-semibold text-sky-600 shadow dark:bg-slate-900/90 dark:text-sky-300 dark:ring-1 dark:ring-slate-700">
                         <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
                         Доступен
                       </span>
@@ -629,7 +629,7 @@ export default function BookingFlowSheet({
     return (
       <div className="space-y-4">
         {scheduleLoading && (
-          <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600">
+          <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
             Загружаем свободные даты…
           </div>
         )}
@@ -641,7 +641,7 @@ export default function BookingFlowSheet({
         )}
 
         {!scheduleLoading && !scheduleError && schedule.length === 0 && (
-          <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600">
+          <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
             У выбранного врача пока нет свободных дат для записи.
           </div>
         )}

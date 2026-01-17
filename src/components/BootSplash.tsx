@@ -31,10 +31,10 @@ export default function BootSplash({ visible }: BootSplashProps) {
         visible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
     >
-      <div className="absolute inset-0 bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40" />
+      <div className="absolute inset-0 bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/40 dark:bg-slate-950/70 dark:supports-[backdrop-filter]:bg-slate-950/50" />
 
       <div className="relative z-10 flex h-full w-full items-center justify-center p-6">
-        <div className="w-full max-w-[360px] rounded-3xl bg-white/60 p-8 text-center shadow-xl backdrop-blur-md ring-1 ring-white/30 supports-[backdrop-filter]:bg-white/40">
+        <div className="w-full max-w-[360px] rounded-3xl bg-white/60 p-8 text-center shadow-xl backdrop-blur-md ring-1 ring-white/30 supports-[backdrop-filter]:bg-white/40 dark:bg-slate-900/70 dark:ring-slate-800 dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)] dark:supports-[backdrop-filter]:bg-slate-900/50">
           <div className="mx-auto mb-4 grid place-items-center">
             <img
               src="/logo.svg"
@@ -46,12 +46,12 @@ export default function BootSplash({ visible }: BootSplashProps) {
             />
           </div>
 
-          <div className="text-[24px] font-semibold text-slate-900">Добро пожаловать!</div>
-          <div className="mt-1 text-[16px] text-slate-500">
+          <div className="text-[24px] font-semibold text-slate-900 dark:text-slate-100">Добро пожаловать!</div>
+          <div className="mt-1 text-[16px] text-slate-500 dark:text-slate-400">
             Загружаем данные и интерфейс, это займёт всего пару секунд.
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-sky-600">
+          <div className="mt-6 flex items-center justify-center gap-2 text-sky-600 dark:text-sky-400">
             <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".2" />
               <path
