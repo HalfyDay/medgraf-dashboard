@@ -744,7 +744,6 @@ export default function AuthPage() {
             )}
 
             <p className="text-center text-xs text-[#5A719B]">
-              Если не получается войти, свяжитесь со службой поддержки клиники.
             </p>
           </div>
           <div className="space-y-3">
