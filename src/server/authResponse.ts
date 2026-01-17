@@ -19,7 +19,8 @@ export function buildLocalStorageLoginResponse(user: AuthUser, redirectTo = "/ho
       try {
         const user = ${payload};
         const storageKey = ${JSON.stringify(AUTH_STORAGE_KEY)};
-        window.localStorage.setItem(storageKey, JSON.stringify(user));
+        const expiresAt = Date.now() + ${30 * 60 * 1000};
+        window.localStorage.setItem(storageKey, JSON.stringify({ user, expiresAt }));
         window.location.replace(${JSON.stringify(redirectTo)});
       } catch (error) {
         console.error(error);
@@ -55,4 +56,3 @@ export function buildErrorPage(message: string, status = 400) {
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
 }
-

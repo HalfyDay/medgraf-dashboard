@@ -40,6 +40,7 @@ export default function CardPage() {
   const [patient, setPatient] = useState<PatientDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [switchNotice, setSwitchNotice] = useState<string | null>(null);
 
   const patientId = user?.onecId?.trim() || null;
 
@@ -147,6 +148,7 @@ export default function CardPage() {
         ...user,
         ...payload.user,
       });
+      setSwitchNotice(relative.member || payload.user.fullName || "???????");
     } catch (error) {
       console.warn("Ошибка смены аккаунта:", error);
     } finally {
@@ -154,8 +156,40 @@ export default function CardPage() {
     }
   };
 
+  useEffect(() => {
+    if (!switchNotice) return;
+    const timeout = window.setTimeout(() => setSwitchNotice(null), 2200);
+    return () => window.clearTimeout(timeout);
+  }, [switchNotice]);
+
   return (
     <div className="min-h-dvh flex flex-col bg-background">
+      {switchingId && (
+        <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/35 backdrop-blur-sm">
+          <div className="mx-6 w-full max-w-[320px] rounded-3xl bg-white/90 p-6 text-center shadow-xl ring-1 ring-white/40 dark:bg-slate-900/80 dark:ring-slate-800">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-300">
+              <svg className="h-6 w-6 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" opacity=".2" />
+                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="text-[16px] font-semibold text-slate-900 dark:text-slate-100">
+              Переключаем аккаунт
+            </div>
+            <div className="mt-1 text-[13.5px] text-slate-500 dark:text-slate-400">
+              Это займет пару секунд
+            </div>
+          </div>
+        </div>
+      )}
+
+      {switchNotice && (
+        <div className="fixed inset-x-0 top-16 z-[1501] flex justify-center px-4">
+          <div className="rounded-full bg-slate-900/90 px-4 py-2 text-[13.5px] font-semibold text-white shadow-lg">
+            Аккаунт переключен: {switchNotice}
+          </div>
+        </div>
+      )}
       <main className="flex-1">
         <div className="mx-auto max-w-[420px] px-5 py-10">
           <div className="rounded-[32px] bg-gradient-to-r from-[#0F99FF] via-[#28D07C] to-[#28D07C] p-[1px] shadow-[0_18px_40px_rgba(40,160,255,0.35)]">

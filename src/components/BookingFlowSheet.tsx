@@ -545,14 +545,14 @@ export default function BookingFlowSheet({
                   type="button"
                   onClick={() => setSelectedDoctorId(doctor.id)}
                   className={clsx(
-                    "flex h-[360px] w-[260px] shrink-0 flex-col rounded-[24px] bg-white text-left transition-all duration-150 active:translate-y-[1px]",
+                    "flex h-[360px] w-[260px] shrink-0 flex-col rounded-[24px] bg-white text-left transition-all duration-150 active:translate-y-[1px] dark:bg-slate-900 dark:text-slate-100",
                     selected
-                      ? "shadow-xl ring-2 ring-sky-400"
-                      : "shadow-sm ring-1 ring-slate-200 hover:ring-sky-200",
+                      ? "shadow-xl ring-2 ring-sky-400 dark:ring-sky-300 dark:shadow-[0_16px_36px_rgba(56,189,248,0.25)]"
+                      : "shadow-sm ring-1 ring-slate-200 hover:ring-sky-200 dark:ring-slate-800 dark:hover:ring-sky-400/60",
                   )}
                   aria-pressed={selected}
                 >
-                  <div className="relative h-[200px] w-full overflow-hidden rounded-[22px] bg-slate-100">
+                  <div className="relative h-[200px] w-full overflow-hidden rounded-[22px] bg-slate-100 dark:bg-slate-800">
                     <img
                       src={photoSrc}
                       alt=""
@@ -569,7 +569,7 @@ export default function BookingFlowSheet({
                   <div className="flex flex-1 flex-col space-y-3 px-4 pb-4 pt-3">
                     <div className="space-y-1.5">
                       <div className="flex items-baseline justify-between gap-1.5">
-                        <p className="text-[17px] font-semibold leading-tight text-slate-900 truncate whitespace-nowrap">
+                        <p className="text-[17px] font-semibold leading-tight text-slate-900 truncate whitespace-nowrap dark:text-slate-100">
                           {formatDoctorShortName(doctor.fullName)}
                         </p>
                       <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-amber-500">
@@ -592,7 +592,7 @@ export default function BookingFlowSheet({
                         </span>
                       </div>
                       <p
-                        className="text-[14px] font-medium text-slate-500"
+                        className="text-[14px] font-medium text-slate-500 dark:text-slate-400"
                         style={{
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
@@ -604,7 +604,7 @@ export default function BookingFlowSheet({
                       </p>
                     </div>
 
-                    <div className="text-[14px] font-semibold text-rose-500">
+                    <div className="text-[14px] font-semibold text-rose-500 dark:text-rose-400">
                       {formatMoney(doctor.price)} · {doctor.pricePeriod}
                     </div>
 
@@ -700,12 +700,12 @@ export default function BookingFlowSheet({
                     if (available) handleSelectDate(dateIso);
                   }}
                   className={clsx(
-                    "h-11 rounded-full text-[15px] font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500",
-                    available
-                      ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                        : "cursor-default bg-slate-50 text-slate-400",
-                    selected &&
-                      "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md hover:from-sky-500 hover:to-blue-600",
+                      "h-11 rounded-full text-[15px] font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500",
+                      available
+                        ? "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:ring-1 dark:ring-slate-600/80"
+                          : "cursor-default bg-slate-50 text-slate-400 dark:bg-slate-900/60 dark:text-slate-600",
+                      selected &&
+                        "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md hover:from-sky-500 hover:to-blue-600 dark:ring-2 dark:ring-sky-300/70",
                   )}
                   disabled={!available}
                 >
@@ -723,7 +723,7 @@ export default function BookingFlowSheet({
   const renderTimeStep = () => (
     <div className="space-y-4">
       {selectedDate && (
-        <div className="flex items-center justify-between rounded-[16px] bg-white px-4 py-3 text-[15px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-center justify-between rounded-[16px] bg-white px-4 py-3 text-[15px] font-semibold text-slate-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700">
           <button
             type="button"
             onClick={() => handleShiftDate("prev")}
@@ -750,7 +750,7 @@ export default function BookingFlowSheet({
       )}
 
       {slotsForSelectedDate.length === 0 && (
-        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600">
+        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
           На выбранную дату свободных слотов нет. Выберите другой день.
         </div>
       )}
@@ -766,9 +766,9 @@ export default function BookingFlowSheet({
                 onClick={() => setSelectedSlotId(slot.id)}
                 className={clsx(
                   "rounded-[14px] px-3 py-2 text-[15px] font-semibold transition-colors active:translate-y-[1px]",
-                  selected
-                    ? "bg-sky-500 text-white shadow"
-                    : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100",
+                    selected
+                      ? "bg-sky-500 text-white shadow"
+                      : "bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-600 dark:hover:bg-slate-700",
                 )}
               >
                 {formatTime(slot)}

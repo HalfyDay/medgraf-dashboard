@@ -171,4 +171,24 @@ html, body, a, button, input, textarea {
   .dark .border-gray-200 {
     border-color: #334155;
   }
+
+  .dark .shadow-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .shadow-md {
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .dark .shadow-lg {
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .dark .shadow-xl {
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  .dark .shadow-soft {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { postJson } from "@/utils/http";
 import { normalizePhone } from "@/utils/phone";
 import { AUTH_STORAGE_KEY } from "@/constants/auth";
@@ -38,6 +38,12 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const THEME_BY_USER_KEY = "medgraf-theme-by-user";
+const SESSION_TTL_MS = 30 * 60 * 1000;
+
+type StoredAuthPayload = {
+  user: AuthUser;
+  expiresAt: number;
+};
 
 const readThemeMap = (): Record<string, "light" | "dark"> => {
   if (typeof window === "undefined") {
@@ -64,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [actionPending, setActionPending] = useState(false);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<number | null>(null);
+  const logoutTimerRef = useRef<number | null>(null);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -78,15 +86,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const parsed: AuthUser = JSON.parse(raw);
-      setUserState(parsed);
+      const parsed = JSON.parse(raw) as StoredAuthPayload | AuthUser;
+      if ("user" in parsed && "expiresAt" in parsed) {
+        if (parsed.expiresAt <= Date.now()) {
+          window.localStorage.removeItem(AUTH_STORAGE_KEY);
+          setStatus("unauthenticated");
+          return;
+        }
+        setUserState(parsed.user);
+        setSessionExpiresAt(parsed.expiresAt);
+        setStatus("authenticated");
+        return;
+      }
+
+      const legacyUser = parsed as AuthUser;
+      const expiresAt = Date.now() + SESSION_TTL_MS;
+      setUserState(legacyUser);
+      setSessionExpiresAt(expiresAt);
       setStatus("authenticated");
+      window.localStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ user: legacyUser, expiresAt }),
+      );
     } catch (error) {
       console.warn("Не удалось восстановить состояние авторизации:", error);
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
       setStatus("unauthenticated");
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!sessionExpiresAt || status !== "authenticated") return;
+
+    if (logoutTimerRef.current) {
+      window.clearTimeout(logoutTimerRef.current);
+    }
+
+    const delay = Math.max(0, sessionExpiresAt - Date.now());
+    logoutTimerRef.current = window.setTimeout(() => {
+      setTheme("light");
+      setUserState(null);
+      setSessionExpiresAt(null);
+      setStatus("unauthenticated");
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    }, delay);
+
+    return () => {
+      if (logoutTimerRef.current) {
+        window.clearTimeout(logoutTimerRef.current);
+      }
+    };
+  }, [sessionExpiresAt, setTheme, status]);
 
   useEffect(() => {
     if (!user || status !== "authenticated" || typeof window === "undefined") {
@@ -120,8 +171,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (next) {
-      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
+      const expiresAt = Date.now() + SESSION_TTL_MS;
+      setSessionExpiresAt(expiresAt);
+      window.localStorage.setItem(
+        AUTH_STORAGE_KEY,
+        JSON.stringify({ user: next, expiresAt }),
+      );
     } else {
+      setSessionExpiresAt(null);
       window.localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   }, []);
