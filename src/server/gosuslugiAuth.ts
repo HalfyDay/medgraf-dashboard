@@ -23,7 +23,7 @@ const MOCK_MODE =
 
 const MOCK_PROFILE: GosuslugiProfile = {
   phone: process.env.GOSUSLUGI_MOCK_PHONE ?? "79991112233",
-  fullName: process.env.GOSUSLUGI_MOCK_FULLNAME ?? "Р“РѕСЃСѓСЃР»СѓРіР° РўРµСЃС‚РѕРІР°СЏ",
+  fullName: process.env.GOSUSLUGI_MOCK_FULLNAME ?? "Тестовый вход",
   birthDate: process.env.GOSUSLUGI_MOCK_BIRTHDATE ?? "1990-01-01",
   email: process.env.GOSUSLUGI_MOCK_EMAIL ?? "mock.user@gosuslugi.ru",
   snils: process.env.GOSUSLUGI_MOCK_SNILS ?? "123-456-789 00",

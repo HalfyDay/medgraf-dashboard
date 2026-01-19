@@ -106,6 +106,7 @@ type AuthFieldProps = {
   maxLength?: number;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
+  rightSlot?: React.ReactNode;
 };
 
 function AuthField({
@@ -118,22 +119,26 @@ function AuthField({
   maxLength,
   inputMode,
   autoComplete,
+  rightSlot,
 }: AuthFieldProps) {
   return (
     <label className="block text-left">
       <span className="mb-1 block pl-4 text-sm font-medium text-[#2D4F8A]">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        inputMode={inputMode}
-        autoComplete={autoComplete}
-        className={`h-12 w-full rounded-2xl border border-transparent bg-[#F0F5FF] px-5 text-base text-[#16345A] placeholder:text-[#96A8C4] focus:border-[#1AA4FF] focus:outline-none focus:ring-2 focus:ring-[#66C5FF]/60 ${
-          error ? "border-red-400 focus:ring-red-200" : ""
-        }`}
-      />
+      <div className="relative">
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          className={`h-12 w-full rounded-2xl border border-transparent bg-[#F0F5FF] px-5 text-base text-[#16345A] placeholder:text-[#96A8C4] focus:border-[#1AA4FF] focus:outline-none focus:ring-2 focus:ring-[#66C5FF]/60 ${
+            rightSlot ? "pr-12" : ""
+          } ${error ? "border-red-400 focus:ring-red-200" : ""}`}
+        />
+        {rightSlot && <span className="absolute inset-y-0 right-4 flex items-center">{rightSlot}</span>}
+      </div>
       {error && <span className="mt-1 block text-xs font-medium text-red-500">{error}</span>}
     </label>
   );
@@ -149,7 +154,7 @@ export default function AuthPage() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
-  const [loginStep, setLoginStep] = useState<LoginStep>("phone");
+  const [loginStep, setLoginStep] = useState<LoginStep>("password");
   const [loginSessionId, setLoginSessionId] = useState<string | null>(null);
   const [loginOtpCode, setLoginOtpCode] = useState("");
   const [loginOtpHint, setLoginOtpHint] = useState<string | null>(null);
@@ -160,9 +165,10 @@ export default function AuthPage() {
   const [loginStepLoading, setLoginStepLoading] = useState(false);
   const [policyAccepted, setPolicyAccepted] = useState(false);
   const [policyError, setPolicyError] = useState<string | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const resetLoginFlow = () => {
-    setLoginStep("phone");
+    setLoginStep("password");
     setLoginSessionId(null);
     setLoginOtpCode("");
     setLoginOtpHint(null);
@@ -214,8 +220,7 @@ export default function AuthPage() {
     window.location.href = "/api/auth/gosuslugi";
   };
 
-  const handleLoginPhoneSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handlePasswordHelpFlow = async () => {
     if (!ensurePolicyAccepted()) {
       return;
     }
@@ -228,9 +233,14 @@ export default function AuthPage() {
     try {
       const result = await startRemoteLogin(loginPhoneDigits);
       if (result.hasLocalPassword) {
-        setLoginStep("password");
-        setInfoMessage("Введите пароль для входа.");
-        setLoginSessionId(null);
+        const reset = await startPasswordReset(loginPhoneDigits);
+        setLoginSessionId(reset.sessionId);
+        setLoginOtpCode("");
+        setLoginOtpHint(reset.debugCode ?? null);
+        setResetPasswordValue("");
+        setResetPasswordConfirm("");
+        setLoginStep("resetOtp");
+        setInfoMessage("Мы отправили код подтверждения. Введите его из SMS, чтобы сбросить пароль.");
         return;
       }
       if (!result.sessionId) {
@@ -241,31 +251,12 @@ export default function AuthPage() {
       setLoginOtpCode("");
       setLoginOtpHint(result.debugCode ?? null);
       setLoginStep("otp");
-      setInfoMessage("Мы отправили код подтверждения на ваш номер телефона.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Не удалось начать вход";
-      setLoginError(message);
-    } finally {
-      setLoginStepLoading(false);
-    }
-  };
-
-  const handleForgotPasswordStart = async () => {
-    if (loginPhoneDigits.length !== 10) {
-      setLoginError("Введите номер телефона полностью");
-      return;
-    }
-    setLoginError(null);
-    setLoginStepLoading(true);
-    try {
-      const result = await startPasswordReset(loginPhoneDigits);
-      setLoginSessionId(result.sessionId);
-      setLoginOtpCode("");
-      setLoginOtpHint(result.debugCode ?? null);
-      setResetPasswordValue("");
-      setResetPasswordConfirm("");
-      setLoginStep("resetOtp");
-      setInfoMessage("Мы отправили код подтверждения. Введите его из SMS, чтобы сбросить пароль.");
+      const phoneLabel = loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : "";
+      setInfoMessage(
+        phoneLabel
+          ? `Мы отправили код подтверждения на номер ${phoneLabel}.`
+          : "Мы отправили код подтверждения на ваш номер телефона.",
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Не удалось отправить код";
       setLoginError(message);
@@ -481,27 +472,6 @@ export default function AuthPage() {
             <div className="mb-5 rounded-2xl bg-[#E6F5FF] px-4 py-3 text-sm text-[#0C8FE8]">{infoMessage}</div>
           )}
           <div className="space-y-5">
-            {loginError && (
-              <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{loginError}</div>
-            )}
-
-            {loginStep === "phone" && (
-              <form onSubmit={handleLoginPhoneSubmit} className="space-y-4">
-                <AuthField
-                  label="Телефон"
-                  placeholder="+7 (___) ___-__-__"
-                  value={loginPhoneInput}
-                  onChange={handleLoginPhoneChange}
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  maxLength={18}
-                />
-                <Button type="submit" className="w-full" disabled={loginStepLoading}>
-                  Продолжить
-                </Button>
-              </form>
-            )}
             {loginStep === "doc" && (
               <form onSubmit={handleDocSubmit} className="space-y-4">
                 <AuthField
@@ -543,45 +513,48 @@ export default function AuthPage() {
 
             {loginStep === "password" && (
               <form onSubmit={handleExistingPasswordSubmit} className="space-y-4">
-                <div className="rounded-2xl bg-[#EEF6FF] px-4 py-3 text-sm text-[#456388]">
-                  <p className="font-semibold text-[#16345A]">Номер</p>
-                  <p>{loginPhoneDigits ? formatPhoneInput(loginPhoneDigits) : ""}</p>
-                </div>
+                <AuthField
+                  label="Телефон"
+                  placeholder="+7 (___) ___-__-__"
+                  value={loginPhoneInput}
+                  onChange={handleLoginPhoneChange}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={18}
+                />
                 <AuthField
                   label="Пароль"
-                  type="password"
+                  type={showLoginPassword ? "text" : "password"}
                   placeholder="Введите пароль"
                   value={loginPassword}
                   onChange={(value) => {
                     setLoginPassword(value);
                     setLoginError(null);
                   }}
+                  rightSlot={
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-[#0C8FE8] hover:underline"
+                      onClick={() => setShowLoginPassword((prev) => !prev)}
+                      aria-label={showLoginPassword ? "Скрыть пароль" : "Показать пароль"}
+                    >
+                      {showLoginPassword ? "Скрыть" : "Показать"}
+                    </button>
+                  }
                 />
-                <div className="text-right">
+                <div className="text-right text-sm font-semibold text-[#0C8FE8]">
                   <button
                     type="button"
-                    className="text-sm font-semibold text-[#0C8FE8] hover:underline"
-                    onClick={handleForgotPasswordStart}
+                    className="hover:underline"
+                    onClick={handlePasswordHelpFlow}
                     disabled={loginStepLoading || actionPending}
                   >
-                    Забыли пароль?
+                    Нет или забыл пароль?
                   </button>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1 whitespace-nowrap px-4"
-                    onClick={() => {
-                      resetLoginFlow();
-                      setLoginPhoneDigits("");
-                      setLoginPhoneInput("");
-                      setLoginPassportDigits("");
-                    }}
-                  >
-                    Изменить номер
-                  </Button>
-                  <Button type="submit" className="flex-1" disabled={actionPending}>
+                <div className="flex items-center">
+                  <Button type="submit" className="w-full" disabled={actionPending}>
                     Войти
                   </Button>
                 </div>
@@ -616,6 +589,21 @@ export default function AuthPage() {
                   <Button type="submit" size="sm" className="flex-1 py-2.5" disabled={loginStepLoading}>
                     Подтвердить
                   </Button>
+                </div>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[#0C8FE8] hover:underline"
+                    onClick={() => {
+                      setLoginOtpCode("");
+                      setLoginOtpHint(null);
+                      setInfoMessage(null);
+                      setLoginError(null);
+                      setLoginStep("password");
+                    }}
+                  >
+                    Вертуться назад
+                  </button>
                 </div>
               </form>
             )}
@@ -743,10 +731,14 @@ export default function AuthPage() {
               </form>
             )}
 
-            <p className="text-center text-xs text-[#5A719B]">
-            </p>
+            <p className="text-center text-xs text-[#5A719B] mb-2">Вход доступен только клиентам клиники.</p>
+            <div className="mb-3">
+              {loginError && (
+                <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{loginError}</div>
+              )}
+            </div>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-3 mt-2">
             <label className="flex items-start gap-3 rounded-2xl bg-[#F0F6FF] px-4 py-3 text-left text-xs text-[#35557A]">
               <input
                 type="checkbox"
