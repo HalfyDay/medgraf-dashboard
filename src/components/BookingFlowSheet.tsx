@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
   type TouchEvent as ReactTouchEvent,
@@ -23,7 +24,7 @@ import {
 } from "@/utils/api";
 import { useAuth } from "@/providers/AuthProvider";
 
-type BookingFlowStep = "doctor" | "date" | "time";
+type BookingFlowStep = "doctor" | "service" | "date" | "time";
 
 type BookingFlowSheetProps = {
   open: boolean;
@@ -39,6 +40,12 @@ const STEP_META: Record<
     title: "Выберите специалиста",
     subtitle: "Свободные дни",
     icon: "/doctor.svg",
+    actionLabel: "Далее",
+  },
+  service: {
+    title: "Выберите услугу",
+    subtitle: "Услуги",
+    icon: "/list.svg",
     actionLabel: "Далее",
   },
   date: {
@@ -59,6 +66,12 @@ const WEEKDAYS_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 const formatMoney = (amount: number) =>
   `${amount.toLocaleString("ru-RU")} ₽`;
+
+const formatServicePrice = (amount?: number | null) =>
+  typeof amount === "number" && amount > 0 ? formatMoney(amount) : null;
+
+const formatServiceDuration = (minutes?: number | null) =>
+  typeof minutes === "number" && minutes > 0 ? `${minutes} мин` : null;
 
 const toIsoDate = (year: number, monthIndex: number, day: number) =>
   [
@@ -177,6 +190,17 @@ export default function BookingFlowSheet({
     null,
   );
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+
+  const selectedDoctor = useMemo(
+    () => doctors.find((doctor) => doctor.id === selectedDoctorId) ?? null,
+    [doctors, selectedDoctorId],
+  );
+  const doctorServices = selectedDoctor?.services ?? [];
+  const selectedService = useMemo(
+    () => doctorServices.find((service) => service.id === selectedServiceId) ?? null,
+    [doctorServices, selectedServiceId],
+  );
 
   const [schedule, setSchedule] = useState<DoctorScheduleDay[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(false);
@@ -193,6 +217,22 @@ export default function BookingFlowSheet({
 
   const horizontalHandlers = useMemo(() => createHorizontalHandlers(), []);
   const horizontalStyle = useMemo(() => ({ touchAction: "pan-x" as const }), []);
+  const specialtiesListRef = useRef<HTMLDivElement | null>(null);
+  const doctorsListRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollSpecialties = (direction: "prev" | "next") => {
+    const container = specialtiesListRef.current;
+    if (!container) return;
+    const delta = direction === "prev" ? -220 : 220;
+    container.scrollBy({ left: delta, behavior: "smooth" });
+  };
+
+  const scrollDoctors = (direction: "prev" | "next") => {
+    const container = doctorsListRef.current;
+    if (!container) return;
+    const delta = direction === "prev" ? -260 : 260;
+    container.scrollBy({ left: delta, behavior: "smooth" });
+  };
 
   const resetState = useCallback(() => {
     setStep("doctor");
@@ -201,6 +241,7 @@ export default function BookingFlowSheet({
     setDoctorsError(null);
     setSelectedSpecialty(null);
     setSelectedDoctorId(null);
+    setSelectedServiceId(null);
     setSchedule([]);
     setScheduleLoading(false);
     setScheduleError(null);
@@ -265,6 +306,7 @@ export default function BookingFlowSheet({
   useEffect(() => {
     if (filteredDoctors.length === 0) {
       setSelectedDoctorId(null);
+      setSelectedServiceId(null);
       return;
     }
 
@@ -277,6 +319,22 @@ export default function BookingFlowSheet({
       setSelectedDoctorId(filteredDoctors[0].id);
     }
   }, [filteredDoctors, selectedDoctorId]);
+
+  useEffect(() => {
+    if (!selectedDoctor) {
+      setSelectedServiceId(null);
+      return;
+    }
+
+    const firstService = selectedDoctor.services?.[0] ?? null;
+    setSelectedServiceId((prev) => {
+      if (prev && selectedDoctor.services?.some((service) => service.id === prev)) {
+        return prev;
+      }
+      return firstService?.id ?? null;
+    });
+  }, [selectedDoctor]);
+
 
   useEffect(() => {
     if (!open || !selectedDoctorId) return;
@@ -392,12 +450,15 @@ export default function BookingFlowSheet({
   }, [schedule, selectedDate]);
 
   const canProceedDoctor = Boolean(selectedDoctorId);
+  const canProceedService = Boolean(selectedServiceId);
   const canProceedDate = Boolean(selectedDate);
   const canConfirm = Boolean(selectedSlotId) && !bookingLoading;
 
   const handleBack = () => {
-    if (step === "date") {
+    if (step === "service") {
       setStep("doctor");
+    } else if (step === "date") {
+      setStep("service");
     } else if (step === "time") {
       setStep("date");
     }
@@ -406,6 +467,13 @@ export default function BookingFlowSheet({
   const handlePrimaryAction = async () => {
     if (step === "doctor") {
       if (canProceedDoctor) {
+        setStep("service");
+      }
+      return;
+    }
+
+    if (step === "service") {
+      if (canProceedService) {
         setStep("date");
       }
       return;
@@ -431,6 +499,9 @@ export default function BookingFlowSheet({
       doctorId: selectedDoctorId,
       slotId: selectedSlotId,
       patientId: user.onecId,
+      serviceId: selectedService?.id ?? null,
+      serviceName: selectedService?.name ?? null,
+      doctorAvatar: selectedDoctor?.photoUrl ?? null,
       slotStart: selectedSlot?.start ?? null,
       slotEnd: selectedSlot?.end ?? null,
       doctorName: selectedDoctor?.fullName ?? null,
@@ -480,33 +551,56 @@ export default function BookingFlowSheet({
       <div className="mt-1 space-y-4 pb-3">
 
       {specialties.length > 0 && (
-        <div
-          className="-mx-4 mt-1 overflow-x-auto px-4 pb-1 no-scrollbar"
-          data-allow-horizontal-scroll="true"
-          style={horizontalStyle}
-          {...horizontalHandlers}
-        >
-          <div className="flex w-max gap-2 pr-4">
-            {specialties.map((item) => {
-              const active = item === selectedSpecialty;
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setSelectedSpecialty(item)}
-                  className={clsx(
-                    "flex-none rounded-full px-5 py-1.5 text-[15px] font-semibold transition-colors",
-                    active
-                      ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-                  )}
-                  aria-pressed={active}
-                >
-                  {item}
-                </button>
-              );
-            })}
+        <div className="-mx-4 mt-1 flex items-center gap-2 px-4">
+          <button
+            type="button"
+            onClick={() => scrollSpecialties("prev")}
+            className="hidden h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-slate-200 transition hover:bg-white dark:bg-slate-900/90 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900 md:inline-flex"
+            aria-label="Предыдущие специализации"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div
+            ref={specialtiesListRef}
+            className="flex-1 overflow-x-auto no-scrollbar"
+            data-allow-horizontal-scroll="true"
+            style={horizontalStyle}
+            {...horizontalHandlers}
+          >
+            <div className="flex w-max gap-2 pr-4">
+              {specialties.map((item) => {
+                const active = item === selectedSpecialty;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setSelectedSpecialty(item)}
+                    className={clsx(
+                      "flex-none rounded-full px-5 py-1.5 text-[15px] font-semibold transition-colors",
+                      active
+                        ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200",
+                    )}
+                    aria-pressed={active}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={() => scrollSpecialties("next")}
+            className="hidden h-8 w-8 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-slate-200 transition hover:bg-white dark:bg-slate-900/90 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900 md:inline-flex"
+            aria-label="Следующие специализации"
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
       )}
 
@@ -528,12 +622,38 @@ export default function BookingFlowSheet({
         </div>
       )}
 
-      <div
-        className="-mx-4 mt-2 overflow-x-auto px-4 pb-4 pt-2 no-scrollbar"
-        data-allow-horizontal-scroll="true"
-        style={horizontalStyle}
-        {...horizontalHandlers}
-      >
+      <div className="relative -mx-4 mt-2 px-4 pb-4 pt-2">
+        {!doctorsLoading && !doctorsError && filteredDoctors.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => scrollDoctors("prev")}
+              className="absolute left-3 top-[200px] z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-slate-200 transition hover:bg-white dark:bg-slate-900/90 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900 md:inline-flex"
+              aria-label="Предыдущие врачи"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollDoctors("next")}
+              className="absolute right-3 top-[200px] z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-700 shadow-md ring-1 ring-slate-200 transition hover:bg-white dark:bg-slate-900/90 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-900 md:inline-flex"
+              aria-label="Следующие врачи"
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </>
+        )}
+        <div
+          ref={doctorsListRef}
+          className="overflow-x-auto px-4 pb-4 pt-2 no-scrollbar"
+          data-allow-horizontal-scroll="true"
+          style={horizontalStyle}
+          {...horizontalHandlers}
+        >
         <div className="-mx-2 flex w-max gap-3 px-2 pb-2 pr-4">
             {filteredDoctors.map((doctor) => {
               const selected = doctor.id === selectedDoctorId;
@@ -572,24 +692,6 @@ export default function BookingFlowSheet({
                         <p className="text-[17px] font-semibold leading-tight text-slate-900 truncate whitespace-nowrap dark:text-slate-100">
                           {formatDoctorShortName(doctor.fullName)}
                         </p>
-                      <span className="inline-flex items-center gap-1 text-[15px] font-semibold text-amber-500">
-                        <svg
-                          width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            className="shrink-0"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="m12 2.75 2.31 5.41 5.94.5-4.52 3.84 1.38 5.78L12 15.8l-5.11 2.48 1.38-5.78-4.52-3.84 5.94-.5L12 2.75Z"
-                              stroke="currentColor"
-                              strokeWidth="1.4"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                          {doctor.rating.toFixed(1)}
-                        </span>
                       </div>
                       <p
                         className="text-[14px] font-medium text-slate-500 dark:text-slate-400"
@@ -605,7 +707,7 @@ export default function BookingFlowSheet({
                     </div>
 
                     <div className="text-[14px] font-semibold text-rose-500 dark:text-rose-400">
-                      {formatMoney(doctor.price)} · {doctor.pricePeriod}
+                      {formatMoney(doctor.price)}
                     </div>
 
                     <div className="mt-auto rounded-[16px] bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-center text-[15px] font-semibold text-white shadow">
@@ -616,7 +718,56 @@ export default function BookingFlowSheet({
               );
             })}
           </div>
+        </div>
       </div>
+    </div>
+  );
+
+  const renderServiceStep = () => (
+    <div className="space-y-4">
+      {doctorServices.length === 0 && (
+        <div className="rounded-[18px] bg-slate-100/90 px-5 py-6 text-center text-[15px] text-slate-600 dark:bg-slate-900/70 dark:text-slate-300">
+          Нет доступных услуг у выбранного специалиста.
+        </div>
+      )}
+
+      {doctorServices.length > 0 && (
+        <div className="overflow-hidden rounded-[22px] bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="divide-y divide-slate-100">
+            {doctorServices.map((service) => {
+              const selected = service.id === selectedServiceId;
+              const price = formatServicePrice(service.price ?? null);
+              const duration = formatServiceDuration(service.durationMinutes ?? null);
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  onClick={() => setSelectedServiceId(service.id)}
+                  aria-pressed={selected}
+                  className={clsx(
+                    "flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-[15px] font-semibold text-slate-700 transition-colors",
+                    selected
+                      ? "bg-sky-50 ring-1 ring-sky-200 dark:bg-slate-800 dark:ring-sky-400/60"
+                      : "bg-white hover:bg-slate-50",
+                  )}
+                >
+                  <div className="flex-1">
+                    <p className="text-[15px] font-semibold text-slate-800">{service.name}</p>
+                    {(duration || price) && (
+                      <p className="mt-1 text-[13px] font-medium text-slate-500">
+                        {[duration, price].filter(Boolean).join(" / ")}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[15px] font-semibold text-slate-900">
+                    {price ?? "-"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -782,11 +933,13 @@ export default function BookingFlowSheet({
 
   const meta = STEP_META[step];
   const showBack = step !== "doctor";
-  const stepNumber = step === "doctor" ? 1 : step === "date" ? 2 : 3;
+  const stepNumber =
+    step === "doctor" ? 1 : step === "service" ? 2 : step === "date" ? 3 : 4;
   const STEP_BAR_LABEL: Record<BookingFlowStep, string> = {
-    doctor: "Врачи клиники",
-    date: "Выберите день",
-    time: "Выберите время",
+    doctor: "Выбор специалиста",
+    service: "Выбор услуги",
+    date: "Выбор дня",
+    time: "Выбор времени",
   };
   const currentBarLabel = STEP_BAR_LABEL[step];
 
@@ -799,12 +952,12 @@ export default function BookingFlowSheet({
       iconSrc={meta.icon}
       initialVH={92}
       maxVH={100}
-      innerClassName="space-y-5 pb-6"
+      innerClassName="space-y-5 pb-24"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="text-[13px] font-semibold text-slate-400">
-            Шаг {stepNumber} из 3
+            Шаг {stepNumber} из 4
           </span>
           <span className="text-[15px] font-semibold text-slate-600">
             {currentBarLabel}
@@ -822,6 +975,7 @@ export default function BookingFlowSheet({
       </div>
 
       {step === "doctor" && renderDoctorsStep()}
+      {step === "service" && renderServiceStep()}
       {step === "date" && renderCalendarStep()}
       {step === "time" && renderTimeStep()}
 
@@ -831,12 +985,13 @@ export default function BookingFlowSheet({
         </div>
       )}
 
-      <div className="mt-3">
+      <div className="sticky bottom-0 z-10 -mx-4 mt-3 bg-white/95 px-4 py-3 backdrop-blur dark:bg-slate-900/90">
         <button
           type="button"
           onClick={handlePrimaryAction}
           disabled={
             (step === "doctor" && !canProceedDoctor) ||
+            (step === "service" && !canProceedService) ||
             (step === "date" && !canProceedDate) ||
             (step === "time" && !canConfirm)
           }

@@ -42,6 +42,10 @@ export default function HomePage() {
     contacts,
     appointments,
     setAppointments,
+    activeAppointments,
+    cancelledAppointments,
+    setActiveAppointments,
+    setCancelledAppointments,
     appointmentsLoading,
     documents,
     documentsLoading,
@@ -70,15 +74,15 @@ export default function HomePage() {
   const [recentBooking, setRecentBooking] = useState<Appointment | null>(null);
 
   const upcomingAppointment = useMemo(() => {
-    if (!appointments.length) return null;
-    const planned = appointments.filter((item) => item.status === "planned");
+    if (!activeAppointments.length) return null;
+    const planned = activeAppointments.filter((item) => item.status === "planned");
     if (!planned.length) return null;
     return planned.reduce((nearest, item) => {
       const itemTs = new Date(item.date).getTime();
       const nearestTs = new Date(nearest.date).getTime();
       return itemTs < nearestTs ? item : nearest;
     });
-  }, [appointments]);
+  }, [activeAppointments]);
 
   const upcomingDateLabel = upcomingAppointment ? formatTileDate(upcomingAppointment.date) : "—";
   const upcomingTimeLabel = upcomingAppointment ? formatTileTime(upcomingAppointment.date) : "—";
@@ -86,7 +90,7 @@ export default function HomePage() {
   const upcomingDoctorSpecialty =
     upcomingAppointment?.specialty ?? "Запишитесь на приём, чтобы мы показали детали";
   const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER;
-  const hasActiveAppointments = appointments.some((item) => item.status === "planned");
+  const hasActiveAppointments = activeAppointments.some((item) => item.status === "planned");
   const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
   const bookingSuccessSubtitle = useMemo(() => {
     if (!recentBooking) {
@@ -125,6 +129,8 @@ export default function HomePage() {
     setAppointments((prev) =>
       prev.map((item) => (item.id === appointment.id ? { ...item, status: "cancelled" } : item)),
     );
+    setActiveAppointments((prev) => prev.filter((item) => item.id !== appointment.id));
+    setCancelledAppointments((prev) => [{ ...appointment, status: "cancelled" }, ...prev]);
     setActiveAppointment((prev) =>
       prev && prev.id === appointment.id ? { ...prev, status: "cancelled" } : prev,
     );
@@ -161,6 +167,10 @@ export default function HomePage() {
 
   const handleBookingBooked = (appointment: Appointment) => {
     setAppointments((prev) => {
+      const next = [...prev, appointment];
+      return next.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    });
+    setActiveAppointments((prev) => {
       const next = [...prev, appointment];
       return next.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     });
@@ -423,19 +433,19 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center justify-between rounded-[18px] bg-white/95 p-3 text-slate-800 ring-1 ring-white/30">
+            <div className="mt-3 flex items-center justify-between rounded-[18px] bg-white/95 p-3 text-slate-800 ring-1 ring-white/30 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-700/60">
               <div className="flex items-center gap-3">
                 <img
                   src={upcomingDoctorAvatar}
                   alt=""
-                  className="h-10 w-10 rounded-full border border-slate-200 object-cover"
+                  className="h-10 w-10 rounded-full border border-slate-200 object-cover dark:border-slate-700"
                   onError={(event) => {
                     (event.currentTarget as HTMLImageElement).src = DOCTOR_AVATAR_PLACEHOLDER;
                   }}
                 />
                 <div className="min-w-0 leading-tight">
                   <div className="truncate text-[16px] font-semibold">{upcomingDoctorName}</div>
-                  <div className="mt-0.5 text-[12.5px] text-slate-500">
+                  <div className="mt-0.5 text-[12.5px] text-slate-500 dark:text-slate-400">
                     {upcomingDoctorSpecialty}
                   </div>
                 </div>
@@ -710,12 +720,14 @@ export default function HomePage() {
         open={visitsOpen}
         onClose={() => setVisitsOpen(false)}
         appointments={appointments}
+        activeAppointments={activeAppointments}
+        cancelledAppointments={cancelledAppointments}
         onSelect={handleSelectAppointment}
       />
       <MyAppointmentsSheet
         open={myAppointmentsOpen}
         onClose={() => setMyAppointmentsOpen(false)}
-        appointments={appointments}
+        appointments={activeAppointments}
         onSelect={handleSelectAppointment}
       />
       <AppointmentDetailsSheet

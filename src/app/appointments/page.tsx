@@ -1,35 +1,46 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useState } from "react";
-import { fetchAppointments, type Appointment } from "@/utils/api";
+import { fetchAppointments, fetchScheduleAppointments, type Appointment } from "@/utils/api";
 import { AppointmentCard } from "@/components/AppointmentCard";
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/providers/AuthProvider";
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [activeAppointments, setActiveAppointments] = useState<Appointment[]>([]);
+  const [cancelledAppointments, setCancelledAppointments] = useState<Appointment[]>([]);
+  const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
-  // "planned" РёР»Рё "past"
   const [tab, setTab] = useState<"planned" | "past">("planned");
 
   useEffect(() => {
     const patientId = user?.onecId?.toString().trim();
     if (!patientId) {
-      setAppointments([]);
+      setActiveAppointments([]);
+      setCancelledAppointments([]);
+      setHistoryAppointments([]);
       setLoading(false);
       return;
     }
 
     let alive = true;
     setLoading(true);
-    fetchAppointments(patientId)
-      .then((data) => {
+    Promise.all([
+      fetchScheduleAppointments({ patientId, status: "1" }),
+      fetchScheduleAppointments({ patientId, status: "3" }),
+      fetchAppointments(patientId),
+    ])
+      .then(([active, cancelled, history]) => {
         if (!alive) return;
-        setAppointments(data);
+        setActiveAppointments(active);
+        setCancelledAppointments(cancelled);
+        setHistoryAppointments(history);
       })
       .catch(() => {
         if (!alive) return;
-        setAppointments([]);
+        setActiveAppointments([]);
+        setCancelledAppointments([]);
+        setHistoryAppointments([]);
       })
       .finally(() => {
         if (!alive) return;
@@ -42,25 +53,22 @@ export default function AppointmentsPage() {
   }, [user?.onecId]);
 
   const handleCancel = (id: string) => {
-    setAppointments((prev) =>
-      prev.map((app) =>
-        app.id === id ? { ...app, status: "cancelled" } : app
-      )
-    );
+    setActiveAppointments((prev) => {
+      const cancelled = prev.find((app) => app.id === id);
+      if (cancelled) {
+        setCancelledAppointments((prevCancelled) => [
+          { ...cancelled, status: "cancelled" },
+          ...prevCancelled,
+        ]);
+      }
+      return prev.filter((app) => app.id !== id);
+    });
   };
-
-  const planned = appointments.filter(
-    (a) => a.status === "planned" || a.status === "confirmed"
-  );
-  const past = appointments.filter(
-    (a) => a.status === "completed" || a.status === "cancelled"
-  );
 
   return (
     <Layout>
-      <h1 className="text-3xl font-semibold mb-6 text-primary">РњРѕРё РїСЂРёС‘РјС‹</h1>
+      <h1 className="text-3xl font-semibold mb-6 text-primary">Мои приемы</h1>
 
-      {/* Р’РєР»Р°РґРєРё */}
       <div className="inline-flex mb-8 bg-gray-200 rounded-full overflow-hidden">
         <button
           onClick={() => setTab("planned")}
@@ -70,7 +78,7 @@ export default function AppointmentsPage() {
               : "text-gray-600"
           }`}
         >
-          РџР»Р°РЅРёСЂСѓРµРјС‹Рµ
+          Активные
         </button>
         <button
           onClick={() => setTab("past")}
@@ -80,34 +88,52 @@ export default function AppointmentsPage() {
               : "text-gray-600"
           }`}
         >
-          РџСЂРѕС€РµРґС€РёРµ
+          История
         </button>
       </div>
 
-      {loading && <p>Р—Р°РіСЂСѓР·РєР°вЂ¦</p>}
+      {loading && <p>Загрузка…</p>}
 
       {!loading && tab === "planned" && (
         <>
-          {planned.length === 0 ? (
-            <p className="text-gray-600">РќРµС‚ РїР»Р°РЅРёСЂСѓРµРјС‹С… РїСЂРёС‘РјРѕРІ.</p>
-          ) : (
-            planned.map((app) => (
-              <AppointmentCard
-                key={app.id}
-                appointment={app}
-                onCancel={handleCancel}
-              />
-            ))
-          )}
+          <div className="mb-6">
+            <h2 className="mb-3 text-lg font-semibold text-slate-700">Действующие</h2>
+            {activeAppointments.length === 0 ? (
+              <p className="text-gray-600">Нет действующих приемов.</p>
+            ) : (
+              activeAppointments.map((app) => (
+                <AppointmentCard
+                  key={app.id}
+                  appointment={app}
+                  onCancel={handleCancel}
+                />
+              ))
+            )}
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-lg font-semibold text-slate-700">Отмененные</h2>
+            {cancelledAppointments.length === 0 ? (
+              <p className="text-gray-600">Нет отмененных приемов.</p>
+            ) : (
+              cancelledAppointments.map((app) => (
+                <AppointmentCard
+                  key={app.id}
+                  appointment={app}
+                  onCancel={undefined}
+                />
+              ))
+            )}
+          </div>
         </>
       )}
 
       {!loading && tab === "past" && (
         <>
-          {past.length === 0 ? (
-            <p className="text-gray-600">РќРµС‚ РїСЂРѕС€РµРґС€РёС… РїСЂРёС‘РјРѕРІ.</p>
+          {historyAppointments.length === 0 ? (
+            <p className="text-gray-600">Нет истории приемов.</p>
           ) : (
-            past.map((app) => (
+            historyAppointments.map((app) => (
               <AppointmentCard
                 key={app.id}
                 appointment={app}
@@ -120,5 +146,3 @@ export default function AppointmentsPage() {
     </Layout>
   );
 }
-
-

@@ -148,7 +148,7 @@ export default function CardPage() {
         ...user,
         ...payload.user,
       });
-      setSwitchNotice(relative.member || payload.user.fullName || "???????");
+      setSwitchNotice(relative.member || payload.user.fullName || "Неизвестно");
     } catch (error) {
       console.warn("Ошибка смены аккаунта:", error);
     } finally {
@@ -225,13 +225,6 @@ export default function CardPage() {
                     ))}
                   </ul>
                 </div>
-                <button
-                  type="button"
-                  className="flex h-10 w-10 items-center justify-center text-[#0F86FF] transition hover:text-[#0C6FD9]"
-                  aria-label="\u0421\u043A\u0430\u0447\u0430\u0442\u044C \u043C\u0435\u0434\u043A\u0430\u0440\u0442\u0443"
-                >
-                  <Image src="/download.svg" alt="" width={20} height={20} className="h-5 w-5" />
-                </button>
               </header>
               <div className="mt-6 h-px w-full bg-[#E9EDF8]" />
               <div className="mt-6 space-y-6">

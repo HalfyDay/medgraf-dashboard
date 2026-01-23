@@ -1,5 +1,5 @@
 ﻿import iconv from "iconv-lite";
-import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
+import type { DoctorDirectoryEntry, DoctorServiceEntry, ServiceDirectoryEntry } from "@/types/clinic";
 
 const DEFAULT_BASE_URL = "http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs";
 const DEFAULT_BASIC_USER = "Test";
@@ -570,6 +570,14 @@ type OnecDoctorRaw = {
   specialties?: string[] | string | null;
   photo?: string;
   image?: string;
+  services?: OnecDoctorServiceRaw[] | null;
+};
+
+type OnecDoctorServiceRaw = {
+  serviceID?: string;
+  serviceName?: string;
+  serviceTime?: string;
+  serviceCost?: number | string;
 };
 
 const normalizeSpecialties = (value: OnecDoctorRaw["specialties"]) => {
@@ -582,6 +590,43 @@ const normalizeSpecialties = (value: OnecDoctorRaw["specialties"]) => {
       .filter((entry) => entry.length > 0);
   }
   return [String(value).trim()].filter((entry) => entry.length > 0);
+};
+
+const parseServiceTimeMinutes = (value?: string) => {
+  if (!value) {
+    return null;
+  }
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) {
+    return null;
+  }
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    return null;
+  }
+  return hours * 60 + minutes;
+};
+
+const mapDoctorService = (raw: OnecDoctorServiceRaw): DoctorServiceEntry | null => {
+  const id = raw.serviceID?.toString().trim();
+  if (!id) {
+    return null;
+  }
+  const name = raw.serviceName?.toString().trim() || id;
+  const price =
+    typeof raw.serviceCost === "number"
+      ? raw.serviceCost
+      : raw.serviceCost
+        ? Number(raw.serviceCost)
+        : null;
+  return {
+    id,
+    name,
+    durationMinutes: parseServiceTimeMinutes(raw.serviceTime),
+    price: Number.isNaN(price ?? NaN) ? null : price,
+    currency: "RUB",
+  };
 };
 
 const mapDoctorRecord = (raw: OnecDoctorRaw): DoctorDirectoryEntry | null => {
@@ -610,6 +655,11 @@ const mapDoctorRecord = (raw: OnecDoctorRaw): DoctorDirectoryEntry | null => {
     phone: typeof raw.phone === "string" ? raw.phone.trim() : undefined,
     specialties: normalizeSpecialties(raw.specialties),
     photoUrl: photo && photo.length > 0 ? photo : undefined,
+    services: Array.isArray(raw.services)
+      ? raw.services
+          .map((service) => mapDoctorService(service))
+          .filter((service): service is DoctorServiceEntry => Boolean(service))
+      : undefined,
   };
 };
 
@@ -737,6 +787,25 @@ export type OnecScheduleSlot = {
   duration?: number | string | null;
 };
 
+export type OnecScheduleAppointmentWork = {
+  nomenclatureID?: string | null;
+  nomenclatureName?: string | null;
+  continuance?: string | null;
+  workerID?: string | null;
+  workerName?: string | null;
+};
+
+export type OnecScheduleAppointmentRecord = {
+  webID?: string | null;
+  doctorID?: string | null;
+  doctorName?: string | null;
+  date?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  status?: string | null;
+  works?: OnecScheduleAppointmentWork[] | null;
+};
+
 export type OnecScheduleDate = {
   date?: string | null;
   slots?: OnecScheduleSlot[] | null;
@@ -805,6 +874,34 @@ export async function fetchOnecSchedule(doctorId: string): Promise<OnecScheduleC
   }
   console.log("[onec] /schedule/schedule response", schedule);
   return schedule;
+}
+
+export async function fetchOnecScheduleAppointments(params: {
+  patientId: string;
+  status: string;
+}): Promise<OnecScheduleAppointmentRecord[]> {
+  const safePatientId = params.patientId.toString().trim().replace(/[^\w-]/g, "");
+  const safeStatus = params.status.toString().trim();
+  if (!safePatientId) {
+    throw new Error("Не указан id пациента для загрузки заявок");
+  }
+  if (!safeStatus) {
+    throw new Error("Не указан статус заявок для загрузки");
+  }
+  console.log("[onec] /schedule/appointments request", { patientId: safePatientId, status: safeStatus });
+  const result = await requestOnec<OnecScheduleAppointmentRecord[]>(
+    "/schedule/appointments",
+    "schedule_appointments",
+    {
+      patientID: safePatientId,
+      status: safeStatus,
+    },
+  );
+  if (!Array.isArray(result)) {
+    return [];
+  }
+  console.log("[onec] /schedule/appointments response", result);
+  return result;
 }
 
 export async function submitOnecScheduleRequest(params: {

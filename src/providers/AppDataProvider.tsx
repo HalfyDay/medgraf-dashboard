@@ -4,7 +4,17 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import BootSplash from "@/components/BootSplash";
 import type { PromoData } from "@/components/PromoSheet";
 import type { CheckupData } from "@/components/CheckupsSheet";
-import { fetchAppointments, fetchDocuments, type Appointment, type DocumentItem } from "@/utils/api";
+import {
+  fetchAppointments,
+  fetchDocuments,
+  fetchDoctors,
+  fetchScheduleAppointments,
+  fetchServices,
+  type Appointment,
+  type Doctor,
+  type DocumentItem,
+} from "@/utils/api";
+import type { ServiceDirectoryEntry } from "@/types/clinic";
 import { onec } from "@/app/api/onec";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -65,6 +75,10 @@ const PUBLIC_ASSET_URLS: string[] = [
   "/icons/icon-512.png",
 ];
 
+const PROMOS_CACHE_KEY = "medgraf.promos.v1";
+const MEDCARD_CACHE_PREFIX = "medcard:";
+const MEDCARD_LOADED_PREFIX = "medcard-loaded:";
+
 type AppDataContextValue = {
   booting: boolean;
   promos: PromoData[];
@@ -74,7 +88,11 @@ type AppDataContextValue = {
   contacts: Contacts;
   setContacts: React.Dispatch<React.SetStateAction<Contacts>>;
   appointments: Appointment[];
+  activeAppointments: Appointment[];
+  cancelledAppointments: Appointment[];
   setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
+  setActiveAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
+  setCancelledAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
   appointmentsLoading: boolean;
   documents: DocumentItem[];
   setDocuments: React.Dispatch<React.SetStateAction<DocumentItem[]>>;
@@ -91,9 +109,54 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [checkups, setCheckups] = useState<CheckupData[]>([]);
   const [contacts, setContacts] = useState<Contacts>(DEFAULT_CONTACTS);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [activeAppointments, setActiveAppointments] = useState<Appointment[]>([]);
+  const [cancelledAppointments, setCancelledAppointments] = useState<Appointment[]>([]);
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
+
+  const readSessionCache = useCallback(<T,>(key: string): T | null => {
+    if (typeof window === "undefined") {
+      return null;
+    }
+    try {
+      const raw = window.sessionStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const writeSessionCache = useCallback((key: string, value: unknown) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const prefetchImages = useCallback(async (urls: string[]) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const unique = Array.from(new Set(urls.filter(Boolean)));
+    await Promise.all(
+      unique.map(
+        (src) =>
+          new Promise<void>((resolve) => {
+            const img = new Image();
+            img.decoding = "async";
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = src;
+          }),
+      ),
+    );
+  }, []);
 
   const prefetchPublicAssets = useCallback(async () => {
     if (typeof navigator !== "undefined") {
@@ -147,9 +210,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     setDocumentsLoading(true);
     const patientId = user?.onecId?.toString().trim() || null;
     try {
+      const promosPromise = (async () => {
+        const cached = readSessionCache<PromoData[]>(PROMOS_CACHE_KEY);
+        if (cached !== null) {
+          return cached;
+        }
+        const list = await onec.promotions.list();
+        writeSessionCache(PROMOS_CACHE_KEY, list);
+        return list;
+      })();
+
       const appointmentsPromise = patientId
         ? fetchAppointments(patientId).catch((error) => {
             console.warn("appointments fallback:", error);
+            return [] as Appointment[];
+          })
+        : Promise.resolve([] as Appointment[]);
+      const activeAppointmentsPromise = patientId
+        ? fetchScheduleAppointments({ patientId, status: "1" }).catch((error) => {
+            console.warn("active appointments fallback:", error);
+            return [] as Appointment[];
+          })
+        : Promise.resolve([] as Appointment[]);
+      const cancelledAppointmentsPromise = patientId
+        ? fetchScheduleAppointments({ patientId, status: "3" }).catch((error) => {
+            console.warn("cancelled appointments fallback:", error);
             return [] as Appointment[];
           })
         : Promise.resolve([] as Appointment[]);
@@ -159,26 +244,92 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
             return [] as DocumentItem[];
           })
         : Promise.resolve([] as DocumentItem[]);
+      const doctorsPromise = fetchDoctors().catch((error) => {
+        console.warn("doctors fallback:", error);
+        return [] as Doctor[];
+      });
+      const servicesPromise = fetchServices().catch((error) => {
+        console.warn("services fallback:", error);
+        return [] as ServiceDirectoryEntry[];
+      });
+      const medcardPromise = (async () => {
+        if (!patientId || typeof window === "undefined") {
+          return null;
+        }
+        const cacheKey = `${MEDCARD_CACHE_PREFIX}${patientId}`;
+        const loadedKey = `${MEDCARD_LOADED_PREFIX}${patientId}`;
+        const cached = readSessionCache<Record<string, unknown>>(cacheKey);
+        if (cached) {
+          return cached;
+        }
+        if (window.sessionStorage.getItem(loadedKey)) {
+          return null;
+        }
+        try {
+          const res = await fetch(`/api/patients?patientId=${encodeURIComponent(patientId)}`, {
+            method: "GET",
+            cache: "no-store",
+          });
+          const payload = (await res.json().catch(() => null)) as { patient?: Record<string, unknown> | null } | null;
+          if (!res.ok) {
+            window.sessionStorage.setItem(loadedKey, "1");
+            return null;
+          }
+          if (payload?.patient) {
+            writeSessionCache(cacheKey, payload.patient);
+          }
+          window.sessionStorage.setItem(loadedKey, "1");
+          return payload?.patient ?? null;
+        } catch {
+          window.sessionStorage.setItem(loadedKey, "1");
+          return null;
+        }
+      })();
 
-      const [promoItems, checkupItems, contactsData, appointmentItems, documentItems] = await Promise.all([
-        onec.promotions.list(),
+      const [
+        promoItems,
+        checkupItems,
+        contactsData,
+        appointmentItems,
+        activeItems,
+        cancelledItems,
+        documentItems,
+        doctors,
+        services,
+        medcard,
+      ] = await Promise.all([
+        promosPromise,
         onec.checkups.list(),
         onec.contacts.get(),
         appointmentsPromise,
+        activeAppointmentsPromise,
+        cancelledAppointmentsPromise,
         documentsPromise,
+        doctorsPromise,
+        servicesPromise,
+        medcardPromise,
       ]);
       setPromos(promoItems);
       setCheckups(checkupItems);
       setContacts({ ...DEFAULT_CONTACTS, ...contactsData });
       setAppointments(appointmentItems);
+      setActiveAppointments(activeItems);
+      setCancelledAppointments(cancelledItems);
       setDocuments(documentItems);
+
+      void services;
+      void medcard;
+      await prefetchImages([
+        ...promoItems.flatMap((promo) => [promo.cardImage, promo.banner || promo.cardImage]),
+        ...doctors.map((doctor) => doctor.photoUrl).filter(Boolean),
+      ]);
     } catch (error) {
       console.warn("app boot fallback:", error);
     } finally {
       setAppointmentsLoading(false);
       setDocumentsLoading(false);
     }
-  }, [user?.onecId]);
+  }, [prefetchImages, readSessionCache, user?.onecId, writeSessionCache]);
 
   useEffect(() => {
     let alive = true;
@@ -271,7 +422,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       contacts,
       setContacts,
       appointments,
+      activeAppointments,
+      cancelledAppointments,
       setAppointments,
+      setActiveAppointments,
+      setCancelledAppointments,
       appointmentsLoading,
       documents,
       setDocuments,
@@ -280,7 +435,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }),
     [
       appointments,
+      activeAppointments,
+      cancelledAppointments,
       appointmentsLoading,
+      setActiveAppointments,
+      setCancelledAppointments,
       booting,
       checkups,
       contacts,

@@ -6,7 +6,7 @@ import { buildOnecAuthHeader } from "@/server/onecAuthClient";
 const ACTIONS_URL =
   process.env.NEXT_PUBLIC_ACTIONS_URL ||
   process.env.ACTIONS_URL ||
-  "https://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/actions/action";
+  "http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/actions/action";
 
 const ACTIONS_BEARER =
   process.env.ACTIONS_TOKEN ||

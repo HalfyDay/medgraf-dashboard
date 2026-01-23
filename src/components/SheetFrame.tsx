@@ -89,11 +89,28 @@ export default function SheetFrame({
   const [animatingToFull, setAnimatingToFull] = useState(false);
   const dragYRef = useRef(0);
   const expandingUp = useRef(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(media.matches);
+    update();
+    if (media.addEventListener) {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
 
   const preventWheel = useRef<((e: WheelEvent) => void) | null>(null);
   const preventTouchMove = useRef<((e: TouchEvent) => void) | null>(null);
 
   const lockInnerScroll = () => {
+    if (isDesktop) {
+      return;
+    }
     const sc = scrollRef.current;
     if (!sc) return;
     sc.style.overflowY = "hidden";
@@ -214,15 +231,17 @@ export default function SheetFrame({
 
   useEffect(() => {
     if (!open) return;
-    if (isFull) {
+    if (isDesktop || isFull) {
       unlockInnerScroll();
     } else {
       lockInnerScroll();
     }
-  }, [isFull, open]);
+  }, [isDesktop, isFull, open]);
+
+  const canSwipeToClose = swipeToClose && !isDesktop;
 
   useEffect(() => {
-    if (!open || !swipeToClose) return;
+    if (!open || !canSwipeToClose) return;
     const el = frameRef.current!;
     const sc = scrollRef.current!;
     const headerEl = headerRef.current;
@@ -393,7 +412,7 @@ export default function SheetFrame({
     };
   }, [
     open,
-    swipeToClose,
+    canSwipeToClose,
     closeThresholdPx,
     closeVelocityPxMs,
     snapBackMs,
@@ -439,7 +458,7 @@ export default function SheetFrame({
       <div
         ref={frameRef}
         className={clsx(
-          "relative z-[1] w-full",
+          "relative z-[1] w-full md:mx-auto md:max-w-[680px]",
           "rounded-t-[24px] bg-white dark:bg-slate-900",
           "shadow-[0_-4px_24px_rgba(0,0,0,0.18)]"
         )}
@@ -460,7 +479,7 @@ export default function SheetFrame({
         <div
           ref={headerRef}
           className={clsx(
-            "rounded-t-[24px]",
+            "relative rounded-t-[24px]",
             headerContent
               ? null
               : "px-4 pt-5 pb-10 text-white bg-[linear-gradient(135deg,#00A6FF_0%,#24E38E_100%)]",
@@ -468,6 +487,22 @@ export default function SheetFrame({
           )}
           style={{ touchAction: "none" }}
         >
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-1/2 z-10 hidden h-11 w-11 -translate-y-[70%] items-center justify-center rounded-full bg-white/20 text-white transition hover:bg-white/30 md:inline-flex"
+            aria-label="Закрыть"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true">
+              <path
+                d="M6 9l6 6 6-6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           {headerContent ?? (
             <div className="flex items-center gap-3">
               <span className="inline-flex h-14 w-14 items-center justify-center rounded-[12px] bg-white/15 ring-1 ring-white/20">

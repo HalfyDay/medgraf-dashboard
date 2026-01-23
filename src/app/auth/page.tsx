@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/Button";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -163,9 +163,16 @@ export default function AuthPage() {
   const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [loginStepLoading, setLoginStepLoading] = useState(false);
-  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [policyAccepted, setPolicyAccepted] = useState(true);
   const [policyError, setPolicyError] = useState<string | null>(null);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    root.classList.remove("dark");
+    root.style.colorScheme = "light";
+  }, []);
 
   const resetLoginFlow = () => {
     setLoginStep("password");

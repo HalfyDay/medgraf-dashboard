@@ -1,5 +1,5 @@
 // src/utils/api.ts
-import type { DoctorDirectoryEntry } from "@/types/clinic";
+import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
 
 export const DOCTOR_AVATAR_PLACEHOLDER = "/doctor.svg";
 export interface Appointment {
@@ -31,6 +31,64 @@ export async function fetchAppointments(patientId?: string): Promise<Appointment
     method: "GET",
     cache: "no-store",
   });
+
+  const payload = (await res.json().catch(() => null)) as
+    | { appointments?: Appointment[]; error?: string }
+    | null;
+
+  if (!res.ok) {
+    const message = payload?.error || "Failed to load appointments";
+    throw new Error(message);
+  }
+
+  if (!payload || !Array.isArray(payload.appointments)) {
+    return [];
+  }
+
+  return payload.appointments;
+}
+
+const DOCTORS_CACHE_KEY = "medgraf.doctors.v1";
+const SERVICES_CACHE_KEY = "medgraf.services.v1";
+let doctorsCachePromise: Promise<Doctor[]> | null = null;
+let servicesCachePromise: Promise<ServiceDirectoryEntry[]> | null = null;
+
+const readSessionCache = <T,>(key: string): T | null => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+};
+
+const writeSessionCache = (key: string, value: unknown) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore storage errors
+  }
+};
+
+export async function fetchScheduleAppointments(params: {
+  patientId: string;
+  status: "1" | "2" | "3";
+}): Promise<Appointment[]> {
+  const { patientId, status } = params;
+  const res = await fetch(
+    `/api/schedule/appointments?patientID=${encodeURIComponent(patientId)}&status=${encodeURIComponent(status)}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
 
   const payload = (await res.json().catch(() => null)) as
     | { appointments?: Appointment[]; error?: string }
@@ -136,7 +194,17 @@ export interface Doctor {
   durationMinutes: number;
   isAvailable: boolean;
   photoUrl: string;
+  services: DoctorService[];
 }
+
+export interface DoctorService {
+  id: string;
+  name: string;
+  durationMinutes?: number | null;
+  price?: number | null;
+  currency?: string | null;
+}
+
 
 export interface DoctorScheduleSlot {
   id: string;
@@ -157,6 +225,8 @@ export interface BookAppointmentPayload {
   slotStart?: string | null;
   slotEnd?: string | null;
   serviceId?: string | null;
+  serviceName?: string | null;
+  doctorAvatar?: string | null;
   doctorName?: string | null;
   specialty?: string | null;
 }
@@ -172,6 +242,22 @@ const DOCTOR_FALLBACK_SPECIALTY = "Р’СЂР°С‡ РєР»РёРЅРёРєР
 const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
   const specialties = entry.specialties?.length ? entry.specialties : [DOCTOR_FALLBACK_SPECIALTY];
   const primarySpecialty = specialties[0] ?? DOCTOR_FALLBACK_SPECIALTY;
+  const services =
+    entry.services?.map((service) => ({
+      id: service.id,
+      name: service.name,
+      durationMinutes: service.durationMinutes ?? null,
+      price: service.price ?? null,
+      currency: service.currency ?? null,
+    })) ?? [];
+  const pricedServices = services
+    .filter((service) => typeof service.price === "number")
+    .sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+  const minService = pricedServices[0] ?? services[0];
+  const durationLabel =
+    typeof minService?.durationMinutes === "number" && minService.durationMinutes > 0
+      ? `от ${minService.durationMinutes} мин`
+      : "длительность";
 
   return {
     id: entry.id,
@@ -180,16 +266,26 @@ const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
     category: primarySpecialty,
     rating: 4.9,
     reviews: 0,
-    price: 0,
-    pricePeriod: "30 мин",
-    durationMinutes: 30,
+    price: typeof minService?.price === "number" ? minService.price : 0,
+    pricePeriod: durationLabel,
+    durationMinutes: typeof minService?.durationMinutes === "number" ? minService.durationMinutes : 0,
     isAvailable: true,
     photoUrl:
       entry.photoUrl && entry.photoUrl.length > 0 ? entry.photoUrl : DOCTOR_AVATAR_PLACEHOLDER,
+    services,
   };
 };
 
 export async function fetchDoctors(): Promise<Doctor[]> {
+  const cached = readSessionCache<Doctor[]>(DOCTORS_CACHE_KEY);
+  if (cached) {
+    return cached;
+  }
+  if (doctorsCachePromise) {
+    return doctorsCachePromise;
+  }
+
+  doctorsCachePromise = (async () => {
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   let timeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -210,11 +306,53 @@ export async function fetchDoctors(): Promise<Doctor[]> {
     if (!payload?.data || !Array.isArray(payload.data) || payload.data.length === 0) {
       throw new Error("Doctors API returned empty payload");
     }
-    return payload.data.map(mapDirectoryDoctor);
+    const mapped = payload.data.map(mapDirectoryDoctor);
+    writeSessionCache(DOCTORS_CACHE_KEY, mapped);
+    return mapped;
   } finally {
     if (timeout) {
       clearTimeout(timeout);
     }
+  }
+  })();
+
+  try {
+    return await doctorsCachePromise;
+  } finally {
+    doctorsCachePromise = null;
+  }
+}
+
+export async function fetchServices(): Promise<ServiceDirectoryEntry[]> {
+  const cached = readSessionCache<ServiceDirectoryEntry[]>(SERVICES_CACHE_KEY);
+  if (cached) {
+    return cached;
+  }
+  if (servicesCachePromise) {
+    return servicesCachePromise;
+  }
+
+  servicesCachePromise = (async () => {
+    const res = await fetch("/api/services", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`Services API responded with ${res.status}`);
+    }
+    const payload = (await res.json()) as { data?: ServiceDirectoryEntry[] };
+    if (!payload?.data || !Array.isArray(payload.data)) {
+      return [];
+    }
+    writeSessionCache(SERVICES_CACHE_KEY, payload.data);
+    return payload.data;
+  })();
+
+  try {
+    return await servicesCachePromise;
+  } finally {
+    servicesCachePromise = null;
   }
 }
 
@@ -290,16 +428,17 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
 
   const resolvedDoctorName = payload.doctorName || payload.doctorId;
   const resolvedSpecialty = payload.specialty || "General";
+  const resolvedServiceName = payload.serviceName || `Service: ${resolvedSpecialty}`;
 
   const appointment: Appointment = {
     id: `new-${Date.now()}`,
     date: slotStart,
-    serviceName: `Service: ${resolvedSpecialty}`,
+    serviceName: resolvedServiceName,
     doctorName: resolvedDoctorName,
     specialty: resolvedSpecialty,
     clinic: { ...APPOINTMENT_CLINIC },
     status: "planned",
-    doctorAvatar: DOCTOR_AVATAR_PLACEHOLDER,
+    doctorAvatar: payload.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER,
   };
 
   return appointment;

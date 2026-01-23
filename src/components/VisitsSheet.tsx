@@ -9,12 +9,15 @@ type VisitsSheetProps = {
   open: boolean;
   onClose: () => void;
   appointments: Appointment[];
+  activeAppointments: Appointment[];
+  cancelledAppointments: Appointment[];
   onSelect?: (appointment: Appointment) => void;
 };
 
 const TITLE = "История посещений";
-const SUBTITLE = "Ваши приёмы";
-const EMPTY_ACTIVE = "Нет активных приёмов.";
+const SUBTITLE = "Ваши приемы";
+const EMPTY_ACTIVE = "Нет действующих приемов.";
+const EMPTY_CANCELLED = "Нет отмененных приемов.";
 const EMPTY_HISTORY = "Пока нет записей в истории.";
 
 const STATUS_META: Record<
@@ -22,19 +25,19 @@ const STATUS_META: Record<
   { label: string; chipClass: string }
 > = {
   planned: {
-    label: "Запланирован",
+    label: "Запланирована",
     chipClass: "bg-sky-500/15 text-sky-600 ring-1 ring-sky-500/20",
   },
   confirmed: {
-    label: "Подтверждён",
+    label: "Подтверждена",
     chipClass: "bg-indigo-500/15 text-indigo-600 ring-1 ring-indigo-500/20",
   },
   completed: {
-    label: "Завершён",
+    label: "Завершена",
     chipClass: "bg-emerald-500/15 text-emerald-600 ring-1 ring-emerald-500/20",
   },
   cancelled: {
-    label: "Отменён",
+    label: "Отменена",
     chipClass: "bg-rose-500/15 text-rose-600 ring-1 ring-rose-500/20",
   },
 };
@@ -58,20 +61,23 @@ export default function VisitsSheet({
   open,
   onClose,
   appointments,
+  activeAppointments,
+  cancelledAppointments,
   onSelect,
 }: VisitsSheetProps) {
-  const { active, history } = useMemo(() => {
-    const sorted = [...appointments].sort(
+  const { active, cancelled, history } = useMemo(() => {
+    const sortedActive = [...activeAppointments].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
     );
+    const sortedCancelled = [...cancelledAppointments].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
+    const historyItems = [...appointments].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+    );
 
-    const activeItems = sorted.filter((item) => item.status === "planned" || item.status === "confirmed");
-    const historyItems = sorted
-      .filter((item) => item.status !== "planned" && item.status !== "confirmed")
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    return { active: activeItems, history: historyItems };
-  }, [appointments]);
+    return { active: sortedActive, cancelled: sortedCancelled, history: historyItems };
+  }, [activeAppointments, cancelledAppointments, appointments]);
 
   const handleSelect = (appointment: Appointment) => {
     if (!onSelect) return;
@@ -99,15 +105,6 @@ export default function VisitsSheet({
           <div className="mt-0.5 text-[14px] opacity-90">
             {dateLabel} · {timeLabel}
           </div>
-          {/* <div className="mt-1 text-[13px] opacity-80">
-            {appointment.doctorName} / {appointment.specialty}
-          </div> */}
-          {/* {appointment.clinic?.name && (
-            <div className="mt-1 text-[12.5px] opacity-70">
-              {appointment.clinic.name}
-              {appointment.clinic.room ? ` · ${appointment.clinic.room}` : ""}
-            </div>
-          )} */}
         </div>
 
         <span className="shrink-0 opacity-90">
@@ -174,16 +171,6 @@ export default function VisitsSheet({
           <div className="mt-1 text-[13.5px] text-slate-600">
             {dateLabel} · {timeLabel}
           </div>
-          {/* <div className="mt-1 text-[13px] text-slate-500">
-            {appointment.doctorName} / {appointment.specialty}
-          </div>
-
-          {appointment.clinic?.name && (
-            <div className="mt-1 text-[12.5px] text-slate-500">
-              {appointment.clinic.name}
-              {appointment.clinic.room ? ` · ${appointment.clinic.room}` : ""}
-            </div>
-          )} */}
         </div>
       </Component>
     );
@@ -200,7 +187,7 @@ export default function VisitsSheet({
     >
       <section className="space-y-3">
         <h3 className="px-1 text-[15px] font-semibold uppercase tracking-wide text-slate-500">
-          Активные приёмы
+          Действующие приемы
         </h3>
         {active.length === 0 ? (
           <div className="rounded-[18px] bg-slate-100 px-5 py-6 text-center text-[15px] text-slate-600">
@@ -213,6 +200,19 @@ export default function VisitsSheet({
 
       <section className="space-y-3">
         <h3 className="px-1 text-[15px] font-semibold uppercase tracking-wide text-slate-500">
+          Отмененные
+        </h3>
+        {cancelled.length === 0 ? (
+          <div className="rounded-[18px] bg-slate-50 px-5 py-6 text-center text-[15px] text-slate-500">
+            {EMPTY_CANCELLED}
+          </div>
+        ) : (
+          <div className="space-y-3">{cancelled.map((appointment) => renderHistoryCard(appointment))}</div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="px-1 text-[15px] font-semibold uppercase tracking-wide text-slate-500">
           История посещений
         </h3>
         {history.length === 0 ? (
@@ -220,9 +220,7 @@ export default function VisitsSheet({
             {EMPTY_HISTORY}
           </div>
         ) : (
-          <div className="space-y-3">
-            {history.map((appointment) => renderHistoryCard(appointment))}
-          </div>
+          <div className="space-y-3">{history.map((appointment) => renderHistoryCard(appointment))}</div>
         )}
       </section>
     </SheetFrame>

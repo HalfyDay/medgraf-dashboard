@@ -7,6 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import NotificationsSheet from "@/components/NotificationsSheet";
 import { useAuth } from "@/providers/AuthProvider";
 import { AppDataProvider } from "@/providers/AppDataProvider";
+import { useTheme } from "@/providers/ThemeProvider";
 
 const loader = (
   <div className="flex min-h-dvh items-center justify-center bg-background">
@@ -19,6 +20,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { status, user } = useAuth();
+  const { theme, setTheme } = useTheme();
 
   const isAuthScreen = useMemo(() => {
     if (!pathname) {
@@ -54,6 +56,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
       router.replace("/home");
     }
   }, [isAuthScreen, router, status]);
+
+  useEffect(() => {
+    if (!isAuthScreen) {
+      setTheme(theme);
+    }
+  }, [isAuthScreen, setTheme, theme]);
 
   if (status === "loading") {
     return loader;

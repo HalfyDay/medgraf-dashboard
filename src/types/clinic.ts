@@ -5,6 +5,15 @@ export type DoctorDirectoryEntry = {
   phone?: string | null;
   specialties: string[];
   photoUrl?: string | null;
+  services?: DoctorServiceEntry[];
+};
+
+export type DoctorServiceEntry = {
+  id: string;
+  name: string;
+  durationMinutes?: number | null;
+  price?: number | null;
+  currency?: string | null;
 };
 
 export type ServiceDirectoryEntry = {
