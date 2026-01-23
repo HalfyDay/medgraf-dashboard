@@ -74,6 +74,8 @@ const PUBLIC_ASSET_URLS: string[] = [
 const PROMOS_CACHE_KEY = "medgraf.promos.v1";
 const CHECKUPS_CACHE_KEY = "medgraf.checkups.v1";
 const CONTACTS_CACHE_KEY = "medgraf.contacts.v1";
+const PENDING_APPOINTMENTS_KEY = "medgraf.pendingAppointments.v1";
+const PENDING_APPOINTMENTS_TTL_MS = 15 * 60 * 1000;
 const MEDCARD_CACHE_PREFIX = "medcard:";
 const MEDCARD_LOADED_PREFIX = "medcard-loaded:";
 
@@ -95,6 +97,7 @@ type AppDataContextValue = {
   documents: DocumentItem[];
   setDocuments: React.Dispatch<React.SetStateAction<DocumentItem[]>>;
   documentsLoading: boolean;
+  addPendingAppointment: (appointment: Appointment) => void;
   refreshAll: () => Promise<void>;
 };
 
@@ -138,6 +141,66 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // ignore storage errors
     }
   }, []);
+
+  const normalizeAppointmentKey = useCallback((appointment: Appointment) => {
+    const safeDate = appointment.date || "";
+    const safeDoctor = appointment.doctorName || "";
+    const safeService = appointment.serviceName || "";
+    return `${safeDate}|${safeDoctor}|${safeService}`;
+  }, []);
+
+  const addPendingAppointment = useCallback(
+    (appointment: Appointment) => {
+      const cached = readSessionCache<Array<{ appointment: Appointment; createdAt: number }>>(
+        PENDING_APPOINTMENTS_KEY,
+      ) ?? [];
+      const key = normalizeAppointmentKey(appointment);
+      const filtered = cached.filter((entry) => normalizeAppointmentKey(entry.appointment) !== key);
+      const next = [{ appointment, createdAt: Date.now() }, ...filtered];
+      writeSessionCache(PENDING_APPOINTMENTS_KEY, next);
+    },
+    [normalizeAppointmentKey, readSessionCache, writeSessionCache],
+  );
+
+  const mergePendingAppointments = useCallback(
+    (appointments: Appointment[]) => {
+      const cached =
+        readSessionCache<Array<{ appointment: Appointment; createdAt: number }>>(
+          PENDING_APPOINTMENTS_KEY,
+        ) ?? [];
+      if (!cached.length) {
+        return appointments;
+      }
+
+      const now = Date.now();
+      const fresh = cached.filter((entry) => now - entry.createdAt <= PENDING_APPOINTMENTS_TTL_MS);
+      const liveKeys = new Set(appointments.map(normalizeAppointmentKey));
+      const keep: Array<{ appointment: Appointment; createdAt: number }> = [];
+      const pendingToMerge: Appointment[] = [];
+
+      for (const entry of fresh) {
+        const key = normalizeAppointmentKey(entry.appointment);
+        if (liveKeys.has(key)) {
+          continue;
+        }
+        keep.push(entry);
+        pendingToMerge.push(entry.appointment);
+      }
+
+      if (keep.length !== cached.length) {
+        writeSessionCache(PENDING_APPOINTMENTS_KEY, keep);
+      }
+
+      if (!pendingToMerge.length) {
+        return appointments;
+      }
+
+      const merged = [...pendingToMerge, ...appointments];
+      merged.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return merged;
+    },
+    [normalizeAppointmentKey, readSessionCache, writeSessionCache],
+  );
 
   const prefetchImages = useCallback(async (urls: string[]) => {
     if (typeof window === "undefined") {
@@ -342,11 +405,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         if (isStale()) {
           return;
         }
+        const mergedActiveItems = mergePendingAppointments(activeItems);
         setPromos(promoItems);
         setCheckups(checkupItems);
         setContacts({ ...DEFAULT_CONTACTS, ...contactsData });
         setAppointments(appointmentItems);
-        setActiveAppointments(activeItems);
+        setActiveAppointments(mergedActiveItems);
         setCancelledAppointments(cancelledItems);
         setDocuments(documentItems);
 
@@ -372,7 +436,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } finally {
       loadInFlightRef.current = null;
     }
-  }, [prefetchImages, readSessionCache, user?.onecId, writeSessionCache]);
+  }, [mergePendingAppointments, prefetchImages, readSessionCache, user?.onecId, writeSessionCache]);
 
   useEffect(() => {
     let alive = true;
@@ -474,6 +538,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       documents,
       setDocuments,
       documentsLoading,
+      addPendingAppointment,
       refreshAll: loadData,
     }),
     [
@@ -488,6 +553,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       contacts,
       documents,
       documentsLoading,
+      addPendingAppointment,
       loadData,
       promos,
     ],

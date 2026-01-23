@@ -52,6 +52,7 @@ export default function AppointmentDetailsSheet({
     (appointment.id
       ? `/api/documents/${encodeURIComponent(appointment.id)}?filename=${encodeURIComponent(`appointment-${appointment.id}.pdf`)}&type=appointment`
       : null);
+  const canDownload = appointment.status === "completed" && downloadUrl;
 
   return (
     <SheetFrame
@@ -108,7 +109,7 @@ export default function AppointmentDetailsSheet({
             </div>
           </li>
 
-          {downloadUrl && (
+          {canDownload && (
             <li className="px-4 py-2.5">
               <div className="flex items-center justify-between gap-4">
                 <div className="leading-tight">
@@ -116,7 +117,7 @@ export default function AppointmentDetailsSheet({
                   <div className="mt-1 text-[17px] font-semibold text-slate-900">Файл приёма (PDF)</div>
                 </div>
                 <a
-                  href={downloadUrl}
+                  href={downloadUrl ?? undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex h-7 w-7 items-center justify-center text-sky-600 transition hover:opacity-80"

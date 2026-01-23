@@ -49,6 +49,7 @@ export default function HomePage() {
     appointmentsLoading,
     documents,
     documentsLoading,
+    addPendingAppointment,
   } = useAppData();
 
   // ✅ хук теперь внутри компонента
@@ -174,6 +175,7 @@ export default function HomePage() {
       const next = [...prev, appointment];
       return next.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     });
+    addPendingAppointment(appointment);
     setRecentBooking(appointment);
     setBookingSuccessOpen(true);
   };
