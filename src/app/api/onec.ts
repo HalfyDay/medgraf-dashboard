@@ -1,12 +1,9 @@
 // app/api/onec.ts
-// Заготовка клиента для 1C API с подменными (mock) данными.
-// Позволяет уже сейчас брать данные на странице из единого места,
-// а позже — переключиться на реальный backend без правок страницы.
 
 // Переключатель: true — всегда использовать mock-данные; false — пробовать ходить в API и падать на mock при ошибке
 const USE_MOCK_ALWAYS = true;
 
-// Базовая конфигурация API (заполните при появлении доступа к 1С)
+// Базовая конфигурация API (заполнить при появлении доступа к 1С)
 const BASE_URL = process.env.NEXT_PUBLIC_ONEC_URL || ""; // например: https://sandbox.1c.your-domain.ru
 const API_TOKEN = process.env.NEXT_PUBLIC_ONEC_TOKEN || ""; // Bearer
 const USE_MOCK = USE_MOCK_ALWAYS || !BASE_URL;
@@ -76,8 +73,6 @@ export type ContactInfo = {
   phone: string;
   siteLabel: string;
   siteUrl: string;
-  whatsappUrl?: string;
-  telegramUrl?: string;
 };
 
 export type Promotion = {
@@ -128,8 +123,6 @@ const MOCK_CONTACTS: ContactInfo = {
   phone: "+7 (3953) 21-64-22",
   siteLabel: "медграфт.рф",
   siteUrl: "https://медграфт.рф",
-  whatsappUrl: "https://wa.me/79990000000",
-  telegramUrl: "https://t.me/medgraft",
 };
 
 
@@ -394,8 +387,6 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
   actionsInFlight = (async () => {
   try {
     const endpoint = "/api/actions";
-    console.log("[actions] -> request", { endpoint });
-
     const response = await fetch(endpoint, { cache: "no-store" });
     let payload: OneCActionResponse | null = null;
 
@@ -405,20 +396,13 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
       console.error("[actions] parse error", parseError);
     }
 
-    console.log("[actions] <- response", {
-      status: response.status,
-      ok: response.ok,
-      payload,
-    });
-
     if (!response.ok) {
       const message = `HTTP ${response.status} ${response.statusText}`;
-      console.error("[actions] upstream not ok", { message, payload });
+      console.error("[actions] upstream not ok:", message);
       throw new Error(message);
     }
 
     const items = Array.isArray(payload?.details) ? payload.details : [];
-    console.log("[actions] details raw", items);
 
     let mapped = items
       .map((action) => mapActionToPromotion(action))
@@ -441,8 +425,6 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
           "/clinic.svg",
       }));
     }
-
-    console.log("[actions] mapped", mapped);
 
     return mapped;
   } catch (error) {

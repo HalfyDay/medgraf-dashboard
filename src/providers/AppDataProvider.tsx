@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import BootSplash from "@/components/BootSplash";
 import type { PromoData } from "@/components/PromoSheet";
 import type { CheckupData } from "@/components/CheckupsSheet";
@@ -22,16 +22,12 @@ type Contacts = {
   phone: string;
   siteLabel: string;
   siteUrl: string;
-  whatsappUrl: string;
-  telegramUrl: string;
 };
 
 const DEFAULT_CONTACTS: Contacts = {
   phone: "+7 (3953) 21-64-22",
-  siteLabel: "МедГраф.рф",
-  siteUrl: "https://медграф.рф",
-  whatsappUrl: "https://wa.me/79990000000",
-  telegramUrl: "https://t.me/medgraft",
+  siteLabel: "медграфт.рф",
+  siteUrl: "https://медграфт.рф",
 };
 
 const PUBLIC_ASSET_URLS: string[] = [
@@ -76,6 +72,8 @@ const PUBLIC_ASSET_URLS: string[] = [
 ];
 
 const PROMOS_CACHE_KEY = "medgraf.promos.v1";
+const CHECKUPS_CACHE_KEY = "medgraf.checkups.v1";
+const CONTACTS_CACHE_KEY = "medgraf.contacts.v1";
 const MEDCARD_CACHE_PREFIX = "medcard:";
 const MEDCARD_LOADED_PREFIX = "medcard-loaded:";
 
@@ -114,6 +112,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [appointmentsLoading, setAppointmentsLoading] = useState(true);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
+  const loadInFlightRef = useRef<Promise<void> | null>(null);
+  const loadGenerationRef = useRef(0);
 
   const readSessionCache = useCallback(<T,>(key: string): T | null => {
     if (typeof window === "undefined") {
@@ -144,18 +144,22 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return;
     }
     const unique = Array.from(new Set(urls.filter(Boolean)));
-    await Promise.all(
-      unique.map(
-        (src) =>
-          new Promise<void>((resolve) => {
-            const img = new Image();
-            img.decoding = "async";
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-            img.src = src;
-          }),
-      ),
-    );
+    const queue = [...unique];
+    const MAX_CONCURRENT = 6;
+    const worker = async () => {
+      while (queue.length) {
+        const src = queue.shift();
+        if (!src) break;
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.decoding = "async";
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = src;
+        });
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENT, queue.length) }, () => worker()));
   }, []);
 
   const prefetchPublicAssets = useCallback(async () => {
@@ -206,128 +210,167 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadData = useCallback(async () => {
-    setAppointmentsLoading(true);
-    setDocumentsLoading(true);
-    const patientId = user?.onecId?.toString().trim() || null;
-    try {
-      const promosPromise = (async () => {
-        const cached = readSessionCache<PromoData[]>(PROMOS_CACHE_KEY);
-        if (cached !== null) {
-          return cached;
-        }
-        const list = await onec.promotions.list();
-        writeSessionCache(PROMOS_CACHE_KEY, list);
-        return list;
-      })();
+    if (loadInFlightRef.current) {
+      return loadInFlightRef.current;
+    }
+    const generation = ++loadGenerationRef.current;
+    const isStale = () => loadGenerationRef.current !== generation;
+    const task = (async () => {
+      setAppointmentsLoading(true);
+      setDocumentsLoading(true);
+      const patientId = user?.onecId?.toString().trim() || null;
+      try {
+        const promosPromise = (async () => {
+          const cached = readSessionCache<PromoData[]>(PROMOS_CACHE_KEY);
+          if (cached !== null) {
+            return cached;
+          }
+          const list = await onec.promotions.list();
+          if (list.length > 0) {
+            writeSessionCache(PROMOS_CACHE_KEY, list);
+          }
+          return list;
+        })();
+        const checkupsPromise = (async () => {
+          const cached = readSessionCache<CheckupData[]>(CHECKUPS_CACHE_KEY);
+          if (cached !== null) {
+            return cached;
+          }
+          const list = await onec.checkups.list();
+          writeSessionCache(CHECKUPS_CACHE_KEY, list);
+          return list;
+        })();
+        const contactsPromise = (async () => {
+          const cached = readSessionCache<Contacts>(CONTACTS_CACHE_KEY);
+          if (cached !== null) {
+            return cached;
+          }
+          const value = await onec.contacts.get();
+          writeSessionCache(CONTACTS_CACHE_KEY, value);
+          return value;
+        })();
 
-      const appointmentsPromise = patientId
-        ? fetchAppointments(patientId).catch((error) => {
-            console.warn("appointments fallback:", error);
-            return [] as Appointment[];
-          })
-        : Promise.resolve([] as Appointment[]);
-      const activeAppointmentsPromise = patientId
-        ? fetchScheduleAppointments({ patientId, status: "1" }).catch((error) => {
-            console.warn("active appointments fallback:", error);
-            return [] as Appointment[];
-          })
-        : Promise.resolve([] as Appointment[]);
-      const cancelledAppointmentsPromise = patientId
-        ? fetchScheduleAppointments({ patientId, status: "3" }).catch((error) => {
-            console.warn("cancelled appointments fallback:", error);
-            return [] as Appointment[];
-          })
-        : Promise.resolve([] as Appointment[]);
-      const documentsPromise = patientId
-        ? fetchDocuments(patientId).catch((error) => {
-            console.warn("documents fallback:", error);
-            return [] as DocumentItem[];
-          })
-        : Promise.resolve([] as DocumentItem[]);
-      const doctorsPromise = fetchDoctors().catch((error) => {
-        console.warn("doctors fallback:", error);
-        return [] as Doctor[];
-      });
-      const servicesPromise = fetchServices().catch((error) => {
-        console.warn("services fallback:", error);
-        return [] as ServiceDirectoryEntry[];
-      });
-      const medcardPromise = (async () => {
-        if (!patientId || typeof window === "undefined") {
-          return null;
-        }
-        const cacheKey = `${MEDCARD_CACHE_PREFIX}${patientId}`;
-        const loadedKey = `${MEDCARD_LOADED_PREFIX}${patientId}`;
-        const cached = readSessionCache<Record<string, unknown>>(cacheKey);
-        if (cached) {
-          return cached;
-        }
-        if (window.sessionStorage.getItem(loadedKey)) {
-          return null;
-        }
-        try {
-          const res = await fetch(`/api/patients?patientId=${encodeURIComponent(patientId)}`, {
-            method: "GET",
-            cache: "no-store",
-          });
-          const payload = (await res.json().catch(() => null)) as { patient?: Record<string, unknown> | null } | null;
-          if (!res.ok) {
+        const appointmentsPromise = patientId
+          ? fetchAppointments(patientId).catch((error) => {
+              console.warn("appointments fallback:", error);
+              return [] as Appointment[];
+            })
+          : Promise.resolve([] as Appointment[]);
+        const activeAppointmentsPromise = patientId
+          ? fetchScheduleAppointments({ patientId, status: "1" }).catch((error) => {
+              console.warn("active appointments fallback:", error);
+              return [] as Appointment[];
+            })
+          : Promise.resolve([] as Appointment[]);
+        const cancelledAppointmentsPromise = patientId
+          ? fetchScheduleAppointments({ patientId, status: "3" }).catch((error) => {
+              console.warn("cancelled appointments fallback:", error);
+              return [] as Appointment[];
+            })
+          : Promise.resolve([] as Appointment[]);
+        const documentsPromise = patientId
+          ? fetchDocuments(patientId).catch((error) => {
+              console.warn("documents fallback:", error);
+              return [] as DocumentItem[];
+            })
+          : Promise.resolve([] as DocumentItem[]);
+        const doctorsPromise = fetchDoctors().catch((error) => {
+          console.warn("doctors fallback:", error);
+          return [] as Doctor[];
+        });
+        const servicesPromise = fetchServices().catch((error) => {
+          console.warn("services fallback:", error);
+          return [] as ServiceDirectoryEntry[];
+        });
+        const medcardPromise = (async () => {
+          if (!patientId || typeof window === "undefined") {
+            return null;
+          }
+          const cacheKey = `${MEDCARD_CACHE_PREFIX}${patientId}`;
+          const loadedKey = `${MEDCARD_LOADED_PREFIX}${patientId}`;
+          const cached = readSessionCache<Record<string, unknown>>(cacheKey);
+          if (cached) {
+            return cached;
+          }
+          if (window.sessionStorage.getItem(loadedKey)) {
+            return null;
+          }
+          try {
+            const res = await fetch(`/api/patients?patientId=${encodeURIComponent(patientId)}`, {
+              method: "GET",
+              cache: "no-store",
+            });
+            const payload = (await res.json().catch(() => null)) as { patient?: Record<string, unknown> | null } | null;
+            if (!res.ok) {
+              window.sessionStorage.setItem(loadedKey, "1");
+              return null;
+            }
+            if (payload?.patient) {
+              writeSessionCache(cacheKey, payload.patient);
+            }
+            window.sessionStorage.setItem(loadedKey, "1");
+            return payload?.patient ?? null;
+          } catch {
             window.sessionStorage.setItem(loadedKey, "1");
             return null;
           }
-          if (payload?.patient) {
-            writeSessionCache(cacheKey, payload.patient);
-          }
-          window.sessionStorage.setItem(loadedKey, "1");
-          return payload?.patient ?? null;
-        } catch {
-          window.sessionStorage.setItem(loadedKey, "1");
-          return null;
+        })();
+
+        const [
+          promoItems,
+          checkupItems,
+          contactsData,
+          appointmentItems,
+          activeItems,
+          cancelledItems,
+          documentItems,
+          doctors,
+          services,
+          medcard,
+        ] = await Promise.all([
+          promosPromise,
+          checkupsPromise,
+          contactsPromise,
+          appointmentsPromise,
+          activeAppointmentsPromise,
+          cancelledAppointmentsPromise,
+          documentsPromise,
+          doctorsPromise,
+          servicesPromise,
+          medcardPromise,
+        ]);
+        if (isStale()) {
+          return;
         }
-      })();
+        setPromos(promoItems);
+        setCheckups(checkupItems);
+        setContacts({ ...DEFAULT_CONTACTS, ...contactsData });
+        setAppointments(appointmentItems);
+        setActiveAppointments(activeItems);
+        setCancelledAppointments(cancelledItems);
+        setDocuments(documentItems);
 
-      const [
-        promoItems,
-        checkupItems,
-        contactsData,
-        appointmentItems,
-        activeItems,
-        cancelledItems,
-        documentItems,
-        doctors,
-        services,
-        medcard,
-      ] = await Promise.all([
-        promosPromise,
-        onec.checkups.list(),
-        onec.contacts.get(),
-        appointmentsPromise,
-        activeAppointmentsPromise,
-        cancelledAppointmentsPromise,
-        documentsPromise,
-        doctorsPromise,
-        servicesPromise,
-        medcardPromise,
-      ]);
-      setPromos(promoItems);
-      setCheckups(checkupItems);
-      setContacts({ ...DEFAULT_CONTACTS, ...contactsData });
-      setAppointments(appointmentItems);
-      setActiveAppointments(activeItems);
-      setCancelledAppointments(cancelledItems);
-      setDocuments(documentItems);
+        void services;
+        void medcard;
+        await prefetchImages([
+          ...promoItems.flatMap((promo) => [promo.cardImage, promo.banner || promo.cardImage]),
+          ...doctors.map((doctor) => doctor.photoUrl).filter(Boolean),
+        ]);
+      } catch (error) {
+        console.warn("app boot fallback:", error);
+      } finally {
+        if (!isStale()) {
+          setAppointmentsLoading(false);
+          setDocumentsLoading(false);
+        }
+      }
+    })();
 
-      void services;
-      void medcard;
-      await prefetchImages([
-        ...promoItems.flatMap((promo) => [promo.cardImage, promo.banner || promo.cardImage]),
-        ...doctors.map((doctor) => doctor.photoUrl).filter(Boolean),
-      ]);
-    } catch (error) {
-      console.warn("app boot fallback:", error);
+    loadInFlightRef.current = task;
+    try {
+      return await task;
     } finally {
-      setAppointmentsLoading(false);
-      setDocumentsLoading(false);
+      loadInFlightRef.current = null;
     }
   }, [prefetchImages, readSessionCache, user?.onecId, writeSessionCache]);
 

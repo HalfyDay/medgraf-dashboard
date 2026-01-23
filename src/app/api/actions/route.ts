@@ -31,11 +31,6 @@ export async function GET() {
     console.warn("[api/actions] using auto 1C auth header (set ACTIONS_TOKEN or ACTIONS_USER/ACTIONS_PASS to override)");
   }
 
-  console.log("[api/actions] -> request", {
-    endpoint,
-    auth: primaryAuth ? (primaryAuth.startsWith("Basic ") ? "basic" : "bearer") : "none",
-  });
-
   try {
     const requestOnce = async (authorization?: string) => {
       return fetch(endpoint, {
@@ -87,12 +82,6 @@ export async function GET() {
         }
       }
     }
-
-    console.log("[api/actions] <- response", {
-      status: upstream.status,
-      ok: upstream.ok,
-      payload,
-    });
 
     if (!upstream.ok) {
       return NextResponse.json(

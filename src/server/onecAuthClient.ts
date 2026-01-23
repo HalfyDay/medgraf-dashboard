@@ -308,13 +308,6 @@ async function requestJson<T>(
 
   const payload = await parseJson<OnecEnvelope<T>>(res, context);
   const result = ensureSuccess(payload, context);
-  console.log("[onec] response", {
-    context,
-    path,
-    query: query ?? null,
-    status: res.status,
-    payload: result,
-  });
   return result;
 }
 
@@ -349,13 +342,6 @@ async function requestJsonPost<T>(
 
   const payload = await parseJson<OnecEnvelope<T>>(res, context);
   const result = ensureSuccess(payload, context);
-  console.log("[onec] response", {
-    context,
-    path,
-    query: query ?? null,
-    status: res.status,
-    payload: result,
-  });
   return result;
 }
 
@@ -477,7 +463,6 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
 
   console.log("[onec auth] /umc_client/auth_user request", query);
   const rawMatches = await requestOnec<OnecRawRecord[]>("/umc_client/auth_user", "auth_user", query);
-  console.log("[onec auth] /umc_client/auth_user response", rawMatches);
   if (!Array.isArray(rawMatches) || rawMatches.length === 0) {
     throw new OnecLogicalError("Пользователь не найден", "2", "auth_user");
   }
@@ -501,7 +486,6 @@ export async function fetchOnecUserProfile(phoneDigits: string, docNum?: string)
     if (patientList.length > 0) {
       patient = normalizeRecord(patientList[0]);
     }
-    console.log("[onec auth] /umc_client_users/patients response", patientResponse);
   }
 
   return { summary, patient };
@@ -554,7 +538,6 @@ export async function fetchOnecPatientDetails(patientId: string): Promise<OnecPa
     .map((item) => normalizeRelative(item))
     .filter((entry): entry is OnecRelative => Boolean(entry));
 
-  console.log("[onec] /umc_client_users/patients response", { patient: person, relativesCount: relatives.length });
 
   return {
     ...person,
@@ -760,7 +743,6 @@ export async function fetchOnecDocuments(patientId: string): Promise<OnecDocumen
     if (!Array.isArray(docs)) {
       return [];
     }
-    console.log("[onec] /umc_client_users/results response", docs);
     return docs;
   } catch (error) {
     if (error instanceof OnecLogicalError && error.code === "2") {
@@ -836,7 +818,6 @@ export async function fetchOnecAppointments(patientId: string): Promise<OnecAppo
     if (!Array.isArray(appointments)) {
       return [];
     }
-    console.log("[onec] /umc_client_users/appointments response", appointments);
     return appointments;
   } catch (error) {
     if (error instanceof OnecLogicalError && error.code === "2") {
@@ -872,7 +853,6 @@ export async function fetchOnecSchedule(doctorId: string): Promise<OnecScheduleC
   if (!Array.isArray(schedule)) {
     return [];
   }
-  console.log("[onec] /schedule/schedule response", schedule);
   return schedule;
 }
 
@@ -900,7 +880,6 @@ export async function fetchOnecScheduleAppointments(params: {
   if (!Array.isArray(result)) {
     return [];
   }
-  console.log("[onec] /schedule/appointments response", result);
   return result;
 }
 
@@ -923,12 +902,10 @@ export async function submitOnecScheduleRequest(params: {
   console.log("[onec] /schedule/request request", query);
   try {
     const requestId = await requestOnecPost<string>("/schedule/request", "schedule_request", query);
-    console.log("[onec] /schedule/request response", requestId);
     return requestId;
   } catch (error) {
     console.warn("[onec] /schedule/request POST failed, retrying with GET", error);
     const requestId = await requestOnec<string>("/schedule/request", "schedule_request", query);
-    console.log("[onec] /schedule/request response", requestId);
     return requestId;
   }
 }
