@@ -65,10 +65,14 @@ export type OnecUserFields = {
 const baseUrl = (process.env.ONEC_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
 const basicUser = process.env.ONEC_BASIC_USER || DEFAULT_BASIC_USER;
 const basicPassword = process.env.ONEC_BASIC_PASSWORD || DEFAULT_BASIC_PASSWORD;
+const onecAuthMode = (process.env.ONEC_AUTH_MODE || "").toLowerCase();
+const forceBasicAuth = onecAuthMode === "basic";
+const forceBearerAuth = onecAuthMode === "bearer";
 
 const basicAuthHeader = () => `Basic ${Buffer.from(`${basicUser}:${basicPassword}`, "utf-8").toString("base64")}`;
 
 let cachedToken: { value: string; expiresAt: number | null } | null = null;
+let preferBasicUntil: number | null = null;
 
 export class OnecRequestError extends Error {
   constructor(
@@ -261,7 +265,17 @@ async function getBearerToken(): Promise<string> {
 }
 
 export async function buildOnecAuthHeader(prefer: "bearer" | "basic" = "bearer"): Promise<string> {
+  if (forceBasicAuth) {
+    return basicAuthHeader();
+  }
+  if (forceBearerAuth) {
+    const token = await getBearerToken();
+    return `Bearer ${token}`;
+  }
   if (prefer === "basic") {
+    return basicAuthHeader();
+  }
+  if (preferBasicUntil && preferBasicUntil > Date.now()) {
     return basicAuthHeader();
   }
   try {
@@ -397,13 +411,36 @@ function shouldRetryWithBasic(error: unknown) {
   );
 }
 
+function getPrimaryAuthMode(): "basic" | "bearer" {
+  if (forceBasicAuth) {
+    return "basic";
+  }
+  if (forceBearerAuth) {
+    return "bearer";
+  }
+  if (preferBasicUntil && preferBasicUntil > Date.now()) {
+    return "basic";
+  }
+  return "bearer";
+}
+
+function markBearerRejected() {
+  // Avoid repeated token requests if upstream rejects Bearer; retry after a cooldown.
+  preferBasicUntil = Date.now() + 15 * 60_000;
+}
+
 async function requestOnec<T>(path: string, context: string, query?: Record<string, string>) {
+  const primary = getPrimaryAuthMode();
+  if (primary === "basic") {
+    return requestJson<T>(path, context, "basic", query);
+  }
   try {
     return await requestJson<T>(path, context, "bearer", query);
   } catch (error) {
-    if (shouldRetryWithBasic(error)) {
+    if (shouldRetryWithBasic(error) && !forceBearerAuth) {
       console.warn(`Bearer-запрос 1С (${context}) отклонён, выполняем повтор по Basic Auth`);
       cachedToken = null;
+      markBearerRejected();
       return requestJson<T>(path, context, "basic", query);
     }
     throw error;
@@ -415,14 +452,19 @@ async function requestOnecBasic<T>(path: string, context: string, query?: Record
 }
 
 async function requestOnecBinary(path: string, context: string, query?: Record<string, string>) {
+  const primary = getPrimaryAuthMode();
+  if (primary === "basic") {
+    return requestBinary(path, context, "basic", query);
+  }
   try {
     return await requestBinary(path, context, "bearer", query);
   } catch (error) {
-    if (shouldRetryWithBasic(error)) {
+    if (shouldRetryWithBasic(error) && !forceBearerAuth) {
       console.warn(
         `Bearer-запрос 1С (${context}) не прошел, пробуем еще раз через Basic Auth`,
       );
       cachedToken = null;
+      markBearerRejected();
       return requestBinary(path, context, "basic", query);
     }
     throw error;
@@ -829,12 +871,17 @@ export async function fetchOnecAppointments(patientId: string): Promise<OnecAppo
 }
 
 async function requestOnecPost<T>(path: string, context: string, query?: Record<string, string>) {
+  const primary = getPrimaryAuthMode();
+  if (primary === "basic") {
+    return requestJsonPost<T>(path, context, "basic", query);
+  }
   try {
     return await requestJsonPost<T>(path, context, "bearer", query);
   } catch (error) {
-    if (shouldRetryWithBasic(error)) {
+    if (shouldRetryWithBasic(error) && !forceBearerAuth) {
       console.warn(`Bearer-запрос 1С (${context}) отклонён, выполняем повтор по Basic Auth`);
       cachedToken = null;
+      markBearerRejected();
       return requestJsonPost<T>(path, context, "basic", query);
     }
     throw error;
