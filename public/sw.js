@@ -6,7 +6,6 @@ const ASSETS = [
   "/favicon.ico",
   "/icons/icon-192.png", "/icons/icon-512.png",
   "/manifest.webmanifest",
-  // "/promo-1.png", "/promo-2.png", "/promo-3.png", // если переименовали
 ];
 
 self.addEventListener("install", (e) => {

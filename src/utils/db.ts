@@ -1,7 +1,7 @@
 import { Database } from "sqlite3";
 import { join } from "path";
 
-const dbFile = join(process.cwd(), "data.sqlite");
+const dbFile = process.env.DATABASE_PATH?.trim() || join(process.cwd(), "data.sqlite");
 console.log("SQLite database file:", dbFile);
 
 const db = new Database(dbFile, (err) => {

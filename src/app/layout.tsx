@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import AppShell from "@/components/AppShell";
+import MediaProtection from "@/components/MediaProtection";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { cookies } from "next/headers";
@@ -59,6 +60,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       }}
     >
       <body className={`${geistSans.variable} ${geistMono.variable} bg-background antialiased`}>
+        <MediaProtection />
         {/* pwa-bip Script — оставить как есть */}
         <Script id="pwa-bip" strategy="beforeInteractive">
           {`

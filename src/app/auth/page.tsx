@@ -609,7 +609,7 @@ export default function AuthPage() {
                       setLoginStep("password");
                     }}
                   >
-                    Вертуться назад
+                    Вернуться назад
                   </button>
                 </div>
               </form>
