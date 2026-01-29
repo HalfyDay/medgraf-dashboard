@@ -12,7 +12,7 @@ import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
 import CheckupsSheet, { type CheckupData } from "@/components/CheckupsSheet";
-import { DOCTOR_AVATAR_PLACEHOLDER, type Appointment, type DocumentItem } from "@/utils/api";
+import { DOCTOR_AVATAR_PLACEHOLDER, cancelScheduleAppointment, type Appointment, type DocumentItem } from "@/utils/api";
 import { useAppData } from "@/providers/AppDataProvider";
 
 function formatTileDate(dateIso: string) {
@@ -69,6 +69,7 @@ export default function HomePage() {
   const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
   const [activeDocument, setActiveDocument] = useState<DocumentItem | null>(null);
   const [cancelOverlayOpen, setCancelOverlayOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const cancelOverlayTimerRef = useRef<number | null>(null);
   const [bookingFlowOpen, setBookingFlowOpen] = useState(false);
   const [bookingSuccessOpen, setBookingSuccessOpen] = useState(false);
@@ -125,25 +126,33 @@ export default function HomePage() {
     setVisitsOpen(false);
   };
 
-  const handleCancelAppointment = (appointment: Appointment) => {
-    if (appointment.status !== "planned") return;
-    setAppointments((prev) =>
-      prev.map((item) => (item.id === appointment.id ? { ...item, status: "cancelled" } : item)),
-    );
-    setActiveAppointments((prev) => prev.filter((item) => item.id !== appointment.id));
-    setCancelledAppointments((prev) => [{ ...appointment, status: "cancelled" }, ...prev]);
-    setActiveAppointment((prev) =>
-      prev && prev.id === appointment.id ? { ...prev, status: "cancelled" } : prev,
-    );
-    setAppointmentDetailsOpen(false);
-    setCancelOverlayOpen(false);
-    if (cancelOverlayTimerRef.current) {
-      window.clearTimeout(cancelOverlayTimerRef.current);
+  const handleCancelAppointment = async (appointment: Appointment) => {
+    if (appointment.status !== "planned" || cancelLoading) return;
+    setCancelLoading(true);
+    try {
+      await cancelScheduleAppointment(appointment.id);
+      setAppointments((prev) =>
+        prev.map((item) => (item.id === appointment.id ? { ...item, status: "cancelled" } : item)),
+      );
+      setActiveAppointments((prev) => prev.filter((item) => item.id !== appointment.id));
+      setCancelledAppointments((prev) => [{ ...appointment, status: "cancelled" }, ...prev]);
+      setActiveAppointment((prev) =>
+        prev && prev.id === appointment.id ? { ...prev, status: "cancelled" } : prev,
+      );
+      setAppointmentDetailsOpen(false);
+      setCancelOverlayOpen(false);
+      if (cancelOverlayTimerRef.current) {
+        window.clearTimeout(cancelOverlayTimerRef.current);
+      }
+      cancelOverlayTimerRef.current = window.setTimeout(() => {
+        setCancelOverlayOpen(true);
+        cancelOverlayTimerRef.current = null;
+      }, 60);
+    } catch (error) {
+      console.warn("cancel appointment failed:", error);
+    } finally {
+      setCancelLoading(false);
     }
-    cancelOverlayTimerRef.current = window.setTimeout(() => {
-      setCancelOverlayOpen(true);
-      cancelOverlayTimerRef.current = null;
-    }, 60);
   };
 
   const handleCloseAppointmentDetails = () => {
@@ -737,6 +746,7 @@ export default function HomePage() {
         onClose={handleCloseAppointmentDetails}
         appointment={activeAppointment}
         onCancel={handleCancelAppointment}
+        cancelLoading={cancelLoading}
       />
       <CheckupsSheet open={checkupOpen} onClose={() => setCheckupOpen(false)} checkup={activeCheckup} />
       <PromoSheet open={promoOpen} onClose={() => setPromoOpen(false)} promo={activePromo} />

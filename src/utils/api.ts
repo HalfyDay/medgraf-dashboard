@@ -106,6 +106,26 @@ export async function fetchScheduleAppointments(params: {
   return payload.appointments;
 }
 
+export async function cancelScheduleAppointment(uid: string): Promise<string> {
+  const safeUid = uid?.toString().trim();
+  if (!safeUid) {
+    throw new Error("Missing appointment uid");
+  }
+  const res = await fetch(
+    `/api/schedule/cancel_appointment?uid=${encodeURIComponent(safeUid)}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+  const payload = (await res.json().catch(() => null)) as { result?: string; error?: string } | null;
+  if (!res.ok) {
+    const message = payload?.error || "Failed to cancel appointment";
+    throw new Error(message);
+  }
+  return payload?.result ?? "Success";
+}
+
 export interface Profile {
   fullName: string;
   birthDate: string;        // "YYYY-MM-DD"

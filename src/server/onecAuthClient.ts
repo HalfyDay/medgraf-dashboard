@@ -930,6 +930,20 @@ export async function fetchOnecScheduleAppointments(params: {
   return result;
 }
 
+export async function cancelOnecScheduleAppointment(uid: string): Promise<string> {
+  const safeUid = uid.toString().trim();
+  if (!safeUid) {
+    throw new Error("Не указан uid заявки для отмены");
+  }
+  console.log("[onec] /schedule/cancel_appointment request", { uid: safeUid });
+  const result = await requestOnec<string>(
+    "/schedule/cancel_appointment",
+    "schedule_cancel_appointment",
+    { uid: safeUid },
+  );
+  return typeof result === "string" ? result : String(result ?? "");
+}
+
 export async function submitOnecScheduleRequest(params: {
   doctorID: string;
   patientID: string;

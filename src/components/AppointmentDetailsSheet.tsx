@@ -9,6 +9,7 @@ type AppointmentDetailsSheetProps = {
   onClose: () => void;
   appointment: Appointment | null;
   onCancel?: (appointment: Appointment) => void;
+  cancelLoading?: boolean;
 };
 
 const CLINIC_NAME = "МедГрафт";
@@ -46,12 +47,15 @@ export default function AppointmentDetailsSheet({
   onClose,
   appointment,
   onCancel,
+  cancelLoading = false,
 }: AppointmentDetailsSheetProps) {
   if (!appointment) {
     return null;
   }
 
   const isPlanned = appointment.status === "planned";
+  const isCancelling = Boolean(cancelLoading);
+  const canCancel = isPlanned && !isCancelling;
   const dateLabel = formatDate(appointment.date);
   const timeLabel = formatTime(appointment.date);
   const clinicName = appointment.clinic?.name || CLINIC_NAME;
@@ -174,10 +178,10 @@ export default function AppointmentDetailsSheet({
         <button
           type="button"
           onClick={() => onCancel(appointment)}
-          disabled={!isPlanned}
+          disabled={!canCancel}
           className={[
             "mt-5 w-full rounded-[18px] px-6 py-4 text-center text-[16px] font-semibold shadow-md ring-1 transition-all active:translate-y-[1px]",
-            isPlanned
+            canCancel
               ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white ring-sky-200 hover:from-sky-500/90 hover:to-blue-600/90"
               : "cursor-not-allowed bg-slate-100 text-slate-400 ring-slate-200",
           ].join(" ")}
