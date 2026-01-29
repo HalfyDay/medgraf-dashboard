@@ -3,9 +3,10 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import BootSplash from "@/components/BootSplash";
 import type { PromoData } from "@/components/PromoSheet";
-import type { CheckupData } from "@/components/CheckupsSheet";
+import type { CheckupData } from "@/types/checkups";
 import {
   fetchAppointments,
+  fetchCheckups,
   fetchDocuments,
   fetchDoctors,
   fetchScheduleAppointments,
@@ -66,7 +67,7 @@ const PUBLIC_ASSET_URLS: string[] = [
 ];
 
 const PROMOS_CACHE_KEY = "medgraf.promos.v1";
-const CHECKUPS_CACHE_KEY = "medgraf.checkups.v1";
+const CHECKUPS_CACHE_KEY = "medgraf.checkups.v2";
 const CONTACTS_CACHE_KEY = "medgraf.contacts.v1";
 const PENDING_APPOINTMENTS_KEY = "medgraf.pendingAppointments.v1";
 const PENDING_APPOINTMENTS_TTL_MS = 15 * 60 * 1000;
@@ -116,6 +117,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
+    }
+    try {
+      // Clear stale checkups cache after parser changes.
+      window.sessionStorage.removeItem("medgraf.checkups.v2");
+    } catch {
+      // ignore storage errors
     }
     const flag = window.sessionStorage.getItem("medgraf.skipBootSplash");
     if (flag) {
@@ -305,9 +312,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           if (cached !== null) {
             return cached;
           }
-          const list = await onec.checkups.list();
-          writeSessionCache(CHECKUPS_CACHE_KEY, list);
-          return list;
+          try {
+            const list = await fetchCheckups();
+            writeSessionCache(CHECKUPS_CACHE_KEY, list);
+            return list;
+          } catch (error) {
+            console.warn("checkups fallback:", error);
+            return [] as CheckupData[];
+          }
         })();
         const contactsPromise = (async () => {
           const cached = readSessionCache<Contacts>(CONTACTS_CACHE_KEY);

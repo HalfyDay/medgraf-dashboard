@@ -830,6 +830,20 @@ export type OnecScheduleAppointmentRecord = {
   works?: OnecScheduleAppointmentWork[] | null;
 };
 
+export type OnecCheckupRecord = {
+  id?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  name?: string | null;
+  price?: number | string | null;
+  currency?: string | null;
+  description?: string | null;
+  brief?: string | null;
+  oldprice?: number | string | null;
+  img?: string | null;
+};
+
+
 export type OnecScheduleDate = {
   date?: string | null;
   slots?: OnecScheduleSlot[] | null;
@@ -901,6 +915,16 @@ export async function fetchOnecSchedule(doctorId: string): Promise<OnecScheduleC
     return [];
   }
   return schedule;
+}
+
+export async function fetchOnecCheckups(query?: { id?: string }): Promise<OnecCheckupRecord[]> {
+  const params = query?.id ? { id: query.id } : undefined;
+  console.log("[onec] /services/checkup request", params ?? {});
+  const result = await requestOnec<OnecCheckupRecord[]>("/services/checkup", "services_checkup", params);
+  if (!Array.isArray(result)) {
+    return [];
+  }
+  return result;
 }
 
 export async function fetchOnecScheduleAppointments(params: {

@@ -1,5 +1,6 @@
 // src/utils/api.ts
 import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
+import type { CheckupData } from "@/types/checkups";
 
 export const DOCTOR_AVATAR_PLACEHOLDER = "/doctor.svg";
 export interface Appointment {
@@ -200,6 +201,93 @@ export async function fetchDocuments(patientId?: string): Promise<DocumentItem[]
   }
 
   return payload.documents;
+}
+
+type CheckupApiRecord = {
+  id?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
+  name?: string | null;
+  price?: number | string | null;
+  currency?: string | null;
+  description?: string | null;
+  brief?: string | null;
+  oldprice?: number | string | null;
+  img?: string | null;
+};
+
+const CHECKUP_GRADIENTS = [
+  "from-pink-400 to-fuchsia-500",
+  "from-violet-400 to-purple-500",
+  "from-lime-400 to-emerald-500",
+  "from-cyan-500 to-sky-600",
+  "from-amber-400 to-orange-500",
+  "from-slate-500 to-slate-700",
+  "from-teal-400 to-teal-600",
+  "from-lime-500 to-green-600",
+  "from-sky-400 to-blue-500",
+  "from-rose-400 to-pink-500",
+];
+
+const splitCheckupDescription = (description?: string | null) => {
+  if (!description) return { intro: undefined, bullets: [] as string[] };
+  const normalized = description.replace(/\r\n/g, "\n").trim();
+  if (!normalized) return { intro: undefined, bullets: [] as string[] };
+  const lines = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const markerRegex = /(комплекс включает|комплекс включает в себя|состав комплекса)/i;
+  const markerIndex = lines.findIndex((line) => markerRegex.test(line));
+  if (markerIndex === -1) {
+    return { intro: normalized, bullets: [] as string[] };
+  }
+  const introLines = lines.slice(0, markerIndex);
+  const markerLine = lines[markerIndex] ?? "";
+  const markerRemainder = markerLine.split(/:|—|-|–/).slice(1).join(" ").trim();
+  const remainderBullets = markerRemainder ? [markerRemainder] : [];
+  const bullets = [...remainderBullets, ...lines.slice(markerIndex + 1)];
+  return {
+    intro: introLines.length ? introLines.join("\n") : undefined,
+    bullets,
+  };
+};
+
+export async function fetchCheckups(): Promise<CheckupData[]> {
+  const res = await fetch("/api/services/checkup", {
+    method: "GET",
+    cache: "no-store",
+  });
+  const payload = (await res.json().catch(() => null)) as
+    | { checkups?: CheckupApiRecord[]; error?: string }
+    | null;
+  if (!res.ok) {
+    const message = payload?.error || "Failed to load checkups";
+    throw new Error(message);
+  }
+  const list = Array.isArray(payload?.checkups) ? payload.checkups : [];
+  return list
+    .map((item, index) => {
+      const id = item?.id?.toString().trim();
+      const title = item?.name?.toString().trim();
+      if (!id || !title) return null;
+      const { intro, bullets } = splitCheckupDescription(item?.description?.toString());
+      return {
+        id,
+        title,
+        sub: item?.brief?.toString().trim() || undefined,
+        description: intro,
+        bullets,
+        price: item?.price ?? undefined,
+        oldPrice: item?.oldprice ?? undefined,
+        currency: item?.currency ?? undefined,
+        image: item?.img?.toString().trim() || "/clinic.svg",
+        bg: CHECKUP_GRADIENTS[index % CHECKUP_GRADIENTS.length],
+        ctaText: "Оставить заявку",
+        ctaHref: "/booking",
+      };
+    })
+    .filter((item): item is CheckupData => Boolean(item));
 }
 
 export interface Doctor {

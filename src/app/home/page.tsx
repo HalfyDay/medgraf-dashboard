@@ -11,8 +11,9 @@ import BookingFlowSheet from "@/components/BookingFlowSheet";
 import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
-import CheckupsSheet, { type CheckupData } from "@/components/CheckupsSheet";
+import CheckupsSheet from "@/components/CheckupsSheet";
 import { DOCTOR_AVATAR_PLACEHOLDER, cancelScheduleAppointment, type Appointment, type DocumentItem } from "@/utils/api";
+import type { CheckupData } from "@/types/checkups";
 import { useAppData } from "@/providers/AppDataProvider";
 
 function formatTileDate(dateIso: string) {
@@ -515,7 +516,7 @@ export default function HomePage() {
                   type="button"
                   aria-hidden={hiddenWhileCollapsed}
                   tabIndex={hiddenWhileCollapsed ? -1 : 0}
-                  onClick={() => { setActiveCheckup(c as unknown as CheckupData); setCheckupOpen(true); }}
+                  onClick={() => { setActiveCheckup(c); setCheckupOpen(true); }}
                   className={[
                     "relative overflow-hidden rounded-[20px] bg-gradient-to-br p-4 text-left text-white",
                     "min-h-[120px]",
@@ -534,63 +535,27 @@ export default function HomePage() {
                       "radial-gradient(110% 55% at 0% 0%, rgba(255,255,255,.15) 0%, rgba(255,255,255,0) 60%)"
                     }}
                   />
-                  <div className="mb-2 opacity-95 text-white/90">
-                    {c.icon === "mrt" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="6" width="18" height="12" rx="3" stroke="currentColor" strokeWidth="1.8"/>
-                        <path d="M7 10h10M7 14h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                      </svg>
-                    )}
-                    {c.icon === "stetho" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M6 6v5a5 5 0 1 0 10 0V6M6 6h2M16 6h2M18 14a2 2 0 1 0 0-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {c.icon === "eye" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.8"/>
-                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/>
-                      </svg>
-                    )}
-                    {c.icon === "balloon" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 3c3 0 5 2.2 5 5s-2 7-5 7-5-4.2-5-7 2-5 5-5Z" stroke="currentColor" strokeWidth="1.8"/>
-                        <path d="M12 15c0 2-1 3-3 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                      </svg>
-                    )}
-                    {c.icon === "heart" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {c.icon === "leaf" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M4 14c3-6 8-8 16-8-1 8-3 13-9 14-4 .5-7-2-7-6Z" stroke="currentColor" strokeWidth="1.8"/>
-                        <path d="M10 10c0 4 1 6 4 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-                      </svg>
-                    )}
-                    {c.icon === "ear" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M16 15c0 2-1.5 4-4 4s-4-2-4-4V9a4 4 0 1 1 8 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {c.icon === "bone" && (
-                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 9a2.5 2.5 0 1 1 3-3l8 8a2.5 2.5 0 1 1-3 3l-8-8Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </div>
+                  {c.image && (
+                    <img
+                      src={c.image}
+                      alt=""
+                      className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm ring-1 ring-white/40"
+                    />
+                  )}
 
                   <div
                     ref={(el) => {
                       titleRefs.current[i] = el;
                     }}
-                    className="font-semibold leading-tight overflow-hidden text-ellipsis whitespace-nowrap"
+                    className="font-semibold leading-tight text-[16px] min-h-[40px]"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    }}
                   >
                     {c.title}
-                  </div>
-                  <div className="mt-0.5 text-[13.5px] leading-5 text-white/85 drop-shadow-[0_1px_0_rgba(0,0,0,.25)]">
-                    {c.sub}
                   </div>
                 </button>
               );
