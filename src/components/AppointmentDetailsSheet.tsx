@@ -131,6 +131,8 @@ export default function AppointmentDetailsSheet({
                 </div>
                 <a
                   href={downloadUrl ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex h-7 w-7 items-center justify-center text-sky-600 transition hover:opacity-80"
                   aria-label={DOWNLOAD_LABEL}
                 >
