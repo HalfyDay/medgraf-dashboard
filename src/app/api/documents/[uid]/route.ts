@@ -65,24 +65,146 @@ function decodeHtml(buffer: Buffer) {
 }
 
 function injectPdfButton(html: string) {
-  const buttonHtml = `
-<div id="mgraft-pdf-toolbar" style="position:fixed;top:16px;right:16px;z-index:99999;">
-  <button type="button" onclick="window.print()" style="background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:10px 14px;font:600 14px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;box-shadow:0 6px 18px rgba(0,0,0,0.18);cursor:pointer;">
-    Скачать PDF
-  </button>
-</div>
+  const layoutHtml = `
 <style>
-  @media print { #mgraft-pdf-toolbar { display: none !important; } }
+  :root {
+    --mg-doc-bg: #f2f5f9;
+    --mg-doc-paper: #ffffff;
+    --mg-doc-text: #0f172a;
+    --mg-doc-muted: #64748b;
+    --mg-doc-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+    --mg-doc-radius: 18px;
+    --mg-doc-max: 920px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--mg-doc-bg);
+    color: var(--mg-doc-text);
+    margin: 0;
+  }
+
+  #mg-doc-shell {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #mg-doc-content {
+    flex: 1 0 auto;
+    padding: 32px 24px 110px;
+    display: flex;
+    justify-content: center;
+  }
+
+  #mg-doc-paper {
+    width: 100%;
+    max-width: var(--mg-doc-max);
+    background: var(--mg-doc-paper);
+    border-radius: var(--mg-doc-radius);
+    box-shadow: var(--mg-doc-shadow);
+    padding: 32px 36px;
+  }
+
+  #mg-doc-toolbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99999;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: center;
+  }
+
+  #mg-doc-toolbar button {
+    background: #0ea5e9;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font: 600 14px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    box-shadow: 0 8px 18px rgba(14, 165, 233, 0.35);
+    cursor: pointer;
+  }
+
+  #mg-doc-toolbar button:active {
+    transform: translateY(1px);
+  }
+
+  @media (max-width: 768px) {
+    #mg-doc-content {
+      padding: 16px 12px 96px;
+    }
+
+    #mg-doc-paper {
+      border-radius: 14px;
+      padding: 20px 18px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    #mg-doc-content {
+      padding: 12px 10px 96px;
+    }
+
+    #mg-doc-paper {
+      border-radius: 10px;
+      padding: 16px 14px;
+    }
+
+    #mg-doc-toolbar {
+      padding: 12px 14px;
+    }
+
+    #mg-doc-toolbar button {
+      width: 100%;
+      max-width: 360px;
+    }
+  }
+
+  @media print {
+    #mg-doc-toolbar { display: none !important; }
+    #mg-doc-content { padding: 0; }
+    #mg-doc-paper {
+      box-shadow: none;
+      border-radius: 0;
+      max-width: none;
+      padding: 0;
+    }
+    body { background: #ffffff; }
+  }
 </style>
+<div id="mg-doc-shell">
+  <div id="mg-doc-content">
+    <div id="mg-doc-paper">
 `;
 
-  if (/<\/body>/i.test(html)) {
-    return html.replace(/<\/body>/i, `${buttonHtml}</body>`);
+  const layoutFooter = `
+    </div>
+  </div>
+</div>
+<div id="mg-doc-toolbar">
+  <button type="button" onclick="window.print()">Скачать PDF</button>
+</div>
+`;
+
+  const bodyMatch = /<body[^>]*>/i.exec(html);
+  if (bodyMatch && /<\/body>/i.test(html)) {
+    const bodyOpen = bodyMatch[0];
+    return html
+      .replace(bodyOpen, `${bodyOpen}${layoutHtml}`)
+      .replace(/<\/body>/i, `${layoutFooter}</body>`);
   }
+
   if (/<\/html>/i.test(html)) {
-    return html.replace(/<\/html>/i, `${buttonHtml}</html>`);
+    return html.replace(/<\/html>/i, `${layoutHtml}${layoutFooter}</html>`);
   }
-  return `${buttonHtml}${html}`;
+
+  return `${layoutHtml}${html}${layoutFooter}`;
 }
 
 async function renderHtmlToPdf(html: string) {
