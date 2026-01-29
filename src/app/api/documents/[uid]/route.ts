@@ -64,8 +64,37 @@ function decodeHtml(buffer: Buffer) {
   }
 }
 
+function decodeHtmlBest(buffer: Buffer, contentType?: string | null) {
+  const primary = detectHtmlCharset(buffer, contentType) === "windows-1251" ? "win1251" : "utf-8";
+  const primaryText = primary === "win1251" ? iconv.decode(buffer, "win1251") : buffer.toString("utf-8");
+  if (!primaryText.includes("\uFFFD")) {
+    return primaryText;
+  }
+
+  const fallbackText = primary === "win1251" ? buffer.toString("utf-8") : iconv.decode(buffer, "win1251");
+  return fallbackText.includes("\uFFFD") ? primaryText : fallbackText;
+}
+
+function detectHtmlCharset(buffer: Buffer, contentType?: string | null) {
+  const fromHeader = contentType?.match(/charset=([^\s;]+)/i)?.[1]?.toLowerCase();
+  if (fromHeader) {
+    return fromHeader.includes("1251") ? "windows-1251" : "utf-8";
+  }
+
+  const latin = buffer.toString("latin1");
+  const metaMatch = latin.match(/charset\s*=\s*['\"]?([a-z0-9_-]+)/i);
+  const metaCharset = metaMatch?.[1]?.toLowerCase();
+  if (metaCharset) {
+    return metaCharset.includes("1251") ? "windows-1251" : "utf-8";
+  }
+
+  const utfText = buffer.toString("utf-8");
+  return utfText.includes("\uFFFD") ? "windows-1251" : "utf-8";
+}
+
 function injectPdfButton(html: string) {
   const layoutHtml = `
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
   :root {
     --mg-doc-bg: #f2f5f9;
@@ -74,7 +103,8 @@ function injectPdfButton(html: string) {
     --mg-doc-muted: #64748b;
     --mg-doc-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
     --mg-doc-radius: 18px;
-    --mg-doc-max: 920px;
+    --mg-doc-max: 800px;
+    --mg-doc-scale: 1;
   }
 
   html, body {
@@ -82,6 +112,7 @@ function injectPdfButton(html: string) {
     background: var(--mg-doc-bg);
     color: var(--mg-doc-text);
     margin: 0;
+    overflow-x: hidden;
   }
 
   #mg-doc-shell {
@@ -95,6 +126,7 @@ function injectPdfButton(html: string) {
     padding: 32px 24px 110px;
     display: flex;
     justify-content: center;
+    overflow-x: hidden;
   }
 
   #mg-doc-paper {
@@ -104,92 +136,214 @@ function injectPdfButton(html: string) {
     border-radius: var(--mg-doc-radius);
     box-shadow: var(--mg-doc-shadow);
     padding: 32px 36px;
-  }
-
-  #mg-doc-toolbar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 99999;
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid rgba(148, 163, 184, 0.35);
-    padding: 14px 20px;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    margin: 0 auto;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     display: flex;
     justify-content: center;
   }
 
-  #mg-doc-toolbar button {
-    background: #0ea5e9;
-    color: #fff;
-    border: none;
-    border-radius: 12px;
-    padding: 12px 18px;
-    font: 600 14px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
-    box-shadow: 0 8px 18px rgba(14, 165, 233, 0.35);
-    cursor: pointer;
+  #mg-doc-body {
+    width: var(--mg-doc-max);
+    max-width: var(--mg-doc-max);
+    flex: 0 0 auto;
+    margin: 0 auto;
+    transform: scale(var(--mg-doc-scale));
+    transform-origin: top center;
   }
 
-  #mg-doc-toolbar button:active {
+  #mg-doc-paper * {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  #mg-doc-paper table {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+  #mg-doc-paper img,
+  #mg-doc-paper svg,
+  #mg-doc-paper iframe {
+    max-width: 100%;
+    height: auto;
+  }
+  #mg-doc-actions {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    z-index: 99999;
+  }
+
+  .mg-doc-btn {
+    border-radius: 14px;
+    padding: 12px 18px;
+    font: 600 14px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    cursor: pointer;
+    min-width: 140px;
+    text-align: center;
+  }
+
+  .mg-doc-btn:active {
     transform: translateY(1px);
   }
 
-  @media (max-width: 768px) {
-    #mg-doc-content {
-      padding: 16px 12px 96px;
-    }
-
-    #mg-doc-paper {
-      border-radius: 14px;
-      padding: 20px 18px;
-    }
+  #mg-doc-back {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
   }
 
-  @media (max-width: 480px) {
+  #mg-doc-download {
+    background: #0ea5e9;
+    color: #fff;
+    border: none;
+    box-shadow: 0 8px 18px rgba(14, 165, 233, 0.35);
+  }
+
+  @media (max-width: 900px) {
+
     #mg-doc-content {
-      padding: 12px 10px 96px;
+      padding: 16px 12px 96px;
+      justify-content: flex-start;
     }
 
     #mg-doc-paper {
-      border-radius: 10px;
-      padding: 16px 14px;
-    }
-
-    #mg-doc-toolbar {
-      padding: 12px 14px;
-    }
-
-    #mg-doc-toolbar button {
       width: 100%;
-      max-width: 360px;
+      max-width: 100%;
+      border-radius: var(--mg-doc-radius);
+      padding: 16px 12px;
+      justify-content: center;
+    }
+
+    #mg-doc-body {
+      width: var(--mg-doc-max);
+      max-width: var(--mg-doc-max);
+      margin: 0 auto;
+    }
+    #mg-doc-actions {
+      bottom: 22px;
+      gap: 10px;
+    }
+
+    .mg-doc-btn {
+      padding: 14px 18px;
+      font-size: clamp(16px, 3.2vw, 20px);
+      min-width: 0;
+      width: calc(50vw - 24px);
+      max-width: 220px;
     }
   }
 
   @media print {
-    #mg-doc-toolbar { display: none !important; }
-    #mg-doc-content { padding: 0; }
-    #mg-doc-paper {
-      box-shadow: none;
-      border-radius: 0;
-      max-width: none;
-      padding: 0;
+    #mg-doc-actions { display: none !important; }
+    #mg-doc-paper { box-shadow: none; }
+    html, body, #mg-doc-content, #mg-doc-paper {
+      overflow: visible !important;
     }
-    body { background: #ffffff; }
+    a, a:visited { color: inherit; text-decoration: none; }
+    a[href]::after, a[href]::before { content: "" !important; }
+  }
+
+  @page {
+    size: auto;
+    margin: 12mm;
   }
 </style>
 <div id="mg-doc-shell">
   <div id="mg-doc-content">
     <div id="mg-doc-paper">
+      <div id="mg-doc-body">
 `;
 
   const layoutFooter = `
+      </div>
     </div>
   </div>
 </div>
-<div id="mg-doc-toolbar">
-  <button type="button" onclick="window.print()">Скачать PDF</button>
+<div id="mg-doc-actions">
+  <button id="mg-doc-back" class="mg-doc-btn" type="button" onclick="try{sessionStorage.setItem('medgraf.skipBootSplash','1');}catch(e){}; if (window.history.length > 1) { window.history.back(); } else { window.location.href='/home'; }">&#1053;&#1072;&#1079;&#1072;&#1076;</button>
+  <button id="mg-doc-download" class="mg-doc-btn" type="button" onclick="window.__mgDownloadPdf && window.__mgDownloadPdf()">&#1057;&#1082;&#1072;&#1095;&#1072;&#1090;&#1100; PDF</button>
 </div>
+<script>
+  (function () {
+    function buildRawUrl() {
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('raw', '1');
+        return url.toString();
+      } catch (e) {
+        return window.location.href + (window.location.href.indexOf('?') >= 0 ? '&raw=1' : '?raw=1');
+      }
+    }
+
+    window.__mgDownloadPdf = function () {
+      var rawUrl = buildRawUrl();
+      fetch(rawUrl, { credentials: 'same-origin' })
+        .then(function (res) { return res.text(); })
+        .then(function (rawHtml) {
+          var iframe = document.getElementById('mg-doc-print-frame');
+          if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'mg-doc-print-frame';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.opacity = '0';
+            iframe.style.pointerEvents = 'none';
+            document.body.appendChild(iframe);
+          }
+          var doc = iframe.contentWindow && iframe.contentWindow.document;
+          if (!doc) return;
+          doc.open();
+          doc.write(rawHtml);
+          doc.close();
+          iframe.onload = function () {
+            try {
+              var url = new URL(window.location.href);
+              var name = url.searchParams.get('filename');
+              if (name) {
+                name = decodeURIComponent(name).replace(/\.html?$/i, '');
+                iframe.contentWindow.document.title = name;
+              }
+            } catch (e) {}
+            try {
+              iframe.contentWindow.focus();
+              iframe.contentWindow.print();
+            } catch (e) {}
+          };
+        })
+        .catch(function () { window.print(); });
+    };
+
+    var root = document.documentElement;
+    var paper = document.getElementById('mg-doc-paper');
+    var docMax = 800;
+    function updateScale() {
+      if (!paper) return;
+      var padding = 0;
+      try {
+        var styles = window.getComputedStyle(paper);
+        padding = parseFloat(styles.paddingLeft || '0') + parseFloat(styles.paddingRight || '0');
+      } catch (e) {}
+      var available = Math.max(0, paper.clientWidth - padding);
+      var scale = available > 0 ? Math.min(1, available / docMax) : 1;
+      root.style.setProperty('--mg-doc-scale', scale.toFixed(3));
+    }
+    updateScale();
+    window.addEventListener('resize', updateScale);
+  })();
+</script>
 `;
 
   const bodyMatch = /<body[^>]*>/i.exec(html);
@@ -208,7 +362,6 @@ function injectPdfButton(html: string) {
 }
 
 async function renderHtmlToPdf(html: string) {
-  // Lazy-load С‚СЏР¶РµР»СѓСЋ Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ, С‡С‚РѕР±С‹ РЅРµ РґРµСЂР¶Р°С‚СЊ РµРµ РІ cold start.
   const { default: puppeteer } = await import("puppeteer");
   const browser = await puppeteer.launch({
     headless: true,
@@ -251,9 +404,22 @@ export async function GET(
     const fallbackName = filenameParam ? sanitizeFilename(filenameParam) : sanitizeFilename(uid);
     const filename = parseFilenameFromDisposition(disposition) ?? fallbackName;
     if (docType === "appointment") {
-      const html = injectPdfButton(decodeHtml(buffer));
+      const raw = req.nextUrl.searchParams.get("raw") === "1";
+      if (raw) {
+        const htmlName = filename.endsWith(".html") ? filename : `${filename}.html`;
+        const decoded = decodeHtmlBest(buffer, contentType);
+        return new NextResponse(decoded, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Content-Disposition": buildInlineDisposition(htmlName),
+          },
+        });
+      }
+      const html = decodeHtml(buffer);
+      const payload = injectPdfButton(html);
       const htmlName = filename.endsWith(".html") ? filename : `${filename}.html`;
-      return new NextResponse(html, {
+      return new NextResponse(payload, {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",

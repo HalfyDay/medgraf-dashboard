@@ -14,7 +14,16 @@ type AppointmentDetailsSheetProps = {
 const CLINIC_NAME = "МедГрафт";
 const CLINIC_CITY = "г.Братск";
 const CLINIC_ADDRESS = "улица Крупской, 58";
-const DOWNLOAD_LABEL = "Скачать PDF";
+const DOWNLOAD_LABEL = "Скачать";
+
+function buildSafeFilename(parts: Array<string | null | undefined>, fallback: string) {
+  const raw = parts
+    .filter((part) => typeof part === "string" && part.trim().length > 0)
+    .join(" ")
+    .trim();
+  const base = raw || fallback;
+  return base.replace(/[\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
+}
 
 function formatDate(dateIso: string) {
   return new Date(dateIso).toLocaleDateString("ru-RU", {
@@ -47,11 +56,15 @@ export default function AppointmentDetailsSheet({
   const timeLabel = formatTime(appointment.date);
   const clinicName = appointment.clinic?.name || CLINIC_NAME;
   const clinicRoom = appointment.clinic?.room;
+  const dateForFile = appointment.date ? appointment.date.slice(0, 10) : "";
+  const filenameBase = buildSafeFilename(
+    [appointment.specialty, dateForFile],
+    appointment.id ? `appointment-${appointment.id}` : "appointment",
+  );
   const downloadUrl =
-    appointment.documentUrl ||
-    (appointment.id
-      ? `/api/documents/${encodeURIComponent(appointment.id)}?filename=${encodeURIComponent(`appointment-${appointment.id}.pdf`)}&type=appointment`
-      : null);
+    appointment.id
+      ? `/api/documents/${encodeURIComponent(appointment.id)}?type=appointment`
+      : appointment.documentUrl || null;
   const canDownload = appointment.status === "completed" && downloadUrl;
 
   return (
@@ -118,8 +131,6 @@ export default function AppointmentDetailsSheet({
                 </div>
                 <a
                   href={downloadUrl ?? undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="inline-flex h-7 w-7 items-center justify-center text-sky-600 transition hover:opacity-80"
                   aria-label={DOWNLOAD_LABEL}
                 >

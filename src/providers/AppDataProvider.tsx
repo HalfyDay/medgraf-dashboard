@@ -100,6 +100,7 @@ const AppDataContext = createContext<AppDataContextValue | null>(null);
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [booting, setBooting] = useState(true);
+  const [skipBootSplash, setSkipBootSplash] = useState(false);
   const [promos, setPromos] = useState<PromoData[]>([]);
   const [checkups, setCheckups] = useState<CheckupData[]>([]);
   const [contacts, setContacts] = useState<Contacts>(DEFAULT_CONTACTS);
@@ -111,6 +112,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [documentsLoading, setDocumentsLoading] = useState(true);
   const loadInFlightRef = useRef<Promise<void> | null>(null);
   const loadGenerationRef = useRef(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const flag = window.sessionStorage.getItem("medgraf.skipBootSplash");
+    if (flag) {
+      window.sessionStorage.removeItem("medgraf.skipBootSplash");
+      setSkipBootSplash(true);
+    }
+  }, []);
 
   const readSessionCache = useCallback(<T,>(key: string): T | null => {
     if (typeof window === "undefined") {
@@ -556,7 +568,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   return (
     <AppDataContext.Provider value={contextValue}>
       {children}
-      <BootSplash visible={booting} />
+      <BootSplash visible={booting && !skipBootSplash} />
     </AppDataContext.Provider>
   );
 }
