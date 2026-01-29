@@ -964,9 +964,9 @@ export async function downloadOnecDocument(uid: string) {
   return requestOnecBinary("/umc_client_users/document", "document", { uid });
 }
 
-export async function downloadOnecAppointmentDocument(uid: string) {
+export async function downloadOnecAppointmentHtml(uid: string) {
   if (!uid) {
     throw new Error("Не указан uid документа");
   }
-  return requestOnecBinary("/umc_client_users/appointment_pdf", "appointment_pdf", { uid });
+  return requestOnecBinary("/umc_client_users/appointment_html", "appointment_html", { uid });
 }

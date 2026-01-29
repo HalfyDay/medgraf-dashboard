@@ -20,6 +20,25 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database (SQLite)
+
+By default the app stores data in `data.sqlite` under the process working directory. For production, use an explicit path via `DATABASE_PATH` and keep the file outside the repo.
+
+Recommended:
+
+- `DATABASE_PATH=/var/lib/medgraft/data.sqlite`
+- systemd override (example):
+
+```ini
+[Service]
+Environment=DATABASE_PATH=/var/lib/medgraft/data.sqlite
+```
+
+Notes:
+
+- Do not commit `data.sqlite` to git.
+- Ensure the deploy script excludes `*.sqlite*`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

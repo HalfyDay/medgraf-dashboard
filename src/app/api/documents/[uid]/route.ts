@@ -1,10 +1,6 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import iconv from "iconv-lite";
-import {
-  downloadOnecAppointmentDocument,
-  downloadOnecDocument,
-  OnecLogicalError,
-} from "@/server/onecAuthClient";
+import { downloadOnecAppointmentHtml, downloadOnecDocument, OnecLogicalError } from "@/server/onecAuthClient";
 
 function sanitizeFilename(name: string) {
   return name.replace(/["\\\r\n]/g, "").trim() || "document";
@@ -49,6 +45,13 @@ function buildContentDisposition(filename: string) {
   return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodedUtf8}`;
 }
 
+function buildInlineDisposition(filename: string) {
+  const sanitized = sanitizeFilename(filename);
+  const asciiFallback = sanitized.replace(/[^\x20-\x7E]/g, "_") || "document";
+  const encodedUtf8 = encodeURIComponent(sanitized);
+  return `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodedUtf8}`;
+}
+
 function decodeHtml(buffer: Buffer) {
   const utfText = buffer.toString("utf-8");
   if (!utfText.includes("\uFFFD")) {
@@ -59,6 +62,27 @@ function decodeHtml(buffer: Buffer) {
   } catch {
     return utfText;
   }
+}
+
+function injectPdfButton(html: string) {
+  const buttonHtml = `
+<div id="mgraft-pdf-toolbar" style="position:fixed;top:16px;right:16px;z-index:99999;">
+  <button type="button" onclick="window.print()" style="background:#0ea5e9;color:#fff;border:none;border-radius:10px;padding:10px 14px;font:600 14px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;box-shadow:0 6px 18px rgba(0,0,0,0.18);cursor:pointer;">
+    Скачать PDF
+  </button>
+</div>
+<style>
+  @media print { #mgraft-pdf-toolbar { display: none !important; } }
+</style>
+`;
+
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${buttonHtml}</body>`);
+  }
+  if (/<\/html>/i.test(html)) {
+    return html.replace(/<\/html>/i, `${buttonHtml}</html>`);
+  }
+  return `${buttonHtml}${html}`;
 }
 
 async function renderHtmlToPdf(html: string) {
@@ -100,17 +124,18 @@ export async function GET(
   const filenameParam = req.nextUrl.searchParams.get("filename");
 
   try {
-    const loader = docType === "appointment" ? downloadOnecAppointmentDocument : downloadOnecDocument;
+    const loader = docType === "appointment" ? downloadOnecAppointmentHtml : downloadOnecDocument;
     const { buffer, contentType, disposition } = await loader(preparedUid.uid);
     const fallbackName = filenameParam ? sanitizeFilename(filenameParam) : sanitizeFilename(uid);
     const filename = parseFilenameFromDisposition(disposition) ?? fallbackName;
     if (docType === "appointment") {
-      const pdfName = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
-      return new NextResponse(buffer, {
+      const html = injectPdfButton(decodeHtml(buffer));
+      const htmlName = filename.endsWith(".html") ? filename : `${filename}.html`;
+      return new NextResponse(html, {
         status: 200,
         headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": buildContentDisposition(pdfName),
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Disposition": buildInlineDisposition(htmlName),
         },
       });
     }

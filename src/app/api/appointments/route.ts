@@ -53,7 +53,7 @@ function mapAppointment(raw: OnecAppointmentRecord): Appointment | null {
   const serviceName = primarySpecialty || `${TITLE_FALLBACK} ${doctorName ? `(${doctorName})` : ""}`.trim();
   const doctorAvatar =
     typeof raw.image === "string" && raw.image.trim().length > 0 ? raw.image.trim() : undefined;
-  const filename = encodeURIComponent(`${serviceName || "appointment"}-${id}.pdf`);
+  const filename = encodeURIComponent(`${serviceName || "appointment"}-${id}.html`);
   const downloadUrl = `/api/documents/${encodeURIComponent(id)}?filename=${filename}&type=appointment`;
 
   return {
