@@ -62,7 +62,8 @@ export type OnecUserFields = {
   middleName?: string | null;
 };
 
-const baseUrl = (process.env.ONEC_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+const rawBaseUrl = (process.env.ONEC_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, "");
+const baseUrl = rawBaseUrl.replace(/\/umc_client$/i, "");
 const basicUser = process.env.ONEC_BASIC_USER || DEFAULT_BASIC_USER;
 const basicPassword = process.env.ONEC_BASIC_PASSWORD || DEFAULT_BASIC_PASSWORD;
 const onecAuthMode = (process.env.ONEC_AUTH_MODE || "").toLowerCase();
