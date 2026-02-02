@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import AppImage from "@/components/AppImage";
 import SheetFrame from "@/components/SheetFrame";
 import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import type { CheckupData } from "@/types/checkups";
@@ -121,7 +121,7 @@ export default function CheckupsSheet({
             ].join(" ")}
           >
             {image ? (
-              <Image
+              <AppImage
                 src={image}
                 alt=""
                 width={1200}
