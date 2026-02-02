@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { deleteLoginSession, getLoginSession } from "@/server/loginSessionStore";
 import { getUserByPhone, updateUserById } from "@/server/userStore";
+import { setAuthCookie } from "@/server/authCookie";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
 
   const updatedUser = { ...user, password: passwordHash };
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     user: {
       id: updatedUser.id,
@@ -89,4 +90,19 @@ export async function POST(req: Request) {
       gender: updatedUser.gender ?? null,
     },
   });
+  setAuthCookie(response, {
+    id: updatedUser.id,
+    phone: updatedUser.phone,
+    fullName: updatedUser.fullName ?? null,
+    birthDate: updatedUser.birthDate ?? null,
+    email: updatedUser.email ?? null,
+    passportSeries: updatedUser.passportSeries ?? null,
+    passportNumber: updatedUser.passportNumber ?? null,
+    passportIssuedBy: updatedUser.passportIssuedBy ?? null,
+    passportIssueDate: updatedUser.passportIssueDate ?? null,
+    onecId: updatedUser.onecId ?? null,
+    medcardNumber: updatedUser.medcardNumber ?? null,
+    gender: updatedUser.gender ?? null,
+  });
+  return response;
 }

@@ -1,5 +1,5 @@
 // public/sw.js
-const CACHE = "medgraft-v3";
+const CACHE = "medgraft-v4";
 // ОСТАВЬТЕ ТОЛЬКО ASCII-ПУТИ!
 const ASSETS = [
   "/", "/home",
@@ -32,15 +32,41 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const { request } = e;
   if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  const isBypass =
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.startsWith("/.next/");
+
+  if (isBypass) {
+    e.respondWith(fetch(request));
+    return;
+  }
+
+  const isNavigate = request.mode === "navigate";
+
   e.respondWith(
     (async () => {
-      const cached = await caches.match(request);
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(request);
+
+      if (isNavigate) {
+        try {
+          const resp = await fetch(request);
+          if (resp.ok) {
+            cache.put(request, resp.clone());
+          }
+          return resp;
+        } catch {
+          return cached || fetch(request);
+        }
+      }
 
       const network = fetch(request)
         .then((resp) => {
           if (resp.ok) {
-            const copy = resp.clone();
-            caches.open(CACHE).then((c) => c.put(request, copy));
+            cache.put(request, resp.clone());
           }
           return resp;
         })

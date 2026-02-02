@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
+import AppImage from "@/components/AppImage";
 
 type BootSplashProps = {
   visible: boolean;
@@ -26,7 +26,7 @@ export default function BootSplash({ visible }: BootSplashProps) {
 
   return (
     <div
-      aria-hidden={!visible}
+      aria-hidden={!visible ? "true" : "false"}
       className={`fixed inset-0 z-[2000] transition-opacity duration-400 ${
         visible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
@@ -36,7 +36,7 @@ export default function BootSplash({ visible }: BootSplashProps) {
       <div className="relative z-10 flex h-full w-full items-center justify-center p-6">
         <div className="w-full max-w-[360px] rounded-3xl bg-white/60 p-8 text-center shadow-xl backdrop-blur-md ring-1 ring-white/30 supports-[backdrop-filter]:bg-white/40 dark:bg-slate-900/70 dark:ring-slate-800 dark:shadow-[0_20px_60px_rgba(0,0,0,0.45)] dark:supports-[backdrop-filter]:bg-slate-900/50">
           <div className="mx-auto mb-4 grid place-items-center">
-            <img
+            <AppImage
               src="/logo.svg"
               alt="MedGraf"
               className="h-10 w-10"

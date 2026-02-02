@@ -266,28 +266,28 @@ export async function fetchCheckups(): Promise<CheckupData[]> {
     throw new Error(message);
   }
   const list = Array.isArray(payload?.checkups) ? payload.checkups : [];
-  return list
-    .map((item, index) => {
-      const id = item?.id?.toString().trim();
-      const title = item?.name?.toString().trim();
-      if (!id || !title) return null;
-      const { intro, bullets } = splitCheckupDescription(item?.description?.toString());
-      return {
-        id,
-        title,
-        sub: item?.brief?.toString().trim() || undefined,
-        description: intro,
-        bullets,
-        price: item?.price ?? undefined,
-        oldPrice: item?.oldprice ?? undefined,
-        currency: item?.currency ?? undefined,
-        image: item?.img?.toString().trim() || "/clinic.svg",
-        bg: CHECKUP_GRADIENTS[index % CHECKUP_GRADIENTS.length],
-        ctaText: "Оставить заявку",
-        ctaHref: "/booking",
-      };
-    })
-    .filter((item): item is CheckupData => Boolean(item));
+  const mapped: CheckupData[] = [];
+  list.forEach((item, index) => {
+    const id = item?.id?.toString().trim();
+    const title = item?.name?.toString().trim();
+    if (!id || !title) return;
+    const { intro, bullets } = splitCheckupDescription(item?.description?.toString());
+    mapped.push({
+      id,
+      title,
+      sub: item?.brief?.toString().trim() || undefined,
+      description: intro,
+      bullets,
+      price: item?.price ?? undefined,
+      oldPrice: item?.oldprice ?? undefined,
+      currency: item?.currency ?? undefined,
+      image: item?.img?.toString().trim() || "/clinic.svg",
+      bg: CHECKUP_GRADIENTS[index % CHECKUP_GRADIENTS.length],
+      ctaText: "Оставить заявку",
+      ctaHref: "/booking",
+    });
+  });
+  return mapped;
 }
 
 export interface Doctor {
@@ -488,6 +488,11 @@ export async function fetchDoctorSchedule(doctorId: string): Promise<DoctorSched
 export async function bookAppointment(payload: BookAppointmentPayload): Promise<Appointment> {
   await delay(500);
 
+  const safePatientId = payload.patientId?.toString().trim();
+  if (!safePatientId) {
+    throw new Error("Missing patient id");
+  }
+
   let slotStart = payload.slotStart || null;
   let slotEnd = payload.slotEnd || null;
   if (!slotStart) {
@@ -512,7 +517,7 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
     }
   }
 
-  if (payload.patientId && slotStart) {
+  if (slotStart) {
     const startDate = slotStart.replace("T", " ").slice(0, 16);
     const endDate = slotEnd
       ? slotEnd.replace("T", " ").slice(0, 16)
@@ -522,7 +527,7 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         doctorId: payload.doctorId,
-        patientId: payload.patientId,
+        patientId: safePatientId,
         serviceId: payload.serviceId ?? undefined,
         startDate,
         endDate,

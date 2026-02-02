@@ -1,9 +1,9 @@
 // src/components/Header.tsx
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState } from "react";
 import { onec } from "@/app/api/onec";
+import AppImage from "@/components/AppImage";
 
 type HeaderProps = {
   onNotificationsClick?: () => void;
@@ -48,14 +48,20 @@ export default function Header({
         <div className="relative flex items-center justify-between">
           {/* ЛОГО */}
           <div className="relative z-10 flex h-10 w-10 items-center justify-start">
-            <img src="/logo.svg" alt="МедГрафт" className="h-7 w-auto" />
+            <AppImage
+              src="/logo.svg"
+              alt="МедГрафт"
+              width={28}
+              height={28}
+              className="h-7 w-auto"
+            />
           </div>
 
           {/* Имя пользователя */}
           <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
             {loading ? (
               <span
-                aria-hidden
+                aria-hidden="true"
                 className="h-[20px] w-[180px] rounded-full bg-white/50 backdrop-blur-sm supports-[backdrop-filter]:bg-white/30 animate-pulse pointer-events-none dark:bg-slate-700/40 dark:supports-[backdrop-filter]:bg-slate-700/30"
               />
             ) : (
@@ -69,11 +75,11 @@ export default function Header({
           <div className="relative z-10 flex h-10 w-10 items-center justify-end">
             <button
               aria-label="Уведомления"
-              aria-pressed={notificationsOpen}
+              aria-pressed={notificationsOpen ? "true" : "false"}
               onClick={onNotificationsClick}
               className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:outline-none"
             >
-              <img
+              <AppImage
                 src={
                   notificationsOpen
                     ? "/notifications_active.svg"
@@ -82,6 +88,8 @@ export default function Header({
                     : "/notifications.svg"
                 }
                 alt="Уведомления"
+                width={60}
+                height={60}
                 className={[
                   "h-15 w-15",
                   notificationsOpen ? "" : "dark:invert dark:brightness-110",

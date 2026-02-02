@@ -138,6 +138,7 @@ export default function CardPage() {
         body: JSON.stringify({
           phone: user.phone,
           memberId: relative.memberID,
+          userId: user.id,
         }),
       });
       const payload = (await res.json().catch(() => null)) as { user?: Partial<typeof user> } | null;

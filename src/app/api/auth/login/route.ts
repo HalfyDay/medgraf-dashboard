@@ -8,6 +8,7 @@ import {
 } from "@/server/onecAuthClient";
 import { getUserByPhone, updateUserById, type DbUserRow } from "@/server/userStore";
 import { normalizePhone } from "@/utils/phone";
+import { setAuthCookie } from "@/server/authCookie";
 
 function buildError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -79,21 +80,25 @@ export async function POST(req: Request) {
     console.error("Не удалось обновить локальные данные пользователя:", error);
   }
 
-  return NextResponse.json({
+  const user = {
+    id: userRow.id,
+    phone: userRow.phone,
+    fullName: remoteFullName,
+    birthDate: remoteBirthDate,
+    email: remoteEmail,
+    passportSeries: userRow.passportSeries,
+    passportNumber: userRow.passportNumber,
+    passportIssueDate: userRow.passportIssueDate,
+    passportIssuedBy: userRow.passportIssuedBy,
+    onecId: remoteOnecId,
+    medcardNumber: remoteMedcard,
+    gender: remoteGender,
+  };
+
+  const response = NextResponse.json({
     success: true,
-    user: {
-      id: userRow.id,
-      phone: userRow.phone,
-      fullName: remoteFullName,
-      birthDate: remoteBirthDate,
-      email: remoteEmail,
-      passportSeries: userRow.passportSeries,
-      passportNumber: userRow.passportNumber,
-      passportIssueDate: userRow.passportIssueDate,
-      passportIssuedBy: userRow.passportIssuedBy,
-      onecId: remoteOnecId,
-      medcardNumber: remoteMedcard,
-      gender: remoteGender,
-    },
+    user,
   });
+  setAuthCookie(response, user);
+  return response;
 }

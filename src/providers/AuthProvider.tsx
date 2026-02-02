@@ -213,6 +213,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    try {
+      fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // ignore network errors on logout
+    }
     persistUser(null);
     setTheme("light");
   }, [persistUser, setTheme]);

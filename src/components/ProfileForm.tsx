@@ -88,10 +88,14 @@ export function ProfileForm() {
 
         {/* Город — теперь с таким же pl-4 */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1 text-text pl-4">
+          <label
+            htmlFor="profile-city"
+            className="block text-sm font-medium mb-1 text-text pl-4"
+          >
             Город
           </label>
           <select
+            id="profile-city"
             value={profile.city}
             onChange={(e) => handleChange("city", e.target.value)}
             className="

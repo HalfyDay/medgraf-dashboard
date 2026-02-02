@@ -53,9 +53,6 @@ function mapAppointment(raw: OnecAppointmentRecord): Appointment | null {
   const serviceName = primarySpecialty || `${TITLE_FALLBACK} ${doctorName ? `(${doctorName})` : ""}`.trim();
   const doctorAvatar =
     typeof raw.image === "string" && raw.image.trim().length > 0 ? raw.image.trim() : undefined;
-  const safeBase = (primarySpecialty || "appointment").replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
-  const datePart = date ? date.slice(0, 10) : "";
-  const filenameBase = [safeBase, datePart].filter(Boolean).join(" ");
   const downloadUrl = `/api/documents/${encodeURIComponent(id)}?type=appointment`;
 
   return {

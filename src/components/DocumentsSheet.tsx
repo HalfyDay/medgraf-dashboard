@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import SheetFrame from "@/components/SheetFrame";
+import AppImage from "@/components/AppImage";
 import type { DocumentItem } from "@/utils/api";
 
 type DocumentsSheetProps = {
@@ -79,7 +79,7 @@ export default function DocumentsSheet({
                 ].join(" ")}
               >
                 <span className="inline-flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/15">
-                  <img src="/list.svg" alt="" className="h-12 w-12" />
+                  <AppImage src="/list.svg" alt="" width={48} height={48} className="h-12 w-12" />
                 </span>
 
                 <div className="min-w-0 flex-1 leading-tight">

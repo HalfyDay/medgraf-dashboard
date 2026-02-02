@@ -1,8 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useMemo } from "react";
 import SheetFrame from "@/components/SheetFrame";
+import AppImage from "@/components/AppImage";
 import type { Appointment } from "@/utils/api";
 
 type MyAppointmentsSheetProps = {
@@ -64,7 +64,7 @@ export default function MyAppointmentsSheet({
         ].join(" ")}
       >
         <span className={`inline-flex h-12 w-12 items-center justify-center rounded-[14px] ${iconBg}`}>
-          <img src="/list.svg" alt="" className="h-12 w-12" />
+          <AppImage src="/list.svg" alt="" width={48} height={48} className="h-12 w-12" />
         </span>
 
         <div className="min-w-0 flex-1 leading-tight">

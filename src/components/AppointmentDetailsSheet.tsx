@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import SheetFrame, { SectionCard } from "@/components/SheetFrame";
+import AppImage from "@/components/AppImage";
 import { DOCTOR_AVATAR_PLACEHOLDER, type Appointment } from "@/utils/api";
 
 type AppointmentDetailsSheetProps = {
@@ -17,14 +17,6 @@ const CLINIC_CITY = "г.Братск";
 const CLINIC_ADDRESS = "улица Крупской, 58";
 const DOWNLOAD_LABEL = "Скачать";
 
-function buildSafeFilename(parts: Array<string | null | undefined>, fallback: string) {
-  const raw = parts
-    .filter((part) => typeof part === "string" && part.trim().length > 0)
-    .join(" ")
-    .trim();
-  const base = raw || fallback;
-  return base.replace(/[\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim();
-}
 
 function formatDate(dateIso: string) {
   return new Date(dateIso).toLocaleDateString("ru-RU", {
@@ -60,11 +52,6 @@ export default function AppointmentDetailsSheet({
   const timeLabel = formatTime(appointment.date);
   const clinicName = appointment.clinic?.name || CLINIC_NAME;
   const clinicRoom = appointment.clinic?.room;
-  const dateForFile = appointment.date ? appointment.date.slice(0, 10) : "";
-  const filenameBase = buildSafeFilename(
-    [appointment.specialty, dateForFile],
-    appointment.id ? `appointment-${appointment.id}` : "appointment",
-  );
   const downloadUrl =
     appointment.id
       ? `/api/documents/${encodeURIComponent(appointment.id)}?type=appointment`
@@ -91,7 +78,7 @@ export default function AppointmentDetailsSheet({
                   {dateLabel}
                 </div>
               </div>
-              <img src="/date.svg" alt="" className="h-7 w-7 shrink-0 opacity-70" />
+              <AppImage src="/note.svg" alt="" width={28} height={28} className="h-7 w-7 shrink-0 opacity-70" />
             </div>
           </li>
 
@@ -103,7 +90,7 @@ export default function AppointmentDetailsSheet({
                   {timeLabel}
                 </div>
               </div>
-              <img src="/time.svg" alt="" className="h-7 w-7 shrink-0 opacity-70" />
+              <AppImage src="/time.svg" alt="" width={28} height={28} className="h-7 w-7 shrink-0 opacity-70" />
             </div>
           </li>
 
@@ -122,7 +109,7 @@ export default function AppointmentDetailsSheet({
                   </div>
                 )}
               </div>
-              <img src="/clinic.svg" alt="" className="h-7 w-7 shrink-0 opacity-70" />
+              <AppImage src="/clinic.svg" alt="" width={28} height={28} className="h-7 w-7 shrink-0 opacity-70" />
             </div>
           </li>
 
@@ -140,7 +127,7 @@ export default function AppointmentDetailsSheet({
                   className="inline-flex h-7 w-7 items-center justify-center text-sky-600 transition hover:opacity-80"
                   aria-label={DOWNLOAD_LABEL}
                 >
-                  <img src="/download.svg" alt="" className="h-7 w-7 shrink-0" />
+                  <AppImage src="/download.svg" alt="" width={28} height={28} className="h-7 w-7 shrink-0" />
                 </a>
               </div>
             </li>
@@ -150,13 +137,13 @@ export default function AppointmentDetailsSheet({
 
       <div className="mx-1 mt-4 flex items-center justify-between gap-3 rounded-[18px] bg-white px-4 py-3 shadow-md ring-1 ring-slate-100">
         <div className="flex items-center gap-3">
-          <img
+          <AppImage
             src={appointment.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER}
+            fallbackSrc={DOCTOR_AVATAR_PLACEHOLDER}
             alt=""
+            width={44}
+            height={44}
             className="h-11 w-11 rounded-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = DOCTOR_AVATAR_PLACEHOLDER;
-            }}
           />
           <div className="leading-tight">
             <div className="text-[16px] font-bold text-slate-900">{appointment.doctorName}</div>
@@ -164,7 +151,7 @@ export default function AppointmentDetailsSheet({
           </div>
         </div>
         <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/10 text-sky-600" title="Проверенный специалист">
-          <img src="/verified.svg" alt="" className="h-4.5 w-4.5" />
+          <AppImage src="/verified.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
         </span>
       </div>
 

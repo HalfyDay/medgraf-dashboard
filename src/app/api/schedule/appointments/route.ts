@@ -26,7 +26,16 @@ const mapAppointment = (
   raw: OnecScheduleAppointmentRecord,
   status: Appointment["status"],
 ): Appointment | null => {
-  const id = raw.webID?.toString().trim() || raw.doctorID?.toString().trim() || null;
+  const fallbackId = [
+    raw.doctorID?.toString().trim(),
+    raw.date?.toString().trim(),
+    raw.startTime?.toString().trim(),
+    raw.endTime?.toString().trim(),
+    Array.isArray(raw.works) ? raw.works[0]?.nomenclatureName?.toString().trim() : null,
+  ]
+    .filter(Boolean)
+    .join("|");
+  const id = raw.webID?.toString().trim() || fallbackId || null;
   const date = normalizeDateTime(raw.date, raw.startTime);
   if (!id || !date) {
     return null;

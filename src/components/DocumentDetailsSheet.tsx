@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import SheetFrame from "@/components/SheetFrame";
+import AppImage from "@/components/AppImage";
 import type { DocumentItem } from "@/utils/api";
 
 type DocumentDetailsSheetProps = {
@@ -58,7 +58,7 @@ export default function DocumentDetailsSheet({
             className="inline-flex h-11 w-11 items-center justify-center text-sky-600 transition hover:scale-[1.05]"
             aria-label={DOWNLOAD_LABEL}
           >
-            <img src="/download.svg" alt="" className="h-6 w-6" />
+            <AppImage src="/download.svg" alt="" width={24} height={24} className="h-6 w-6" />
           </a>
         </div>
       </div>

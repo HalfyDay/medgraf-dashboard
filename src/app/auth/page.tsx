@@ -220,13 +220,6 @@ export default function AuthPage() {
 
   const cleanDocDigits = (value: string) => value.replace(/\D/g, "").slice(-3);
 
-  const handleGosuslugiLogin = () => {
-    if (!ensurePolicyAccepted()) {
-      return;
-    }
-    window.location.href = "/api/auth/gosuslugi";
-  };
-
   const handlePasswordHelpFlow = async () => {
     if (!ensurePolicyAccepted()) {
       return;
@@ -772,20 +765,6 @@ export default function AuthPage() {
             {policyError && <p className="text-xs font-semibold text-red-500">{policyError}</p>}
           </div>
 
-          <div className="mt-8 border-t border-[#E3F0FF] pt-6 text-center">
-            <p className="mb-3 text-sm text-[#5A719B]">или через Госуслуги</p>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full gap-3 text-[#0C4DA2]"
-              onClick={handleGosuslugiLogin}
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
-                <Image src="/gosuslugi.svg" alt="Госуслуги" width={24} height={24} />
-              </span>
-              <span className="font-semibold">Войти через Госуслуги</span>
-            </Button>
-          </div>
         </div>
       </div>
     </div>

@@ -1,8 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Layout } from "@/components/Layout";
+import AppImage from "@/components/AppImage";
 import { Button } from "@/components/Button";
 import { motion } from "framer-motion";
 import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
@@ -448,10 +448,12 @@ export default function BookingPage() {
                     >
                       <div className="flex flex-col items-center gap-2 text-center">
                         <div className="relative h-20 w-20 overflow-hidden rounded-full bg-slate-100">
-                          <img
+                          <AppImage
                             src={photo}
                             alt={doctor.fullName}
-                            className="h-full w-full object-cover"
+                            fill
+                            sizes="80px"
+                            className="object-cover"
                           />
                         </div>
                         <p className="text-sm font-semibold text-slate-900 truncate whitespace-nowrap">

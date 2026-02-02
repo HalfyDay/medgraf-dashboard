@@ -10,6 +10,7 @@ import {
   OnecLogicalError,
 } from "@/server/onecAuthClient";
 import { getUserByPhone, insertUser, updateUserById } from "@/server/userStore";
+import { setAuthCookie } from "@/server/authCookie";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -130,8 +131,10 @@ export async function POST(req: Request) {
     console.warn("Не удалось удалить сессию входа:", error);
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     user: freshUser,
   });
+  setAuthCookie(response, freshUser);
+  return response;
 }

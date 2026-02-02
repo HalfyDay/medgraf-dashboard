@@ -1,8 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from "react";
 import SheetFrame from "@/components/SheetFrame";
+import AppImage from "@/components/AppImage";
 import type { Appointment } from "@/utils/api";
 
 type VisitsSheetProps = {
@@ -185,7 +185,7 @@ export default function VisitsSheet({
         className="relative flex w-full items-center gap-3 rounded-[20px] bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-4 text-left text-white shadow-lg ring-1 ring-black/5 transition-transform active:translate-y-[1px]"
       >
         <span className="inline-flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/15">
-          <img src="/list.svg" alt="" className="h-12 w-12" />
+          <AppImage src="/list.svg" alt="" width={48} height={48} className="h-12 w-12" />
         </span>
 
         <div className="min-w-0 flex-1 leading-tight">
@@ -240,7 +240,7 @@ export default function VisitsSheet({
           .join(" ")}
       >
         <span className="mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-[14px] bg-slate-100 text-slate-500">
-          <img src="/list_blue.svg" alt="" className="h-12 w-12" />
+          <AppImage src="/list_blue.svg" alt="" width={48} height={48} className="h-12 w-12" />
         </span>
 
         <div className="min-w-0 flex-1 leading-tight text-slate-800">

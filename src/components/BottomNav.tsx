@@ -1,11 +1,11 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useRef, useState, useLayoutEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/providers/ThemeProvider";
+import AppImage from "@/components/AppImage";
 
 
 
@@ -218,9 +218,11 @@ export default function BottomNav() {
                       }}
                       style={{ zIndex: 0 }}
                     >
-                      <img
+                      <AppImage
                         src="/highlighted_button.svg"
                         alt=""
+                        width={120}
+                        height={90}
                         className="h-[75%] w-[90%] object-contain"
                       />
                     </motion.div>

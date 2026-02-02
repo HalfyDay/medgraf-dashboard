@@ -1,8 +1,8 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { type CSSProperties } from "react";
 import FullscreenOverlay from "@/components/FullscreenOverlay";
+import AppImage from "@/components/AppImage";
 
 type PromoSuccessOverlayProps = {
   open: boolean;
@@ -53,7 +53,7 @@ export default function PromoSuccessOverlay({
 
   const IconGraphic = () => {
     if (icon === "sad") {
-      return <img src="/sadness.svg" alt="" className="h-20 w-20" />;
+      return <AppImage src="/sadness.svg" alt="" width={80} height={80} className="h-20 w-20" />;
     }
 
     return (

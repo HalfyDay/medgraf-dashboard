@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import db from "@/utils/db";
 import { normalizePhone } from "@/utils/phone";
+import { setAuthCookie } from "@/server/authCookie";
+import type { AuthUser } from "@/providers/AuthProvider";
 
 type RegisterPayload = {
   phone: string;
@@ -105,12 +107,13 @@ export async function POST(req: Request): Promise<Response> {
               return;
             }
 
-            resolve(
-              NextResponse.json({
-                success: true,
-                user: row,
-              }),
-            );
+            const user = row as AuthUser;
+            const response = NextResponse.json({
+              success: true,
+              user,
+            });
+            setAuthCookie(response, user);
+            resolve(response);
           },
         );
       },

@@ -1,6 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
 import iconv from "iconv-lite";
 import { downloadOnecAppointmentHtml, downloadOnecDocument, OnecLogicalError } from "@/server/onecAuthClient";
+import { getAuthFromRequest } from "@/server/authCookie";
 
 function sanitizeFilename(name: string) {
   return name.replace(/["\\\r\n]/g, "").trim() || "document";
@@ -385,6 +386,14 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ uid: string }> },
 ) {
+  const auth = getAuthFromRequest(req);
+  if (!auth) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const requestedPatientId = req.nextUrl.searchParams.get("patientId") ?? req.nextUrl.searchParams.get("patientID");
+  if (requestedPatientId && (!auth.onecId || auth.onecId !== requestedPatientId)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
   const { uid } = await params;
   if (!uid) {
     return NextResponse.json({ error: "UID is required" }, { status: 400 });

@@ -1,10 +1,10 @@
 // components/PromoSheet.tsx
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import SheetFrame from "@/components/SheetFrame";
 import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
+import AppImage from "@/components/AppImage";
 
 export type PromoData = {
   id?: string;
@@ -106,10 +106,12 @@ export default function PromoSheet({
         title={title}
         headerContent={
           <div className="relative z-0 h-[248px] w-full overflow-hidden">
-            <img
+            <AppImage
               src={headerImage}
               alt={title}
-              className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover"
+              fill
+              sizes="100vw"
+              className="pointer-events-none absolute inset-0 -z-10 object-cover"
             />
           </div>
         }

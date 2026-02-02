@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import DocumentsSheet from "@/components/DocumentsSheet";
 import DocumentDetailsSheet from "@/components/DocumentDetailsSheet";
@@ -12,6 +11,7 @@ import PromoSuccessOverlay from "@/components/PromoSuccessOverlay";
 import { useLayoutEffect, useRef, useState, useEffect, useMemo } from "react";
 import PromoSheet, { type PromoData } from "@/components/PromoSheet";
 import CheckupsSheet from "@/components/CheckupsSheet";
+import AppImage from "@/components/AppImage";
 import { DOCTOR_AVATAR_PLACEHOLDER, cancelScheduleAppointment, type Appointment, type DocumentItem } from "@/utils/api";
 import type { CheckupData } from "@/types/checkups";
 import { useAppData } from "@/providers/AppDataProvider";
@@ -33,6 +33,11 @@ function formatTileTime(dateIso: string) {
     minute: "2-digit",
   });
 }
+
+const SkeletonBlock = ({ className }: { className: string }) => (
+  <div className={`animate-pulse bg-slate-200/70 dark:bg-slate-700/60 ${className}`} />
+);
+
 
 
 export default function HomePage() {
@@ -95,6 +100,9 @@ export default function HomePage() {
   const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER;
   const hasActiveAppointments = activeAppointments.some((item) => item.status === "planned");
   const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
+  const showMyRecordSkeleton = (booting || appointmentsLoading) && !hasActiveAppointments;
+  const showCheckupsSkeleton = checkups.length === 0;
+  const showPromosSkeleton = promos.length === 0;
   const bookingSuccessSubtitle = useMemo(() => {
     if (!recentBooking) {
       return "За 24 часа до записи мы свяжемся с вами для подтверждения приёма.";
@@ -368,7 +376,7 @@ export default function HomePage() {
       <div className="mx-auto max-w-[520px] px-4 pb-28 pt-4 text-[16px]">
         {/* Акции */}
         <section>
-          {promos.length > 0 && (
+          {promos.length > 0 ? (
             <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
               {promos.map((p, i) => (
                 <button
@@ -379,11 +387,26 @@ export default function HomePage() {
                   style={{ width: 195, height: 183 }}
                   aria-label={`Открыть акцию: ${p.title}`}
                 >
-                  <img src={p.cardImage} alt={p.title} className="h-full w-full object-cover" />
+                  <AppImage
+                    src={p.cardImage}
+                    alt={p.title}
+                    width={195}
+                    height={183}
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>
-          )}
+          ) : showPromosSkeleton ? (
+            <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+              {[0, 1, 2].map((idx) => (
+                <SkeletonBlock
+                  key={idx}
+                  className="h-[183px] w-[195px] shrink-0 rounded-[20px]"
+                />
+              ))}
+            </div>
+          ) : null}
         </section>
 
 
@@ -399,7 +422,31 @@ export default function HomePage() {
         </section>
 
         {/* Моя запись */}
-        {showMyRecordCard && (
+        {showMyRecordSkeleton ? (
+          <section className="mt-5 rounded-[22px] bg-gradient-to-br from-sky-400 to-blue-500 p-4 text-white shadow-lg">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <SkeletonBlock className="h-[18px] w-[120px] rounded-[8px] bg-white/30 dark:bg-white/10" />
+              <SkeletonBlock className="h-[18px] w-[18px] rounded-full bg-white/30 dark:bg-white/10" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20">
+                <SkeletonBlock className="h-[12px] w-[60px] rounded-[6px] bg-white/30 dark:bg-white/10" />
+                <SkeletonBlock className="mt-2 h-[16px] w-[90px] rounded-[6px] bg-white/30 dark:bg-white/10" />
+              </div>
+              <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20">
+                <SkeletonBlock className="h-[12px] w-[60px] rounded-[6px] bg-white/30 dark:bg-white/10" />
+                <SkeletonBlock className="mt-2 h-[16px] w-[90px] rounded-[6px] bg-white/30 dark:bg-white/10" />
+              </div>
+            </div>
+            <div className="mt-3 flex items-center gap-3 rounded-[18px] bg-white/95 p-3 ring-1 ring-white/30 dark:bg-slate-900/70 dark:ring-white/10">
+              <SkeletonBlock className="h-10 w-10 rounded-full dark:bg-white/10" />
+              <div className="min-w-0 flex-1">
+                <SkeletonBlock className="h-[14px] w-[140px] rounded-[6px] dark:bg-white/10" />
+                <SkeletonBlock className="mt-2 h-[12px] w-[200px] rounded-[6px] dark:bg-white/10" />
+              </div>
+            </div>
+          </section>
+        ) : showMyRecordCard ? (
           <section
             className="mt-5 rounded-[22px] bg-gradient-to-br from-sky-400 to-blue-500 p-4 text-white shadow-lg transition-transform active:translate-y-[1px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             role="button"
@@ -447,13 +494,13 @@ export default function HomePage() {
 
             <div className="mt-3 flex items-center justify-between rounded-[18px] bg-white/95 p-3 text-slate-800 ring-1 ring-white/30 dark:bg-slate-900/80 dark:text-slate-100 dark:ring-slate-700/60">
               <div className="flex items-center gap-3">
-                <img
+                <AppImage
                   src={upcomingDoctorAvatar}
+                  fallbackSrc={DOCTOR_AVATAR_PLACEHOLDER}
                   alt=""
+                  width={40}
+                  height={40}
                   className="h-10 w-10 rounded-full border border-slate-200 object-cover dark:border-slate-700"
-                  onError={(event) => {
-                    (event.currentTarget as HTMLImageElement).src = DOCTOR_AVATAR_PLACEHOLDER;
-                  }}
                 />
                 <div className="min-w-0 leading-tight">
                   <div className="truncate text-[16px] font-semibold">{upcomingDoctorName}</div>
@@ -464,7 +511,7 @@ export default function HomePage() {
               </div>
             </div>
           </section>
-        )}
+        ) : null}
 
         {/* ЧЕКАПЫ */}
         <section className="mt-6 bg-inherit">
@@ -473,9 +520,12 @@ export default function HomePage() {
 
             <button
               type="button"
-              aria-expanded={showAllCheckups}
+              aria-expanded={showAllCheckups ? "true" : "false"}
               onClick={() => setShowAllCheckups((v) => !v)}
-              className="group inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[14.5px] font-medium text-slate-700 hover:bg-slate-100 active:scale-[.98] transition"
+              disabled={showCheckupsSkeleton}
+              className={`group inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[14.5px] font-medium text-slate-700 transition ${
+                showCheckupsSkeleton ? "opacity-60" : "hover:bg-slate-100 active:scale-[.98]"
+              }`}
             >
               <span>Все</span>
               <svg
@@ -507,59 +557,74 @@ export default function HomePage() {
                 backfaceVisibility: "hidden",
               }}
             >
-            {checkups.map((c, i) => {
-              const hiddenWhileCollapsed = i >= 4 && !showAllCheckups;
-              return (
-                <button
-                  data-checkup-card
-                  key={c.id}
-                  type="button"
-                  aria-hidden={hiddenWhileCollapsed}
-                  tabIndex={hiddenWhileCollapsed ? -1 : 0}
-                  onClick={() => { setActiveCheckup(c); setCheckupOpen(true); }}
-                  className={[
-                    "relative overflow-hidden rounded-[20px] bg-gradient-to-br p-4 text-left text-white",
-                    "min-h-[120px]",
-                    "ring-1 ring-white/10",
-                    "transition-transform duration-300 will-change-transform",
-                    "hover:-translate-y-[2px] active:translate-y-0 active:scale-[.99]",
-                    c.bg,
-                    hiddenWhileCollapsed ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100 translate-y-0",
-                    "transition-opacity duration-300",
-                  ].join(" ")}
-                  aria-label={`Открыть чекап: ${c.title}`}
+            {showCheckupsSkeleton ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={`checkup-skeleton-${i}`}
+                  className="relative min-h-[120px] overflow-hidden rounded-[20px] bg-slate-200/70 p-4 ring-1 ring-white/10 dark:bg-slate-700/50"
                 >
-                  <div
-                    className="pointer-events-none absolute inset-0"
-                    style={{ background:
-                      "radial-gradient(110% 55% at 0% 0%, rgba(255,255,255,.15) 0%, rgba(255,255,255,0) 60%)"
-                    }}
-                  />
-                  {c.image && (
-                    <img
-                      src={c.image}
-                      alt=""
-                      className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm ring-1 ring-white/40"
-                    />
-                  )}
-
-                  <div
-                    ref={(el) => {
-                      titleRefs.current[i] = el;
-                    }}
-                    className="font-semibold leading-tight text-[16px] min-h-[40px]"
-                    style={{
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
+                  <SkeletonBlock className="h-9 w-9 rounded-lg" />
+                  <SkeletonBlock className="mt-3 h-[14px] w-[80%] rounded-[6px]" />
+                  <SkeletonBlock className="mt-2 h-[12px] w-[60%] rounded-[6px]" />
+                </div>
+              ))
+            ) : (
+              checkups.map((c, i) => {
+                const hiddenWhileCollapsed = i >= 4 && !showAllCheckups;
+                return (
+                  <button
+                    data-checkup-card
+                    key={c.id}
+                    type="button"
+                    aria-hidden={hiddenWhileCollapsed ? "true" : "false"}
+                    tabIndex={hiddenWhileCollapsed ? -1 : 0}
+                    onClick={() => { setActiveCheckup(c); setCheckupOpen(true); }}
+                    className={[
+                      "relative overflow-hidden rounded-[20px] bg-gradient-to-br p-4 text-left text-white",
+                      "min-h-[120px]",
+                      "ring-1 ring-white/10",
+                      "transition-transform duration-300 will-change-transform",
+                      "hover:-translate-y-[2px] active:translate-y-0 active:scale-[.99]",
+                      c.bg,
+                      hiddenWhileCollapsed ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100 translate-y-0",
+                      "transition-opacity duration-300",
+                    ].join(" ")}
+                    aria-label={`Открыть чекап: ${c.title}`}
                   >
-                    {c.title}
-                  </div>
-                </button>
-              );
-            })}
+                    <div
+                      className="pointer-events-none absolute inset-0"
+                      style={{ background:
+                        "radial-gradient(110% 55% at 0% 0%, rgba(255,255,255,.15) 0%, rgba(255,255,255,0) 60%)"
+                      }}
+                    />
+                    {c.image && (
+                      <AppImage
+                        src={c.image}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm ring-1 ring-white/40"
+                      />
+                    )}
+
+                    <div
+                      ref={(el) => {
+                        titleRefs.current[i] = el;
+                      }}
+                      className="font-semibold leading-tight text-[16px] min-h-[40px]"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {c.title}
+                    </div>
+                  </button>
+                );
+              })
+            )}
           </div>
           </div>
         </section>
@@ -602,10 +667,13 @@ export default function HomePage() {
                   поэтому лишняя часть обрежется именно снизу.
                   Можно чуть увеличить исходную высоту, чтобы дать «запас» для обрезки.
                 */}
-                <img
+                <AppImage
                   src="/map.png"
                   alt="Медграфт на карте"
-                  className="absolute inset-0 h-[300px] w-full object-cover object-[center_top]"
+                  fill
+                  sizes="100vw"
+                  priority
+                  className="absolute inset-0 object-cover object-[center_top]"
                 />
               </div>
             </a>
@@ -615,9 +683,11 @@ export default function HomePage() {
               <div className="mx-auto flex items-center justify-between gap-4 rounded-[22px] bg-white/95 p-4 shadow-xl ring-1 ring-slate-100 backdrop-blur dark:bg-slate-900/90 dark:ring-slate-800 dark:shadow-[0_12px_30px_rgba(0,0,0,0.45)]">
                 <div className="flex min-w-0 items-center gap-3">
                   {/* ⬇️ заменили контейнер с фоном на сам маркер */}
-                  <img
+                  <AppImage
                     src="/hospital.svg"
                     alt=""
+                    width={48}
+                    height={48}
                     className="h-12 w-12 shrink-0"
                   />
                   <div className="min-w-0">
@@ -644,7 +714,7 @@ export default function HomePage() {
             <div className="min-w-0 space-y-3 pr-1 self-start">
               <a href={`tel:${contacts.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2.5">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
-                  <img src="/phone.svg" alt="" className="h-4.5 w-4.5" />
+                  <AppImage src="/phone.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
                 </span>
                 <span className="text-[16px] font-bold text-slate-900">
                   {contacts.phone}
@@ -654,7 +724,7 @@ export default function HomePage() {
               {/* АДРЕС: теперь без truncate, можно переносить строки */}
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
-                  <img src="/location.svg" alt="" className="h-4.5 w-4.5" />
+                  <AppImage src="/location.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
                 </span>
                 <div className="min-w-0 leading-tight">
                   <span className="block text-[15px] font-bold text-slate-900 whitespace-normal">
@@ -671,7 +741,7 @@ export default function HomePage() {
             <div className="pl-1 self-start">
               <div className="flex items-center gap-2.5 whitespace-nowrap">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
-                  <img src="/globe.svg" alt="" className="h-4.5 w-4.5" />
+                  <AppImage src="/globe.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
                 </span>
                 <a
                   href={contacts.siteUrl}

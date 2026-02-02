@@ -1,10 +1,10 @@
 // components/SheetFrame.tsx
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import React, { PropsWithChildren, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { lockBodyScroll, unlockBodyScroll } from "@/utils/bodyScrollLock";
+import AppImage from "@/components/AppImage";
 
 type SheetFrameProps = {
   open: boolean;
@@ -107,7 +107,7 @@ export default function SheetFrame({
   const preventWheel = useRef<((e: WheelEvent) => void) | null>(null);
   const preventTouchMove = useRef<((e: TouchEvent) => void) | null>(null);
 
-  const lockInnerScroll = () => {
+  const lockInnerScroll = useCallback(() => {
     if (isDesktop) {
       return;
     }
@@ -133,9 +133,9 @@ export default function SheetFrame({
       };
     }
     sc.addEventListener("touchmove", preventTouchMove.current, { passive: false });
-  };
+  }, [isDesktop]);
 
-  const unlockInnerScroll = () => {
+  const unlockInnerScroll = useCallback(() => {
     const sc = scrollRef.current;
     if (!sc) return;
     sc.style.overflowY = "";
@@ -143,7 +143,7 @@ export default function SheetFrame({
       if (preventWheel.current) sc.removeEventListener("wheel", preventWheel.current as EventListener);
       if (preventTouchMove.current) sc.removeEventListener("touchmove", preventTouchMove.current as EventListener);
     } catch {}
-  };
+  }, []);
 
   const startY = useRef(0);
   const startX = useRef(0);
@@ -179,7 +179,7 @@ export default function SheetFrame({
       unlockInnerScroll();
       setEntered(false);
     };
-  }, [open, initialVH]);
+  }, [open, initialVH, lockInnerScroll, unlockInnerScroll]);
 
   // When the sheet closes, drop focus from its contents to avoid focus living inside a hidden tree.
   useEffect(() => {
@@ -236,7 +236,7 @@ export default function SheetFrame({
     } else {
       lockInnerScroll();
     }
-  }, [isDesktop, isFull, open]);
+  }, [isDesktop, isFull, open, lockInnerScroll, unlockInnerScroll]);
 
   const canSwipeToClose = swipeToClose && !isDesktop;
 
@@ -506,7 +506,7 @@ export default function SheetFrame({
           {headerContent ?? (
             <div className="flex items-center gap-3">
               <span className="inline-flex h-14 w-14 items-center justify-center rounded-[12px] bg-white/15 ring-1 ring-white/20">
-                <img src={iconSrc} alt="" className="h-15 w-15" />
+                <AppImage src={iconSrc} alt="" width={60} height={60} className="h-15 w-15" />
               </span>
               <div className="leading-tight">
                 <div className={clsx("font-bold leading-none", subtitle ? "text-[22px]" : "text-[20px]")}>
