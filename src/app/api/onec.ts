@@ -149,8 +149,12 @@ function mapActionToPromotion(action: OneCAction): Promotion | null {
           .map((value) => (typeof value === "string" ? value.trim() : String(value ?? "")))
           .filter((value) => value.length > 0))
       : [];
-  let image = images[0] || pickField(safeAction, ["mainimage", "mainImage", "image", "banner", "picture"]);
-  let bannerImage = images[1] || pickField(safeAction, ["banner", "mainimage", "mainImage", "image", "picture"]);
+  let image =
+    images[0] ||
+    pickField(safeAction, ["mainimg", "mainIMG", "mainimage", "mainImage", "image", "banner", "picture"]);
+  let bannerImage =
+    images[1] ||
+    pickField(safeAction, ["banner", "mainimg", "mainIMG", "mainimage", "mainImage", "image", "picture"]);
 
   if (image) {
     try {
