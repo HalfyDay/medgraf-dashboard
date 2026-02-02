@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_URL="https://github.com/HalfyDay/medgraf-dashboard.git"
+BRANCH="main"
+APP_DIR="/var/www/medgraft"
+
+# tmp под www-data, чтобы git clone не падал по правам
+mkdir -p /var/www/tmp
+chown www-data:www-data /var/www/tmp
+TMP_ROOT="$(sudo -u www-data mktemp -d /var/www/tmp/medgraft.XXXXXX)"
+trap 'rm -rf "$TMP_ROOT" || true' EXIT
+TMP_REPO="$TMP_ROOT/repo"
+
+# 1) Клонируем репозиторий
+if ! command -v git >/dev/null 2>&1; then
+  apt-get update -y && apt-get install -y git
+fi
+
+echo "==> Cloning $REPO_URL ($BRANCH) to $TMP_REPO"
+sudo -u www-data git clone --depth=1 --branch "$BRANCH" "$REPO_URL" "$TMP_REPO" 2>/dev/null \
+  || sudo -u www-data git clone --depth=1 "$REPO_URL" "$TMP_REPO"
+
+# если нет ветки main — пробуем master
+if ! sudo -u www-data git -C "$TMP_REPO" rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
+  BRANCH="master"
+  sudo -u www-data git -C "$TMP_REPO" fetch --depth=1 origin "$BRANCH"
+  sudo -u www-data git -C "$TMP_REPO" checkout -q "$BRANCH"
+fi
+COMMIT_SHORT="$(sudo -u www-data git -C "$TMP_REPO" rev-parse --short HEAD)"
+
+# 2) Останавливаем сервис, чтобы избежать mixed-билда
+echo "==> Stop service"
+systemctl stop medgraft.service || true
+
+# 3) Переносим файлы в рабочую копию (с исключениями)
+echo "==> Rsync into $APP_DIR (keep .env, *.sqlite, node_modules, .next, next.config.js)"
+mkdir -p "$APP_DIR"
+chown -R www-data:www-data "$APP_DIR"
+sudo -u www-data rsync -a --delete \
+  --exclude '.git' --exclude '.github' --exclude '.DS_Store' \
+  --exclude 'node_modules' --exclude '.next' --exclude '.npm-cache' \
+  --exclude '.env' --exclude '*.sqlite*' --exclude 'data.sqlite' \
+  --exclude 'next.config.js' \
+  "$TMP_REPO"/ "$APP_DIR"/
+
+cd "$APP_DIR"
+
+# 3.1) Кэш и .npm для www-data
+mkdir -p /var/www/.cache /var/www/.npm
+chown -R www-data:www-data /var/www/.cache /var/www/.npm
+
+# 3.2) Логи и LOG_FILE + DATABASE_PATH
+mkdir -p "$APP_DIR/logs"
+chown -R www-data:www-data "$APP_DIR/logs"
+mkdir -p /var/lib/medgraft
+chown -R www-data:www-data /var/lib/medgraft
+mkdir -p /etc/systemd/system/medgraft.service.d
+if [ ! -f /etc/medgraft.env ]; then
+  echo "==> Creating /etc/medgraft.env (edit secrets after deploy)"
+  umask 077
+  AUTH_SECRET="$(openssl rand -hex 32)"
+  cat <<ENV > /etc/medgraft.env
+# Медграфт secrets/env (edit as needed)
+AUTH_SECRET=$AUTH_SECRET
+
+# 1C connection
+# ONEC_BASE_URL should be base url without trailing slash, e.g.:
+# http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/umc_client
+ONEC_BASE_URL=http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/umc_client
+ONEC_AUTH_MODE=bearer
+ONEC_BASIC_USER=Test
+ONEC_BASIC_PASSWORD=12345678
+ENV
+  chmod 600 /etc/medgraft.env
+fi
+cat <<'OVR' > /etc/systemd/system/medgraft.service.d/override.conf
+[Service]
+EnvironmentFile=/etc/medgraft.env
+Environment=LOG_FILE=/var/www/medgraft/logs/app.log
+Environment=DATABASE_PATH=/var/lib/medgraft/data.sqlite
+OVR
+systemctl daemon-reload
+
+# 4) Ставим зависимости только если нужно
+LOCK_HASH_FILE=".last_lock_hash"
+NEW_HASH=""; [ -f package-lock.json ] && NEW_HASH="$(sha1sum package-lock.json | awk '{print $1}')"
+OLD_HASH=""; [ -f "$LOCK_HASH_FILE" ] && OLD_HASH="$(cat "$LOCK_HASH_FILE" || true)"
+NEED_DEPS=0
+if [ ! -d node_modules ] || [ -z "$(ls -A node_modules 2>/dev/null || true)" ]; then
+  NEED_DEPS=1
+elif [ -n "$NEW_HASH" ] && [ "$NEW_HASH" != "$OLD_HASH" ]; then
+  NEED_DEPS=1
+fi
+
+if [ "$NEED_DEPS" -eq 1 ]; then
+  echo "==> Installing deps (npm ci, jobs=1)"
+  sudo -u www-data env \
+    PUPPETEER_SKIP_DOWNLOAD=1 \
+    PUPPETEER_CACHE_DIR=/var/www/.cache \
+    npm_config_jobs=1 \
+    npm ci --no-audit --no-fund
+  [ -n "$NEW_HASH" ] && echo "$NEW_HASH" | sudo -u www-data tee "$LOCK_HASH_FILE" >/dev/null
+else
+  echo "==> Dependencies unchanged, skipping install"
+fi
+
+# sanity: бинарь next
+[ -x node_modules/.bin/next ] || { echo "ERROR: next binary not found"; exit 1; }
+
+# 5) Билдим
+echo "==> Build"
+sudo -u www-data rm -rf .next
+sudo -u www-data bash -lc '
+  set -a
+  [ -f /etc/medgraft.env ] && . /etc/medgraft.env
+  set +a
+  PUPPETEER_SKIP_DOWNLOAD=1 \
+  PUPPETEER_CACHE_DIR=/var/www/.cache \
+  npm run build
+'
+
+
+# 6) Копируем статику/public в standalone-рантайм
+echo "==> Sync static/public for standalone runtime"
+sudo -u www-data bash -lc '
+  set -e
+  cd "'"$APP_DIR"'"
+  mkdir -p .next/standalone/.next
+  rsync -a --delete .next/static/ .next/standalone/.next/static/
+  if [ -d public ]; then
+    mkdir -p .next/standalone/public
+    rsync -a --delete public/ .next/standalone/public/
+  fi
+'
+
+# 7) Старт сервиса
+echo "==> Start service"
+systemctl start medgraft.service
+sleep 1
+systemctl is-active --quiet medgraft.service || (echo "Service is not active" >&2; exit 1)
+
+echo "==> Deployed commit $COMMIT_SHORT on branch $BRANCH"
+curl -s -I "https://1499383-cl93109.tw1.ru/home?ts=$(date +%s)" | sed -n '1,12p' || true
