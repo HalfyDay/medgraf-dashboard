@@ -714,7 +714,7 @@ export default function HomePage() {
             <div className="min-w-0 space-y-3 pr-1 self-start">
               <a href={`tel:${contacts.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2.5">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
-                  <AppImage src="/phone.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
+                  <AppImage src="/phone.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 </span>
                 <span className="text-[16px] font-bold text-slate-900">
                   {contacts.phone}
@@ -724,7 +724,7 @@ export default function HomePage() {
               {/* АДРЕС: теперь без truncate, можно переносить строки */}
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
-                  <AppImage src="/location.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
+                  <AppImage src="/location.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 leading-tight">
                   <span className="block text-[15px] font-bold text-slate-900 whitespace-normal">
@@ -741,7 +741,7 @@ export default function HomePage() {
             <div className="pl-1 self-start">
               <div className="flex items-center gap-2.5 whitespace-nowrap">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
-                  <AppImage src="/globe.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
+                  <AppImage src="/globe.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 </span>
                 <a
                   href={contacts.siteUrl}

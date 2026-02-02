@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "xn--80afcd8a1app.xn--p1ai",
       },
+      {
+        protocol: "https",
+        hostname: "медграфт.рф",
+      },
     ],
   },
 };
