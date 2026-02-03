@@ -42,6 +42,7 @@ const mapAppointment = (
   }
 
   const doctorName = raw.doctorName?.toString().trim() || "Doctor";
+  const doctorAvatar = raw.doctorImage?.toString().trim() || undefined;
   const work = Array.isArray(raw.works) ? raw.works[0] : undefined;
   const serviceName = work?.nomenclatureName?.toString().trim() || "Прием";
 
@@ -53,6 +54,7 @@ const mapAppointment = (
     specialty: serviceName,
     clinic: { name: CLINIC_NAME, city: CLINIC_CITY, address: CLINIC_ADDRESS },
     status,
+    doctorAvatar,
   };
 };
 

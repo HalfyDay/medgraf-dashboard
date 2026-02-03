@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import SheetFrame from "@/components/SheetFrame";
 import AppImage from "@/components/AppImage";
-import type { Appointment } from "@/utils/api";
+import { DOCTOR_AVATAR_PLACEHOLDER, type Appointment } from "@/utils/api";
 
 type MyAppointmentsSheetProps = {
   open: boolean;
@@ -64,7 +64,14 @@ export default function MyAppointmentsSheet({
         ].join(" ")}
       >
         <span className={`inline-flex h-12 w-12 items-center justify-center rounded-[14px] ${iconBg}`}>
-          <AppImage src="/list.svg" alt="" width={48} height={48} className="h-12 w-12" />
+          <AppImage
+            src={appointment.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER}
+            fallbackSrc={DOCTOR_AVATAR_PLACEHOLDER}
+            alt=""
+            width={48}
+            height={48}
+            className="h-12 w-12 rounded-[12px] object-cover"
+          />
         </span>
 
         <div className="min-w-0 flex-1 leading-tight">

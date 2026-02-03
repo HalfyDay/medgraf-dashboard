@@ -824,6 +824,7 @@ export type OnecScheduleAppointmentRecord = {
   webID?: string | null;
   doctorID?: string | null;
   doctorName?: string | null;
+  doctorImage?: string | null;
   date?: string | null;
   startTime?: string | null;
   endTime?: string | null;
