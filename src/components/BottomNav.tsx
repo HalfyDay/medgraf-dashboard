@@ -16,6 +16,7 @@ export default function BottomNav() {
   const items = useMemo(
     () => [
       { href: "/home",        icon: "/main.svg",    iconDark: "/main_light.svg",    iconActive: "/highlighted_main.svg",    label: "Главная" },
+      { href: "/about",       icon: "/about.svg",   iconDark: "/about_light.svg",   iconActive: "/highlighted_about.svg",   label: "О клинике" },
       { href: "/card",        icon: "/records.svg", iconDark: "/records_light.svg", iconActive: "/highlighted_records.svg", label: "Медкарта"  },
       { href: "/profile",     icon: "/profile.svg", iconDark: "/profile_light.svg", iconActive: "/highlighted_profile.svg", label: "Профиль" },
     ],

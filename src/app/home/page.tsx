@@ -94,9 +94,9 @@ export default function HomePage() {
 
   const upcomingDateLabel = upcomingAppointment ? formatTileDate(upcomingAppointment.date) : "—";
   const upcomingTimeLabel = upcomingAppointment ? formatTileTime(upcomingAppointment.date) : "—";
-  const upcomingDoctorName = upcomingAppointment?.doctorName Клиника МедГрафт "Пока нет записи";
+  const upcomingDoctorName = upcomingAppointment?.doctorName ?? "Клиника МедГрафт";
   const upcomingDoctorSpecialty =
-    upcomingAppointment?.specialty Клиника МедГрафт "Запишитесь на приём, чтобы мы показали детали";
+    upcomingAppointment?.specialty ?? "Запишитесь на приём, чтобы мы показали детали";
   const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER;
   const hasActiveAppointments = activeAppointments.some((item) => item.status === "planned");
   const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
@@ -271,7 +271,7 @@ export default function HomePage() {
         if (!el) return;
 
         const card = el.closest("[data-checkup-card]") as HTMLElement | null;
-        const container = card Клиника МедГрафт (el.parentElement as HTMLElement);
+        const container = (card ?? el.parentElement) as HTMLElement | null;
         if (!container) return;
 
         const cs = getComputedStyle(container);
