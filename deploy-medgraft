@@ -1,0 +1,273 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO_URL="https://github.com/HalfyDay/medgraf-dashboard.git"
+BRANCH="main"
+APP_DIR="/var/www/medgraft"
+RELEASES_DIR="$APP_DIR/releases"
+CURRENT_LINK="$APP_DIR/current"
+SHARED_DIR="$APP_DIR/shared"
+KEEP_RELEASES=5
+
+HEALTHCHECK_URL="http://127.0.0.1:3000/"
+HEALTHCHECK_TIMEOUT=30
+HEALTHCHECK_INTERVAL=2
+
+NGINX_SITE="/etc/nginx/sites-available/medgraft"
+PATCH_NGINX=1
+
+log() { echo "==> $*"; }
+
+healthcheck() {
+  local deadline=$((SECONDS + HEALTHCHECK_TIMEOUT))
+  while [ $SECONDS -lt $deadline ]; do
+    if curl -fsS -m 5 "$HEALTHCHECK_URL" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep "$HEALTHCHECK_INTERVAL"
+  done
+  return 1
+}
+
+# tmp dir under www-data to avoid permission issues
+mkdir -p /var/www/tmp
+chown www-data:www-data /var/www/tmp
+TMP_ROOT="$(sudo -u www-data mktemp -d /var/www/tmp/medgraft.XXXXXX)"
+trap 'rm -rf "$TMP_ROOT" || true' EXIT
+TMP_REPO="$TMP_ROOT/repo"
+
+# 1) Clone repo
+if ! command -v git >/dev/null 2>&1; then
+  apt-get update -y && apt-get install -y git
+fi
+
+log "Cloning $REPO_URL ($BRANCH) to $TMP_REPO"
+sudo -u www-data git clone --depth=1 --branch "$BRANCH" "$REPO_URL" "$TMP_REPO" 2>/dev/null \
+  || sudo -u www-data git clone --depth=1 "$REPO_URL" "$TMP_REPO"
+
+# fallback to master if main not found
+if ! sudo -u www-data git -C "$TMP_REPO" rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
+  BRANCH="master"
+  sudo -u www-data git -C "$TMP_REPO" fetch --depth=1 origin "$BRANCH"
+  sudo -u www-data git -C "$TMP_REPO" checkout -q "$BRANCH"
+fi
+COMMIT_SHORT="$(sudo -u www-data git -C "$TMP_REPO" rev-parse --short HEAD)"
+
+# 2) Prepare directories
+mkdir -p "$APP_DIR" "$RELEASES_DIR" "$SHARED_DIR"
+chown -R www-data:www-data "$APP_DIR" "$RELEASES_DIR" "$SHARED_DIR"
+
+# cache and npm dirs
+mkdir -p /var/www/.cache /var/www/.npm
+chown -R www-data:www-data /var/www/.cache /var/www/.npm
+
+# logs and database
+mkdir -p "$APP_DIR/logs"
+chown -R www-data:www-data "$APP_DIR/logs"
+mkdir -p /var/lib/medgraft
+chown -R www-data:www-data /var/lib/medgraft
+mkdir -p /etc/systemd/system/medgraft.service.d
+
+# ensure /etc/medgraft.env exists
+if [ ! -f /etc/medgraft.env ]; then
+  log "Creating /etc/medgraft.env (edit secrets after deploy)"
+  umask 077
+  AUTH_SECRET="$(openssl rand -hex 32)"
+  cat <<ENV > /etc/medgraft.env
+# Medgraft secrets/env (edit as needed)
+AUTH_SECRET=$AUTH_SECRET
+
+# 1C connection
+# ONEC_BASE_URL should be base url without trailing slash, e.g.:
+# http://example/hs/umc_client
+ONEC_BASE_URL=http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/umc_client
+ONEC_AUTH_MODE=bearer
+ONEC_BASIC_USER=Test
+ONEC_BASIC_PASSWORD=12345678
+ENV
+  chmod 600 /etc/medgraft.env
+fi
+
+# keep a shared .env (symlink to /etc/medgraft.env by default)
+SHARED_ENV="$SHARED_DIR/.env"
+if [ ! -e "$SHARED_ENV" ]; then
+  if [ -f /etc/medgraft.env ]; then
+    ln -s /etc/medgraft.env "$SHARED_ENV"
+  elif [ -f "$APP_DIR/.env" ]; then
+    cp "$APP_DIR/.env" "$SHARED_ENV"
+    chmod 600 "$SHARED_ENV"
+  else
+    touch "$SHARED_ENV"
+    chmod 600 "$SHARED_ENV"
+  fi
+fi
+
+write_systemd_override() {
+  local exec_start="$1"
+  cat <<OVR > /etc/systemd/system/medgraft.service.d/override.conf
+[Service]
+WorkingDirectory=/var/www/medgraft/current
+EnvironmentFile=
+EnvironmentFile=-/var/www/medgraft/shared/.env
+EnvironmentFile=/etc/medgraft.env
+ExecStart=
+ExecStart=$exec_start
+Environment=LOG_FILE=/var/www/medgraft/logs/app.log
+Environment=DATABASE_PATH=/var/lib/medgraft/data.sqlite
+OVR
+  systemctl daemon-reload
+}
+
+# 3) Prepare release
+RELEASE_DIR="$RELEASES_DIR/$(date +%Y%m%d%H%M%S)_$COMMIT_SHORT"
+log "Preparing release $RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
+chown -R www-data:www-data "$RELEASE_DIR"
+
+sudo -u www-data rsync -a --delete \
+  --exclude '.git' --exclude '.github' --exclude '.DS_Store' \
+  --exclude '.env' --exclude '*.sqlite*' --exclude 'data.sqlite' \
+  "$TMP_REPO"/ "$RELEASE_DIR"/
+
+# link shared .env into release for build-time vars
+ln -sfn "$SHARED_ENV" "$RELEASE_DIR/.env"
+
+cd "$RELEASE_DIR"
+
+# 4) Dependencies
+log "Installing deps (npm ci, jobs=1)"
+sudo -u www-data env \
+  PUPPETEER_SKIP_DOWNLOAD=1 \
+  PUPPETEER_CACHE_DIR=/var/www/.cache \
+  npm_config_jobs=1 \
+  npm ci --no-audit --no-fund
+
+[ -x node_modules/.bin/next ] || { echo "ERROR: next binary not found"; exit 1; }
+
+# 5) Build
+log "Build"
+sudo -u www-data bash -lc '
+  set -a
+  [ -f /etc/medgraft.env ] && . /etc/medgraft.env
+  set +a
+  PUPPETEER_SKIP_DOWNLOAD=1 \
+  PUPPETEER_CACHE_DIR=/var/www/.cache \
+  npm run build
+'
+
+# 6) Sync static/public for standalone runtime
+log "Sync static/public for standalone runtime"
+sudo -u www-data bash -lc '
+  set -e
+  cd "'"$RELEASE_DIR"'"
+  mkdir -p .next/standalone/.next
+  rsync -a --delete .next/static/ .next/standalone/.next/static/
+  if [ -d public ]; then
+    mkdir -p .next/standalone/public
+    rsync -a --delete public/ .next/standalone/public/
+  fi
+'
+
+# 6.1) Choose runtime mode (standalone vs next start)
+if [ -f "$RELEASE_DIR/.next/standalone/server.js" ]; then
+  log "Standalone server.js found"
+  write_systemd_override "/usr/bin/node /var/www/medgraft/current/.next/standalone/server.js"
+else
+  log "Standalone server.js not found, fallback to next start"
+  write_systemd_override "/var/www/medgraft/current/node_modules/.bin/next start -p 3000"
+fi
+
+# keep previous release for rollback
+PREV_RELEASE=""
+if [ -L "$CURRENT_LINK" ]; then
+  PREV_RELEASE="$(readlink -f "$CURRENT_LINK")"
+fi
+
+# 7) Switch current -> release
+log "Switch current -> $RELEASE_DIR"
+if [ -e "$CURRENT_LINK" ] && [ ! -L "$CURRENT_LINK" ]; then
+  rm -rf "$CURRENT_LINK"
+fi
+ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"
+
+# keep legacy .next path to avoid breaking old nginx alias
+if [ -e "$APP_DIR/.next" ] && [ ! -L "$APP_DIR/.next" ]; then
+  rm -rf "$APP_DIR/.next"
+fi
+ln -sfn "$CURRENT_LINK/.next" "$APP_DIR/.next"
+
+# 8) Restart service
+log "Restart service"
+systemctl restart medgraft.service
+sleep 1
+systemctl is-active --quiet medgraft.service || (echo "Service is not active" >&2; exit 1)
+
+# 9) Healthcheck + rollback on failure
+log "Healthcheck $HEALTHCHECK_URL"
+if ! healthcheck; then
+  echo "ERROR: healthcheck failed, rolling back" >&2
+  if [ -n "$PREV_RELEASE" ] && [ -d "$PREV_RELEASE" ]; then
+    ln -sfn "$PREV_RELEASE" "$CURRENT_LINK"
+    ln -sfn "$CURRENT_LINK/.next" "$APP_DIR/.next"
+    systemctl restart medgraft.service || true
+    healthcheck || true
+  fi
+  exit 1
+fi
+
+# 10) Optional nginx patch (alias to current + no-store for dynamic)
+if [ "$PATCH_NGINX" -eq 1 ] && [ -f "$NGINX_SITE" ]; then
+  NEED_RELOAD=0
+  if grep -q 'alias /var/www/medgraft/.next/static/' "$NGINX_SITE"; then
+    cp "$NGINX_SITE" "$NGINX_SITE.bak.$(date +%s)"
+    sed -i 's#alias /var/www/medgraft/.next/static/#alias /var/www/medgraft/current/.next/static/#' "$NGINX_SITE"
+    NEED_RELOAD=1
+  fi
+  if ! grep -q 'Cache-Control "no-store"' "$NGINX_SITE"; then
+    cp -n "$NGINX_SITE" "$NGINX_SITE.bak.$(date +%s)" || true
+    if command -v python3 >/dev/null 2>&1; then
+      python3 - <<'PY'
+from pathlib import Path
+import re
+
+path = Path("/etc/nginx/sites-available/medgraft")
+text = path.read_text()
+
+if 'Cache-Control "no-store"' in text:
+    raise SystemExit(0)
+
+def repl(match: re.Match) -> str:
+    block = match.group(0)
+    if 'Cache-Control "no-store"' in block:
+        return block
+    lines = block.splitlines()
+    if len(lines) >= 2:
+        lines.insert(1, '    add_header Cache-Control "no-store";')
+        return "\n".join(lines)
+    return block
+
+new_text, n = re.subn(r'location / \{[^}]*\}', repl, text, count=1, flags=re.S)
+if n:
+    path.write_text(new_text)
+PY
+      NEED_RELOAD=1
+    else
+      echo "WARN: python3 not found; skipping Cache-Control patch"
+    fi
+  fi
+  if [ "$NEED_RELOAD" -eq 1 ]; then
+    nginx -t && systemctl reload nginx
+  fi
+fi
+
+# 11) Cleanup old releases (keep last N)
+log "Cleanup old releases"
+mapfile -t RELEASES < <(ls -1dt "$RELEASES_DIR"/* 2>/dev/null || true)
+if [ "${#RELEASES[@]}" -gt "$KEEP_RELEASES" ]; then
+  for r in "${RELEASES[@]:$KEEP_RELEASES}"; do
+    rm -rf "$r"
+  done
+fi
+
+log "Deployed commit $COMMIT_SHORT on branch $BRANCH"
+curl -s -I "https://1499383-cl93109.tw1.ru/home?ts=$(date +%s)" | sed -n '1,12p' || true
