@@ -50,8 +50,10 @@ export async function fetchAppointments(patientId?: string): Promise<Appointment
 }
 
 const DOCTORS_CACHE_KEY = "medgraf.doctors.v1";
+const DOCTORS_DIRECTORY_CACHE_KEY = "medgraf.doctors.directory.v1";
 const SERVICES_CACHE_KEY = "medgraf.services.v1";
 let doctorsCachePromise: Promise<Doctor[]> | null = null;
+let doctorsDirectoryCachePromise: Promise<DoctorDirectoryEntry[]> | null = null;
 let servicesCachePromise: Promise<ServiceDirectoryEntry[]> | null = null;
 
 const readSessionCache = <T,>(key: string): T | null => {
@@ -428,6 +430,50 @@ export async function fetchDoctors(): Promise<Doctor[]> {
     return await doctorsCachePromise;
   } finally {
     doctorsCachePromise = null;
+  }
+}
+
+export async function fetchDoctorsDirectory(): Promise<DoctorDirectoryEntry[]> {
+  const cached = readSessionCache<DoctorDirectoryEntry[]>(DOCTORS_DIRECTORY_CACHE_KEY);
+  if (cached) {
+    return cached;
+  }
+  if (doctorsDirectoryCachePromise) {
+    return doctorsDirectoryCachePromise;
+  }
+
+  doctorsDirectoryCachePromise = (async () => {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    try {
+      if (controller) {
+        timeout = setTimeout(() => controller.abort(), 8000);
+      }
+      const res = await fetch("/api/doctors", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: controller?.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`Doctors API responded with ${res.status}`);
+      }
+      const payload = (await res.json()) as { data?: DoctorDirectoryEntry[] };
+      const list = Array.isArray(payload?.data) ? payload.data : [];
+      writeSessionCache(DOCTORS_DIRECTORY_CACHE_KEY, list);
+      return list;
+    } finally {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    }
+  })();
+
+  try {
+    return await doctorsDirectoryCachePromise;
+  } finally {
+    doctorsDirectoryCachePromise = null;
   }
 }
 

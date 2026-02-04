@@ -647,9 +647,6 @@ export default function HomePage() {
           >
             Мои исследования
           </button>
-          <button type="button" className={primaryActionButton}>
-            Клиника МедГрафт
-          </button>
         </section>
 
         {/* Контакты */}

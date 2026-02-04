@@ -30,6 +30,8 @@ type BookingFlowSheetProps = {
   open: boolean;
   onClose: () => void;
   onBooked?: (appointment: Appointment) => void;
+  initialDoctorId?: string | null;
+  skipDoctorStep?: boolean;
 };
 
 const STEP_META: Record<
@@ -179,6 +181,8 @@ export default function BookingFlowSheet({
   open,
   onClose,
   onBooked,
+  initialDoctorId,
+  skipDoctorStep = false,
 }: BookingFlowSheetProps) {
   const { user } = useAuth();
   const [step, setStep] = useState<BookingFlowStep>("doctor");
@@ -271,7 +275,18 @@ export default function BookingFlowSheet({
         if (!mounted) return;
         setDoctors(list);
         if (list.length > 0) {
-          setSelectedSpecialty(list[0].category);
+          const preselected = initialDoctorId
+            ? list.find((doctor) => doctor.id === initialDoctorId)
+            : null;
+          if (preselected) {
+            setSelectedSpecialty(preselected.category);
+            setSelectedDoctorId(preselected.id);
+            if (skipDoctorStep) {
+              setStep("service");
+            }
+          } else {
+            setSelectedSpecialty(list[0].category);
+          }
         }
       })
       .catch(() => {
@@ -286,7 +301,7 @@ export default function BookingFlowSheet({
     return () => {
       mounted = false;
     };
-  }, [open, resetState]);
+  }, [initialDoctorId, open, resetState, skipDoctorStep]);
 
   useEffect(() => {
     if (doctors.length === 0 || selectedSpecialty) return;

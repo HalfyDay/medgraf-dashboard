@@ -475,7 +475,7 @@ export default function AuthPage() {
             {loginStep === "doc" && (
               <form onSubmit={handleDocSubmit} className="space-y-4">
                 <AuthField
-                  label="Последние 3 цифры паспорта"
+                  label="Последние 3 цифры номера паспорта"
                   value={loginPassportDigits}
                   onChange={(value) => {
                     setLoginPassportDigits(cleanDocDigits(value));

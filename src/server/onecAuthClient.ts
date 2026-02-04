@@ -593,6 +593,10 @@ type OnecDoctorRaw = {
   full_name?: string;
   email?: string;
   phone?: string;
+  numberComments?: number | string;
+  institution?: string;
+  experience?: number | string;
+  childrenAppointment?: string | boolean;
   specialties?: string[] | string | null;
   photo?: string;
   image?: string;
@@ -679,6 +683,25 @@ const mapDoctorRecord = (raw: OnecDoctorRaw): DoctorDirectoryEntry | null => {
     fullName: fullName || raw.full_name?.toString().trim() || id,
     email: typeof raw.email === "string" ? raw.email.trim() : undefined,
     phone: typeof raw.phone === "string" ? raw.phone.trim() : undefined,
+    numberComments:
+      typeof raw.numberComments === "number"
+        ? raw.numberComments
+        : raw.numberComments
+          ? Number(raw.numberComments)
+          : undefined,
+    institution: typeof raw.institution === "string" ? raw.institution.trim() : undefined,
+    experience:
+      typeof raw.experience === "number"
+        ? raw.experience
+        : raw.experience
+          ? Number(raw.experience)
+          : undefined,
+    childrenAppointment:
+      typeof raw.childrenAppointment === "boolean"
+        ? raw.childrenAppointment
+        : typeof raw.childrenAppointment === "string"
+          ? raw.childrenAppointment.trim().toLowerCase() === "true"
+          : undefined,
     specialties: normalizeSpecialties(raw.specialties),
     photoUrl: photo && photo.length > 0 ? photo : undefined,
     services: Array.isArray(raw.services)

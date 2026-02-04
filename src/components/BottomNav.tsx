@@ -31,14 +31,14 @@ export default function BottomNav() {
   const WIDTH_COMPACT_FACTOR = 0.45; // ширина панели в compact от доступной (0.60 = 60%)
   const WIDTH_MIN_PX = 150;      // мин. ширина панели в compact
 
-  const SLOT_WIDTH_FULL = 96;    // ширина "слота" под иконку (расстояние между кнопками)
-  const SLOT_WIDTH_COMPACT = 35; // ширина слота в compact (иконки ближе друг к другу)
+  const SLOT_WIDTH_FULL = 96;    // базовая ширина "слота" под иконку
+  const SLOT_WIDTH_COMPACT = 35; // базовая ширина слота в compact
 
   const ICON_SIZE_FULL = 60;     // размер иконки в нормальном состоянии
   const ICON_SIZE_COMPACT = 44;  // размер иконки в compact
 
-  const GAP_FULL = 10;           // расстояние между слотами (дополнительно к ширине слота)
-  const GAP_COMPACT = 5;        // расстояние между слотами в compact
+  const GAP_FULL = 10;           // базовое расстояние между слотами
+  const GAP_COMPACT = 5;         // базовое расстояние между слотами в compact
   // =======================================================================
 
   // измеряем доступную ширину контейнера (<= 520)
@@ -116,7 +116,6 @@ export default function BottomNav() {
     (href: string) => pathname === href || pathname.startsWith(href + "/"),
     [pathname]
   );
-
   const actualActiveHref = useMemo(() => {
     const current = items.find((it) => isActive(it.href));
     return current?.href ?? items[0]?.href ?? "";
@@ -140,6 +139,49 @@ export default function BottomNav() {
     [compact, expandNow, router],
   );
 
+  const itemCount = items.length;
+  const horizontalPadding = compact ? 0 : 16 * 2;
+  const maxGapFull = GAP_FULL;
+  const maxGapCompact = GAP_COMPACT;
+  const availableWidth = Math.max(0, baseW - horizontalPadding);
+  const gapFull =
+    itemCount > 1
+      ? Math.min(
+          maxGapFull,
+          Math.max(0, Math.floor((availableWidth - SLOT_WIDTH_FULL * itemCount) / (itemCount - 1))),
+        )
+      : 0;
+  const gapCompact =
+    itemCount > 1
+      ? Math.min(
+          maxGapCompact,
+          Math.max(
+            0,
+            Math.floor((availableWidth - SLOT_WIDTH_COMPACT * itemCount) / (itemCount - 1)),
+          ),
+        )
+      : 0;
+  const slotWidthFull =
+    itemCount > 0
+      ? Math.max(
+          44,
+          Math.min(
+            SLOT_WIDTH_FULL,
+            Math.floor((availableWidth - gapFull * (itemCount - 1)) / itemCount),
+          ),
+        )
+      : SLOT_WIDTH_FULL;
+  const slotWidthCompact =
+    itemCount > 0
+      ? Math.max(
+          34,
+          Math.min(
+            SLOT_WIDTH_COMPACT,
+            Math.floor((availableWidth - gapCompact * (itemCount - 1)) / itemCount),
+          ),
+        )
+      : SLOT_WIDTH_COMPACT;
+
   const fullW = baseW;
   const compactW = Math.max(Math.floor(baseW * WIDTH_COMPACT_FACTOR), WIDTH_MIN_PX);
 
@@ -151,14 +193,14 @@ export default function BottomNav() {
         className="mx-auto w-full max-w-[520px] px-4 pb-[calc(env(safe-area-inset-bottom,0)+10px)]"
       >
         {/* ПАНЕЛЬ: анимируем width/height плавно, центрируем */}
-        <motion.div
-          aria-label="Навигация"
-          className={[
-            "relative mx-auto rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800",
-            "bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-900/80 dark:supports-[backdrop-filter]:bg-slate-900/60",
-            "shadow-[0_8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
-            "will-change-transform",
-          ].join(" ")}
+            <motion.div
+              aria-label="Навигация"
+              className={[
+                "relative mx-auto overflow-hidden rounded-2xl ring-1 ring-slate-100 dark:ring-slate-800",
+                "bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-900/80 dark:supports-[backdrop-filter]:bg-slate-900/60",
+                "shadow-[0_8px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)]",
+                "will-change-transform",
+              ].join(" ")}
           initial={false}
           animate={{
             ...(baseW > 0 ? { width: compact ? compactW : fullW } : {}),
@@ -177,9 +219,9 @@ export default function BottomNav() {
           {/* РЯД КНОПОК: центрируем и анимируем gap (кнопки ближе к центру) */}
           <LayoutGroup id="bottom-nav">
             <motion.div
-              className="relative mx-auto flex items-center justify-center w-full"
+              className="relative mx-auto flex w-full items-center justify-center px-4"
               initial={false}
-              animate={{ gap: compact ? GAP_COMPACT : GAP_FULL }}
+              animate={{ gap: compact ? gapCompact : gapFull }}
               transition={{ type: "spring", stiffness: 230, damping: 26 }}
               style={{ width: "100%", height: "100%" }}
             >
@@ -191,7 +233,7 @@ export default function BottomNav() {
                 return (
                   <div
                     key={it.href}
-                    className="relative flex items-center justify-center shrink-0"
+                    className="relative flex items-center justify-center"
                   >
                     <motion.div
                       aria-hidden="true"
@@ -236,7 +278,7 @@ export default function BottomNav() {
                       className="relative z-10 inline-flex items-center justify-center select-none rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-sky-400"
                       initial={false}
                       animate={{
-                        width: compact ? SLOT_WIDTH_COMPACT : SLOT_WIDTH_FULL,
+                        width: compact ? slotWidthCompact : slotWidthFull,
                         height: compact ? 32 : 56,
                       }}
                       transition={{ type: "spring", stiffness: 230, damping: 24 }}
@@ -282,5 +324,5 @@ export default function BottomNav() {
       </div>
     </nav>
   );
-
 }
+
