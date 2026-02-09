@@ -68,6 +68,15 @@ mkdir -p /var/lib/medgraft
 chown -R www-data:www-data /var/lib/medgraft
 mkdir -p /etc/systemd/system/medgraft.service.d
 
+# cleanup legacy root artifacts (avoid workspace root confusion)
+log "Cleanup root workspace artifacts"
+rm -f "$APP_DIR/package.json" "$APP_DIR/package-lock.json"
+rm -f "$APP_DIR/next.config.js" "$APP_DIR/next.config.ts" "$APP_DIR/next-env.d.ts"
+rm -rf "$APP_DIR/node_modules"
+if [ -e "$APP_DIR/.next" ] && [ ! -L "$APP_DIR/.next" ]; then
+  rm -rf "$APP_DIR/.next"
+fi
+
 # ensure /etc/medgraft.env exists
 if [ ! -f /etc/medgraft.env ]; then
   log "Creating /etc/medgraft.env (edit secrets after deploy)"
@@ -86,6 +95,12 @@ ONEC_BASIC_USER=Test
 ONEC_BASIC_PASSWORD=12345678
 ENV
   chmod 600 /etc/medgraft.env
+fi
+
+# ensure www-data can read env (build/runtime)
+if [ -f /etc/medgraft.env ]; then
+  chgrp www-data /etc/medgraft.env || true
+  chmod 640 /etc/medgraft.env || true
 fi
 
 # keep a shared .env (symlink to /etc/medgraft.env by default)
@@ -224,7 +239,7 @@ if [ "$PATCH_NGINX" -eq 1 ] && [ -f "$NGINX_SITE" ]; then
     NEED_RELOAD=1
   fi
   if ! grep -q 'Cache-Control "no-store"' "$NGINX_SITE"; then
-    cp -n "$NGINX_SITE" "$NGINX_SITE.bak.$(date +%s)" || true
+    cp --update=none "$NGINX_SITE" "$NGINX_SITE.bak.$(date +%s)" || true
     if command -v python3 >/dev/null 2>&1; then
       python3 - <<'PY'
 from pathlib import Path

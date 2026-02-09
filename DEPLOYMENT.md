@@ -1,15 +1,25 @@
 # Deploy с нуля (Ubuntu)
 
-Ниже пошаговая инструкция для нового сервера, чтобы поднять сайт с нуля через наш `deploy-medgraft`.
+Ниже пошаговая инструкция для нового сервера, чтобы поднять сайт с нуля через `deploy-medgraft`.
 
-## 1) DNS и порты
-1. Создай A‑запись домена на IP сервера.
-2. Проверь, включен ли UFW:
+## 1) Домен, DNS и порты
+1. Задай домен переменной (замени на свой домен):
+Бесплатный домен можно создать на timeweb, там же можно его и купить и загрузить имеющийся.
+После нужно привязать домен к проекту.
+```bash
+DOMAIN="test.1499383-cl93109.tw1.ru" # <-- замени на свой домен
+```
+2. Проверь DNS с сервера:
+```bash
+getent hosts "$DOMAIN"
+```
+3. Проверь UFW:
 ```bash
 ufw status
 ```
-3. Если UFW активен (или вы планируете его включить), открой 80/443:
+4. Если UFW активен (или планируешь включить), открой 80/443:
 ```bash
+ufw allow OpenSSH # <-- важно: иначе потеряешь доступ по SSH/SFTP
 ufw allow 'Nginx Full'
 ufw enable
 ```
@@ -29,7 +39,8 @@ node -v
 
 ## 4) systemd unit
 Файл: `/etc/systemd/system/medgraft.service`
-```ini
+```bash
+cat <<'UNIT' > /etc/systemd/system/medgraft.service
 [Unit]
 Description=MedGraft Next.js app
 After=network.target
@@ -45,6 +56,7 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+UNIT
 ```
 
 Активировать:
@@ -53,9 +65,61 @@ systemctl daemon-reload
 systemctl enable medgraft.service
 ```
 
-## 5) Nginx конфиг
-Файл: `/etc/nginx/sites-available/medgraft`
-```nginx
+## 5) Nginx (HTTP для certbot)
+Сначала поднимаем HTTP-конфиг, чтобы certbot смог пройти проверку.
+```bash
+cat <<'NGINX' > /etc/nginx/sites-available/medgraft
+server {
+    listen 80;
+    server_name YOUR_DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 90s;
+        proxy_send_timeout 90s;
+    }
+}
+NGINX
+
+sed -i "s/YOUR_DOMAIN/$DOMAIN/g" /etc/nginx/sites-available/medgraft
+ln -s /etc/nginx/sites-available/medgraft /etc/nginx/sites-enabled/medgraft
+nginx -t && systemctl reload nginx
+```
+
+## 6) SSL сертификат и финальный Nginx
+Получаем сертификат:
+```bash
+certbot --nginx -d "$DOMAIN" # <-- домен из переменной
+```
+
+Если certbot сообщает про лимит Let's Encrypt (например, `too many certificates`), то:
+1. Проверь конфиг через staging (не влияет на лимиты):
+```bash
+certbot --nginx --staging -d "$DOMAIN" # <-- домен из переменной
+```
+2. Дождись окна лимита и повтори обычный выпуск без `--staging`.
+
+Если certbot пишет, что сертификат уже существует, выбирай вариант `1` (reinstall).
+
+Если сначала выпускал staging, а потом нужен боевой:
+```bash
+certbot delete --cert-name "$DOMAIN" # <-- домен из переменной
+certbot --nginx -d "$DOMAIN" # <-- домен из переменной
+```
+
+После этого применяем финальный HTTPS-конфиг:
+```bash
+cat <<'NGINX' > /etc/nginx/sites-available/medgraft
 server {
     listen 80;
     server_name YOUR_DOMAIN;
@@ -96,31 +160,37 @@ server {
         proxy_send_timeout 90s;
     }
 }
-```
+NGINX
 
-Включить сайт:
-```bash
-ln -s /etc/nginx/sites-available/medgraft /etc/nginx/sites-enabled/medgraft
+sed -i "s/YOUR_DOMAIN/$DOMAIN/g" /etc/nginx/sites-available/medgraft
 nginx -t && systemctl reload nginx
-```
-
-## 6) SSL сертификат
-```bash
-certbot --nginx -d YOUR_DOMAIN
 ```
 
 ## 7) Переменные окружения
 Создай файл `/etc/medgraft.env`:
-```
-AUTH_SECRET=...
-ONEC_BASE_URL=...
-ONEC_AUTH_MODE=bearer
-ONEC_BASIC_USER=...
-ONEC_BASIC_PASSWORD=...
+```bash
+AUTH_SECRET=$(openssl rand -hex 32)
+cat <<ENV > /etc/medgraft.env
+AUTH_SECRET=$AUTH_SECRET
+ONEC_BASE_URL=http://ob75av-o5lx9s-319rsf-umcclient.medgraft.ru/hs/umc_client
+ONEC_AUTH_MODE=basic
+ONEC_BASIC_USER=Test
+ONEC_BASIC_PASSWORD=12345678
+ENV
+
+chmod 600 /etc/medgraft.env
 ```
 
-## 8) deploy‑скрипт
-Скопируй файл `deploy-medgraft` на сервер в:
+Важно: не добавляй inline-комментарии в `.env` (например `VAR=value # comment`), они становятся частью значения.
+
+Дай доступ на чтение для `www-data`:
+```bash
+chgrp www-data /etc/medgraft.env
+chmod 640 /etc/medgraft.env
+```
+
+## 8) deploy-скрипт
+Скопируй файл `deploy-medgraft` из репозитория на сервер в:
 ```
 /var/www/medgraft/deploy-medgraft
 ```
@@ -140,10 +210,30 @@ chmod +x /var/www/medgraft/deploy-medgraft
 2. Собирает релиз в `/var/www/medgraft/releases`.
 3. Переключает `current` атомарно.
 4. Перезапускает systemd.
-5. Делает health‑check и rollback при ошибке.
+5. Делает health-check и rollback при ошибке.
 6. Патчит nginx (alias + `no-store`), если включено.
 
-## 10) Standalone режим
+######################################################
+
+## 10) Чистый корень /var/www/medgraft (Ничего не делать)
+В корне `/var/www/medgraft` не должно быть ручных артефактов сборки (старые `package.json`, `node_modules`, `next.config.*`), иначе Next.js может ошибочно выбрать workspace root.
+
+Допустимые объекты в корне:
+- `releases/`
+- `current/`
+- `shared/`
+- `logs/`
+- `.next` (symlink)
+- `deploy-medgraft`
+
+Очистка (разово):
+```bash
+rm -rf /var/www/medgraft/node_modules
+rm -f /var/www/medgraft/package.json /var/www/medgraft/package-lock.json
+rm -f /var/www/medgraft/next.config.* /var/www/medgraft/next-env.d.ts
+```
+
+## 11) Standalone режим (Ничего не делать)
 В `next.config.ts` включен:
 ```ts
 output: "standalone"
@@ -154,19 +244,9 @@ output: "standalone"
 next start -p 3000
 ```
 
-## 11) Полезные проверки
+## 12) Полезные проверки (Ничего не делать)
 ```bash
 systemctl status medgraft.service -n 50 --no-pager
 nginx -T | sed -n '1,200p'
-curl -I https://YOUR_DOMAIN/
+curl -I https://$DOMAIN/
 ```
-
-## 12) Проверить на тестовом сервере перед продом
-```bash
-ls -la /var/www/medgraft/current/.next/standalone/server.js
-systemctl status medgraft.service -n 50 --no-pager
-curl -I http://127.0.0.1:3000/
-```
-
-## 13) Если репозиторий приватный
-Используй deploy key или HTTPS URL с token.
