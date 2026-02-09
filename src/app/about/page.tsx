@@ -27,7 +27,7 @@ export default function AboutPage() {
                   className="h-auto w-[78px]"
                 />
 
-                <p className="text-[17px] leading-[22px] text-[#0B0F17] dark:text-slate-100">
+                <p className="min-w-0 text-[15px] leading-[20px] text-[#0B0F17] dark:text-slate-100 sm:text-[17px] sm:leading-[22px]">
                   Мы с гордостью{" "}
                   <span className="font-semibold text-[#0F86FF] dark:text-sky-400">развиваем</span>{" "}
                   <span className="font-semibold text-[#0F86FF] dark:text-sky-400">качественную</span>{" "}
@@ -39,8 +39,8 @@ export default function AboutPage() {
                 </p>
               </div>
 
-              <div className="mt-7 flex items-start justify-between gap-4">
-                <p className="text-[17px] leading-[22px] text-[#0B0F17] dark:text-slate-100">
+              <div className="mt-7 flex items-start justify-between gap-3">
+                <p className="min-w-0 text-[15px] leading-[20px] text-[#0B0F17] dark:text-slate-100 sm:text-[17px] sm:leading-[22px]">
                   Сегодня наша Клиника — это большой,{" "}
                   <span className="font-semibold text-[#0F86FF] dark:text-sky-400">дружный</span>{" "}
                   <span className="font-semibold text-[#0F86FF] dark:text-sky-400">коллектив</span>{" "}
@@ -50,14 +50,14 @@ export default function AboutPage() {
                   .
                 </p>
 
-                <div className="shrink-0 w-[105px] text-center">
-                  <div className="text-[23px] font-extrabold leading-[0.95] tracking-wide text-[#0F86FF] dark:text-sky-400">
+                <div className="w-[105px] shrink-0 text-center">
+                  <div className="text-[18px] font-extrabold leading-[0.95] tracking-wide text-[#0F86FF] dark:text-sky-400 sm:text-[23px]">
                     БОЛЕЕ
                   </div>
-                  <div className="mt-[2px] text-[50px] font-extrabold leading-[0.95] tracking-tight text-[#0F86FF] dark:text-sky-400">
+                  <div className="mt-[2px] text-[36px] font-extrabold leading-[0.95] tracking-tight text-[#0F86FF] dark:text-sky-400 sm:text-[50px]">
                     150
                   </div>
-                  <div className="mt-[1px] text-[13px] font-semibold leading-[0.95] text-[#0F86FF] dark:text-sky-400">
+                  <div className="mt-[1px] text-[11px] font-semibold leading-[0.95] text-[#0F86FF] dark:text-sky-400 sm:text-[13px]">
                     сотрудников
                   </div>
                 </div>
