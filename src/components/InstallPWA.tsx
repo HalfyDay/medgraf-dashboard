@@ -17,7 +17,10 @@ export default function InstallPWA() {
     if (!("serviceWorker" in navigator)) return;
 
     if (process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((registration) => registration.update().catch(() => {}))
+        .catch(() => {});
       return;
     }
 

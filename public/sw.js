@@ -1,36 +1,34 @@
 // public/sw.js
-const CACHE = "medgraft-v4";
-// ОСТАВЬТЕ ТОЛЬКО ASCII-ПУТИ!
+const CACHE = "medgraft-v5";
 const ASSETS = [
-  "/", "/home",
   "/favicon.ico",
-  "/icons/icon-192.png", "/icons/icon-512.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
   "/manifest.webmanifest",
 ];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(
+self.addEventListener("install", (event) => {
+  event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      // безопасно добавляем: энкодим даже если кто-то случайно вставит не-ASCII
-      await cache.addAll(ASSETS.map((u) => new Request(encodeURI(u))));
+      await cache.addAll(ASSETS.map((url) => new Request(encodeURI(url))));
       await self.skipWaiting();
-    })()
+    })(),
   );
 });
 
-self.addEventListener("activate", (e) => {
-  e.waitUntil(
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.map((k) => (k === CACHE ? null : caches.delete(k))));
+      await Promise.all(keys.map((key) => (key === CACHE ? null : caches.delete(key))));
       await self.clients.claim();
-    })()
+    })(),
   );
 });
 
-self.addEventListener("fetch", (e) => {
-  const { request } = e;
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
@@ -40,39 +38,41 @@ self.addEventListener("fetch", (e) => {
     url.pathname.startsWith("/.next/");
 
   if (isBypass) {
-    e.respondWith(fetch(request));
+    event.respondWith(fetch(request));
     return;
   }
 
   const isNavigate = request.mode === "navigate";
 
-  e.respondWith(
+  event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(request);
 
+      // Do not cache HTML pages to avoid serving stale app shells between deployments.
       if (isNavigate) {
         try {
-          const resp = await fetch(request);
-          if (resp.ok) {
-            cache.put(request, resp.clone());
-          }
-          return resp;
+          return await fetch(request);
         } catch {
-          return cached || fetch(request);
+          return (
+            (await cache.match("/home")) ||
+            (await cache.match("/")) ||
+            cached ||
+            fetch(request)
+          );
         }
       }
 
       const network = fetch(request)
-        .then((resp) => {
-          if (resp.ok) {
-            cache.put(request, resp.clone());
+        .then((response) => {
+          if (response.ok) {
+            cache.put(request, response.clone());
           }
-          return resp;
+          return response;
         })
         .catch(() => cached);
 
       return cached || network;
-    })()
+    })(),
   );
 });
