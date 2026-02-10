@@ -39,7 +39,7 @@ function AppImage({
 
   // For local static assets from /public, use direct file loading.
   // For remote URLs, keep Next optimization and cache pipeline.
-  const shouldUnoptimize = unoptimized ?? isDataSrc(currentSrc) || isLocalAsset;
+  const shouldUnoptimize = unoptimized ?? (isDataSrc(currentSrc) || isLocalAsset);
   const loadingMode = props.loading ?? (isLikelyIcon ? "eager" : undefined);
 
   const classNameValue = props.className ?? "";
