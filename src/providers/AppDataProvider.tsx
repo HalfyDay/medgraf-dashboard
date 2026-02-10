@@ -118,13 +118,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") {
       return;
     }
-    try {
-      // Clear stale checkups cache after parser changes.
-      window.sessionStorage.removeItem("medgraf.checkups.v2");
-      window.sessionStorage.removeItem(PROMOS_CACHE_KEY);
-    } catch {
-      // ignore storage errors
-    }
     const flag = window.sessionStorage.getItem("medgraf.skipBootSplash");
     if (flag) {
       window.sessionStorage.removeItem("medgraf.skipBootSplash");
@@ -297,7 +290,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setDocumentsLoading(true);
       const patientId = user?.onecId?.toString().trim() || null;
       try {
-        const promosPromise = onec.promotions.list();
+        const promosPromise = (async () => {
+          const cached = readSessionCache<PromoData[]>(PROMOS_CACHE_KEY);
+          if (cached !== null) {
+            return cached;
+          }
+          const list = await onec.promotions.list();
+          writeSessionCache(PROMOS_CACHE_KEY, list);
+          return list;
+        })();
         const checkupsPromise = (async () => {
           const cached = readSessionCache<CheckupData[]>(CHECKUPS_CACHE_KEY);
           if (cached !== null) {

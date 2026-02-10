@@ -479,7 +479,7 @@ export default function HomePage() {
                   </svg>
                   Дата
                 </div>
-                <div className="text-[16px] font-semibold">{upcomingDateLabel}</div>
+                <div className="text-[14px] font-semibold leading-tight whitespace-nowrap min-[360px]:text-[16px]">{upcomingDateLabel}</div>
               </div>
 
               <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20 backdrop-blur-[2px]">
@@ -749,7 +749,7 @@ export default function HomePage() {
                   href={contacts.siteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[16px] font-bold text-slate-900 underline-offset-2 hover:underline"
+                  className="text-[14px] font-bold leading-tight whitespace-nowrap text-slate-900 underline-offset-2 hover:underline min-[360px]:text-[16px]"
                 >
                   {contacts.siteLabel}
                 </a>
