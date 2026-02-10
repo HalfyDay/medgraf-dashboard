@@ -67,12 +67,18 @@ const PUBLIC_ASSET_URLS: string[] = [
 ];
 
 const PROMOS_CACHE_KEY = "medgraf.promos.v1";
+const PROMOS_CACHE_TTL_MS = 15 * 60 * 1000;
 const CHECKUPS_CACHE_KEY = "medgraf.checkups.v2";
 const CONTACTS_CACHE_KEY = "medgraf.contacts.v1";
 const PENDING_APPOINTMENTS_KEY = "medgraf.pendingAppointments.v1";
 const PENDING_APPOINTMENTS_TTL_MS = 15 * 60 * 1000;
 const MEDCARD_CACHE_PREFIX = "medcard:";
 const MEDCARD_LOADED_PREFIX = "medcard-loaded:";
+
+type TimedSessionCache<T> = {
+  value: T;
+  cachedAt: number;
+};
 
 type AppDataContextValue = {
   booting: boolean;
@@ -148,6 +154,43 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       // ignore storage errors
     }
   }, []);
+
+  const readTimedSessionCache = useCallback(
+    <T,>(key: string, ttlMs: number): T | null => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+      try {
+        const raw = window.sessionStorage.getItem(key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as TimedSessionCache<T> | null;
+        if (!parsed || typeof parsed !== "object") {
+          return null;
+        }
+        if (!("cachedAt" in parsed) || !("value" in parsed)) {
+          // Legacy cache format without timestamp.
+          window.sessionStorage.removeItem(key);
+          return null;
+        }
+        const cachedAt = Number(parsed.cachedAt);
+        if (!Number.isFinite(cachedAt) || Date.now() - cachedAt > ttlMs) {
+          window.sessionStorage.removeItem(key);
+          return null;
+        }
+        return parsed.value as T;
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  const writeTimedSessionCache = useCallback((key: string, value: unknown) => {
+    writeSessionCache(key, {
+      value,
+      cachedAt: Date.now(),
+    });
+  }, [writeSessionCache]);
 
   const normalizeAppointmentKey = useCallback((appointment: Appointment) => {
     const safeDate = appointment.date || "";
@@ -291,12 +334,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const patientId = user?.onecId?.toString().trim() || null;
       try {
         const promosPromise = (async () => {
-          const cached = readSessionCache<PromoData[]>(PROMOS_CACHE_KEY);
+          const cached = readTimedSessionCache<PromoData[]>(PROMOS_CACHE_KEY, PROMOS_CACHE_TTL_MS);
           if (cached !== null) {
             return cached;
           }
           const list = await onec.promotions.list();
-          writeSessionCache(PROMOS_CACHE_KEY, list);
+          writeTimedSessionCache(PROMOS_CACHE_KEY, list);
           return list;
         })();
         const checkupsPromise = (async () => {
@@ -446,7 +489,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     } finally {
       loadInFlightRef.current = null;
     }
-  }, [mergePendingAppointments, prefetchImages, readSessionCache, user?.onecId, writeSessionCache]);
+  }, [
+    mergePendingAppointments,
+    prefetchImages,
+    readSessionCache,
+    readTimedSessionCache,
+    user?.onecId,
+    writeSessionCache,
+    writeTimedSessionCache,
+  ]);
 
   useEffect(() => {
     let alive = true;
