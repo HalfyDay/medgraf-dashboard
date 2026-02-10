@@ -30,6 +30,7 @@ export default function PromoSheet({
   promo: PromoData | null;
 }) {
   const [successOpen, setSuccessOpen] = useState(false);
+  const [headerAspectRatio, setHeaderAspectRatio] = useState<number>(16 / 9);
   const successTimerRef = useRef<number | null>(null);
   const SUCCESS_OVERLAY_DELAY_MS = 60;
 
@@ -73,19 +74,36 @@ export default function PromoSheet({
     return from || to || "";
   }, [promo?.start, promo?.end]);
 
+  const headerImage = promo?.banner || promo?.cardImage || "";
+
+  useEffect(() => {
+    if (!headerImage) return;
+    let cancelled = false;
+    const probe = new window.Image();
+    probe.decoding = "async";
+    probe.onload = () => {
+      if (cancelled) return;
+      const w = probe.naturalWidth || 0;
+      const h = probe.naturalHeight || 0;
+      if (w > 0 && h > 0) {
+        setHeaderAspectRatio(w / h);
+      }
+    };
+    probe.src = headerImage;
+    return () => {
+      cancelled = true;
+    };
+  }, [headerImage]);
+
   if (!promo) return null;
 
   const {
     title,
     subtitle,
     description,
-    banner,
-    cardImage,
     bullets = [],
     ctaText = "Записаться",
   } = promo;
-
-  const headerImage = banner || cardImage;
 
   const handleCtaClick = () => {
     onClose();
@@ -104,20 +122,25 @@ export default function PromoSheet({
         open={open}
         onClose={onClose}
         title={title}
+        showScrollHint
         headerContent={
-          <div className="relative z-0 h-[248px] w-full overflow-hidden">
+          <div
+            className="relative z-0 w-full overflow-hidden bg-slate-100"
+            style={{ aspectRatio: `${headerAspectRatio}` }}
+          >
             <AppImage
               src={headerImage}
               alt={title}
               fill
               sizes="100vw"
+              unoptimized
               className="pointer-events-none absolute inset-0 -z-10 object-cover"
             />
           </div>
         }
         headerClassName="overflow-hidden bg-black/10"
       >
-        <div className="px-4 py-5">
+        <div className="px-4 pt-5 pb-16">
           <div className="space-y-2 text-slate-900">
             <h2 className="text-[22px] font-semibold leading-tight">{title}</h2>
             {subtitle && <p className="text-[15px] leading-[1.55] text-slate-600">{subtitle}</p>}
@@ -136,10 +159,12 @@ export default function PromoSheet({
             </ul>
           )}
 
+        </div>
+        <div className="sticky bottom-0 z-20 px-4 py-4">
           <button
             type="button"
             onClick={handleCtaClick}
-            className="mt-6 w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[18px] font-semibold text-white shadow-md transition-transform active:translate-y-[1px]"
+            className="w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[18px] font-semibold text-white shadow-md transition-transform active:translate-y-[1px]"
           >
             {ctaText}
           </button>
@@ -149,3 +174,4 @@ export default function PromoSheet({
     </>
   );
 }
+

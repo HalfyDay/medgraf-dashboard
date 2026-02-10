@@ -972,6 +972,7 @@ export default function BookingFlowSheet({
       iconSrc={meta.icon}
       initialVH={92}
       maxVH={100}
+      showScrollHint
       innerClassName="space-y-5 pb-24"
     >
       <div className="flex items-center justify-between gap-3">

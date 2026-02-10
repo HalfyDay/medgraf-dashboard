@@ -28,6 +28,8 @@ type SheetFrameProps = {
   expandUpThresholdPx?: number;
 
   innerClassName?: string;
+  showScrollHint?: boolean;
+  scrollHintBottomOffset?: number;
 };
 
 export default function SheetFrame({
@@ -50,6 +52,8 @@ export default function SheetFrame({
   expandUpThresholdPx = 72,
 
   innerClassName,
+  showScrollHint = false,
+  scrollHintBottomOffset = 0,
   children,
 }: PropsWithChildren<SheetFrameProps>) {
   const frameRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +91,7 @@ export default function SheetFrame({
   const [panelVH, setPanelVH] = useState<number>(initialVH);
   const [dragY, setDragY] = useState(0);
   const [animatingToFull, setAnimatingToFull] = useState(false);
+  const [showBottomScrollHint, setShowBottomScrollHint] = useState(false);
   const dragYRef = useRef(0);
   const expandingUp = useRef(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -134,6 +139,48 @@ export default function SheetFrame({
     }
     sc.addEventListener("touchmove", preventTouchMove.current, { passive: false });
   }, [isDesktop]);
+
+  useEffect(() => {
+    if (!open || !showScrollHint) {
+      setShowBottomScrollHint(false);
+      return;
+    }
+
+    const sc = scrollRef.current;
+    if (!sc) {
+      setShowBottomScrollHint(false);
+      return;
+    }
+
+    const MIN_SCROLLABLE_OVERFLOW_PX = 24;
+    const MIN_REMAINING_CONTENT_PX = 56;
+
+    const updateHint = () => {
+      const maxScrollable = sc.scrollHeight - sc.clientHeight;
+      const remaining = sc.scrollHeight - (sc.scrollTop + sc.clientHeight);
+      const hasMeaningfulOverflow = maxScrollable > MIN_SCROLLABLE_OVERFLOW_PX;
+      const hasMeaningfulRemaining = remaining > MIN_REMAINING_CONTENT_PX;
+      setShowBottomScrollHint(hasMeaningfulOverflow && hasMeaningfulRemaining);
+    };
+
+    updateHint();
+    const raf = window.requestAnimationFrame(updateHint);
+    sc.addEventListener("scroll", updateHint, { passive: true });
+    window.addEventListener("resize", updateHint);
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => updateHint());
+      ro.observe(sc);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      sc.removeEventListener("scroll", updateHint);
+      window.removeEventListener("resize", updateHint);
+      ro?.disconnect();
+    };
+  }, [open, showScrollHint]);
 
   const unlockInnerScroll = useCallback(() => {
     const sc = scrollRef.current;
@@ -534,8 +581,18 @@ export default function SheetFrame({
           }}
         >
           {children}
-          <div className="h-8" />
         </div>
+        {showScrollHint && showBottomScrollHint && (
+          <div
+            className="pointer-events-none absolute left-0 right-0 z-[30] h-24 overflow-hidden"
+            style={{ bottom: `${scrollHintBottomOffset}px` }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-sky-500/52 via-blue-500/28 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-sky-500/44 via-blue-500/26 to-transparent" />
+            <div className="absolute inset-0 bg-[radial-gradient(72%_130%_at_0%_100%,rgba(14,165,233,0.52),rgba(14,165,233,0.2)_56%,transparent_78%),radial-gradient(72%_130%_at_100%_100%,rgba(37,99,235,0.56),rgba(37,99,235,0.22)_58%,transparent_80%)]" />
+            <div className="absolute inset-0 animate-pulse bg-[radial-gradient(68%_120%_at_0%_100%,rgba(14,165,233,0.28),transparent_72%),radial-gradient(68%_120%_at_100%_100%,rgba(37,99,235,0.3),transparent_74%)]" />
+          </div>
+        )}
       </div>
     </div>
   );

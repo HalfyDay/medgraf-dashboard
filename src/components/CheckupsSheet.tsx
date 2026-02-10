@@ -43,7 +43,7 @@ const renderTextBlocks = (value?: string) => {
     .filter(Boolean);
   if (!lines.length) return null;
   return (
-    <div className="space-y-2 text-[15px] leading-[1.6] text-slate-600 text-justify">
+    <div className="space-y-2 text-[16px] leading-[1.65] text-slate-600 text-justify">
       {lines.map((line, idx) => (
         <p key={`${line}-${idx}`} className="indent-5">
           {line}
@@ -111,7 +111,7 @@ export default function CheckupsSheet({
 
   return (
     <>
-      <SheetFrame open={open} onClose={onClose} title={title}>
+      <SheetFrame open={open} onClose={onClose} title={title} showScrollHint>
         {/* Верхняя цветная карточка (вместо изображения) */}
         <div className="px-4 pt-3">
           <div
@@ -127,6 +127,7 @@ export default function CheckupsSheet({
                 width={1200}
                 height={600}
                 sizes="100vw"
+                unoptimized
                 className="block h-auto w-full object-contain"
               />
             ) : (
@@ -143,21 +144,21 @@ export default function CheckupsSheet({
         </div>
 
 {/* Контент шита */}
-        <div className="px-4 py-5">
+        <div className="px-4 pt-5 pb-16">
           {description ? (
             <div className="mb-4">
               {renderTextBlocks(description)}
             </div>
           ) : null}
           {sub && (
-            <div className="mb-4 text-[15px] font-medium text-slate-700 indent-5 text-justify">
+            <div className="mb-4 text-[16px] font-medium text-slate-700 indent-5 text-justify">
               {sub}
             </div>
           )}
           {bullets?.length ? (
             <>
-              <div className="text-[18px] font-semibold mb-3">Состав комплекса:</div>
-              <ul className="space-y-2 text-[15px] leading-[1.45]">
+              <div className="mb-3 text-[20px] font-semibold">Состав комплекса:</div>
+              <ul className="space-y-2 text-[16px] leading-[1.55]">
                 {bullets.map((b, i) => (
                   <li key={i} className="pl-4 relative">
                     <span className="absolute left-0 top-[.55em] -translate-y-1/2 text-black dark:text-slate-100">•</span>
@@ -170,10 +171,12 @@ export default function CheckupsSheet({
 
           <Price value={price} oldValue={oldPrice} />
 
+        </div>
+        <div className="sticky bottom-0 z-20 px-4 py-4">
           <button
             type="button"
             onClick={handleCtaClick}
-            className="mt-5 block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[17px] font-semibold text-white shadow-md transition-transform active:translate-y-[1px]"
+            className="block w-full rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 px-6 py-4 text-center text-[17px] font-semibold text-white shadow-md transition-transform active:translate-y-[1px]"
           >
             {ctaText}
           </button>

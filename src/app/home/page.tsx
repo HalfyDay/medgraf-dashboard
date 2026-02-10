@@ -67,7 +67,7 @@ export default function HomePage() {
   const [heights, setHeights] = useState({ collapsed: 0, expanded: 0 });
   const [checkupOpen, setCheckupOpen] = useState(false);
   const [activeCheckup, setActiveCheckup] = useState<CheckupData | null>(null);
-  const promoImageCache = useRef<Set<string>>(new Set());
+  const mediaImageCache = useRef<Set<string>>(new Set());
   const [myAppointmentsOpen, setMyAppointmentsOpen] = useState(false);
   const [visitsOpen, setVisitsOpen] = useState(false);
   const [appointmentDetailsOpen, setAppointmentDetailsOpen] = useState(false);
@@ -205,7 +205,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!promos.length) return;
-    const cache = promoImageCache.current;
+    const cache = mediaImageCache.current;
 
     promos.forEach((promo) => {
       [promo.cardImage, promo.banner || promo.cardImage].forEach((src) => {
@@ -220,6 +220,21 @@ export default function HomePage() {
   }, [promos]);
 
   useEffect(() => {
+    if (!checkups.length) return;
+    const cache = mediaImageCache.current;
+
+    checkups.forEach((checkup) => {
+      const src = checkup.image;
+      if (!src) return;
+      if (cache.has(src)) return;
+      const img = new Image();
+      img.decoding = "async";
+      img.src = src;
+      cache.add(src);
+    });
+  }, [checkups]);
+
+  useEffect(() => {
     return () => {
       if (cancelOverlayTimerRef.current) {
         window.clearTimeout(cancelOverlayTimerRef.current);
@@ -228,11 +243,6 @@ export default function HomePage() {
     };
   }, []);
   // авто-подгон заголовков
-  const baseTitlePx = 16;
-  const minTitlePx  = 12;
-  const titleRefs = useRef<Array<HTMLDivElement | null>>([]);
-  titleRefs.current = Array.from({ length: checkups.length }, (_, k) => titleRefs.current[k] ?? null);
-
   const [promoOpen, setPromoOpen] = useState(false);
   const [activePromo, setActivePromo] = useState<PromoData | null>(null);
 
@@ -266,65 +276,6 @@ export default function HomePage() {
       });
     };
 
-    const fitTitlesPerCard = () => {
-      titleRefs.current.forEach((el) => {
-        if (!el) return;
-
-        const card = el.closest("[data-checkup-card]") as HTMLElement | null;
-        const container = (card ?? el.parentElement) as HTMLElement | null;
-        if (!container) return;
-
-        const cs = getComputedStyle(container);
-        const available =
-          container.clientWidth -
-          parseFloat(cs.paddingLeft || "0") -
-          parseFloat(cs.paddingRight || "0") -
-          2;
-
-        if (available <= 0) {
-          el.style.fontSize = `${minTitlePx}px`;
-          return;
-        }
-
-        const probe = el.cloneNode(true) as HTMLElement;
-        probe.style.position = "absolute";
-        probe.style.visibility = "hidden";
-        probe.style.left = "-9999px";
-        probe.style.whiteSpace = "nowrap";
-        probe.style.maxWidth = "none";
-        probe.style.overflow = "visible";
-        probe.style.textOverflow = "clip";
-        probe.style.fontSize = `${baseTitlePx}px`;
-        document.body.appendChild(probe);
-
-        if (probe.scrollWidth <= available) {
-          el.style.fontSize = `${baseTitlePx}px`;
-          document.body.removeChild(probe);
-          return;
-        }
-
-        let lo = minTitlePx;
-        let hi = baseTitlePx;
-        let best = lo;
-
-        for (let it = 0; it < 12; it++) {
-          const mid = (lo + hi) / 2;
-          probe.style.fontSize = `${mid}px`;
-          const needed = probe.scrollWidth;
-
-          if (needed <= available) {
-            best = mid;
-            lo = mid;
-          } else {
-            hi = mid;
-          }
-        }
-
-        el.style.fontSize = `${Math.max(minTitlePx, Math.round(best * 10) / 10)}px`;
-        document.body.removeChild(probe);
-      });
-    };
-
     let rafId = 0;
     const scheduleMeasurement = () => {
       if (rafId) {
@@ -332,7 +283,6 @@ export default function HomePage() {
       }
       rafId = window.requestAnimationFrame(() => {
         measureGridHeights();
-        fitTitlesPerCard();
       });
     };
 
@@ -394,6 +344,7 @@ export default function HomePage() {
                     alt={p.title}
                     width={195}
                     height={183}
+                    unoptimized
                     className="h-full w-full object-cover"
                   />
                 </button>
@@ -605,22 +556,12 @@ export default function HomePage() {
                         alt=""
                         width={36}
                         height={36}
+                        unoptimized
                         className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm ring-1 ring-white/40"
                       />
                     )}
 
-                    <div
-                      ref={(el) => {
-                        titleRefs.current[i] = el;
-                      }}
-                      className="font-semibold leading-tight text-[16px] min-h-[40px]"
-                      style={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
+                    <div className="text-[16px] font-semibold leading-tight whitespace-normal break-words">
                       {c.title}
                     </div>
                   </button>
@@ -675,6 +616,7 @@ export default function HomePage() {
                   fill
                   sizes="100vw"
                   priority
+                  unoptimized
                   className="absolute inset-0 object-cover object-[center_top]"
                 />
               </div>
@@ -715,17 +657,17 @@ export default function HomePage() {
             {/* ЛЕВАЯ колонка */}
             <div className="min-w-0 space-y-3 pr-1 self-start">
               <a href={`tel:${contacts.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2.5">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
                   <AppImage src="/phone.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 </span>
-                <span className="text-[16px] font-bold text-slate-900">
+                <span className="text-[14px] font-bold leading-tight whitespace-nowrap text-slate-900 min-[360px]:text-[16px]">
                   {contacts.phone}
                 </span>
               </a>
 
               {/* АДРЕС: теперь без truncate, можно переносить строки */}
               <div className="flex items-center gap-2.5 min-w-0">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
                   <AppImage src="/location.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 </span>
                 <div className="min-w-0 leading-tight">
@@ -742,7 +684,7 @@ export default function HomePage() {
             {/* ПРАВАЯ колонка — одна строка, не влияет на ширину адреса слева */}
             <div className="pl-1 self-start">
               <div className="flex items-center gap-2.5 whitespace-nowrap">
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-50 ring-1 ring-sky-100 dark:bg-slate-800 dark:ring-slate-700">
                   <AppImage src="/globe.svg" alt="" width={16} height={16} className="h-4 w-4" />
                 </span>
                 <a

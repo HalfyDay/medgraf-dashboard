@@ -1,6 +1,7 @@
 "use client";
 
 import Image, { type ImageProps } from "next/image";
+import { memo } from "react";
 import { useEffect, useState } from "react";
 
 type AppImageProps = Omit<ImageProps, "src" | "alt"> & {
@@ -10,8 +11,9 @@ type AppImageProps = Omit<ImageProps, "src" | "alt"> & {
 };
 
 const isDataSrc = (value: string) => value.startsWith("data:");
+const isLocalAssetSrc = (value: string) => value.startsWith("/") && !value.startsWith("//");
 
-export default function AppImage({
+function AppImage({
   src,
   alt = "",
   fallbackSrc,
@@ -26,9 +28,19 @@ export default function AppImage({
     setCurrentSrc(src);
   }, [src]);
 
-  // Let Next.js optimize and cache remote images by default.
-  // Keep unoptimized only for data URIs (or when explicitly requested).
-  const shouldUnoptimize = unoptimized ?? isDataSrc(currentSrc);
+  const isLocalAsset = isLocalAssetSrc(currentSrc);
+  const isLikelyIcon =
+    isLocalAsset &&
+    !props.fill &&
+    typeof props.width === "number" &&
+    typeof props.height === "number" &&
+    props.width <= 64 &&
+    props.height <= 64;
+
+  // For local static assets from /public, use direct file loading.
+  // For remote URLs, keep Next optimization and cache pipeline.
+  const shouldUnoptimize = unoptimized ?? isDataSrc(currentSrc) || isLocalAsset;
+  const loadingMode = props.loading ?? (isLikelyIcon ? "eager" : undefined);
 
   const classNameValue = props.className ?? "";
   const hasSizeClass = /\bsize-/.test(classNameValue);
@@ -49,6 +61,7 @@ export default function AppImage({
       src={currentSrc}
       alt={alt}
       unoptimized={shouldUnoptimize}
+      loading={loadingMode}
       style={imgStyle}
       onError={(event) => {
         if (fallbackSrc && currentSrc !== fallbackSrc) {
@@ -59,3 +72,5 @@ export default function AppImage({
     />
   );
 }
+
+export default memo(AppImage);
