@@ -155,7 +155,6 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        add_header Cache-Control "no-store";
         proxy_read_timeout 90s;
         proxy_send_timeout 90s;
     }
@@ -211,7 +210,7 @@ chmod +x /var/www/medgraft/deploy-medgraft
 3. Переключает `current` атомарно.
 4. Перезапускает systemd.
 5. Делает health-check и rollback при ошибке.
-6. Патчит nginx (alias + `no-store`), если включено.
+6. ������ nginx (alias ��� `/_next/static`), ���� ��������.
 
 ######################################################
 
@@ -250,3 +249,4 @@ systemctl status medgraft.service -n 50 --no-pager
 nginx -T | sed -n '1,200p'
 curl -I https://$DOMAIN/
 ```
+

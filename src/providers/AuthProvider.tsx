@@ -79,40 +79,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    try {
-      const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-      if (!raw) {
-        setStatus("unauthenticated");
-        return;
-      }
+    let cancelled = false;
 
-      const parsed = JSON.parse(raw) as StoredAuthPayload | AuthUser;
-      if ("user" in parsed && "expiresAt" in parsed) {
-        if (parsed.expiresAt <= Date.now()) {
-          window.localStorage.removeItem(AUTH_STORAGE_KEY);
-          setStatus("unauthenticated");
+    const restoreAuth = async () => {
+      try {
+        const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+        if (!raw) {
+          if (!cancelled) {
+            setStatus("unauthenticated");
+          }
           return;
         }
-        setUserState(parsed.user);
-        setSessionExpiresAt(parsed.expiresAt);
-        setStatus("authenticated");
-        return;
-      }
 
-      const legacyUser = parsed as AuthUser;
-      const expiresAt = Date.now() + SESSION_TTL_MS;
-      setUserState(legacyUser);
-      setSessionExpiresAt(expiresAt);
-      setStatus("authenticated");
-      window.localStorage.setItem(
-        AUTH_STORAGE_KEY,
-        JSON.stringify({ user: legacyUser, expiresAt }),
-      );
-    } catch (error) {
-      console.warn("Не удалось восстановить состояние авторизации:", error);
-      window.localStorage.removeItem(AUTH_STORAGE_KEY);
-      setStatus("unauthenticated");
-    }
+        const parsed = JSON.parse(raw) as StoredAuthPayload | AuthUser;
+
+        if ("user" in parsed && "expiresAt" in parsed) {
+          if (parsed.expiresAt <= Date.now()) {
+            window.localStorage.removeItem(AUTH_STORAGE_KEY);
+            if (!cancelled) {
+              setUserState(null);
+              setSessionExpiresAt(null);
+              setStatus("unauthenticated");
+            }
+            return;
+          }
+
+          const response = await fetch("/api/auth/session", {
+            method: "GET",
+            credentials: "same-origin",
+            cache: "no-store",
+          });
+
+          if (!response.ok) {
+            window.localStorage.removeItem(AUTH_STORAGE_KEY);
+            if (!cancelled) {
+              setUserState(null);
+              setSessionExpiresAt(null);
+              setStatus("unauthenticated");
+            }
+            return;
+          }
+
+          if (!cancelled) {
+            setUserState(parsed.user);
+            setSessionExpiresAt(parsed.expiresAt);
+            setStatus("authenticated");
+          }
+          return;
+        }
+
+        const legacyUser = parsed as AuthUser;
+        const expiresAt = Date.now() + SESSION_TTL_MS;
+        window.localStorage.setItem(
+          AUTH_STORAGE_KEY,
+          JSON.stringify({ user: legacyUser, expiresAt }),
+        );
+        if (!cancelled) {
+          setUserState(legacyUser);
+          setSessionExpiresAt(expiresAt);
+          setStatus("authenticated");
+        }
+      } catch (error) {
+        console.warn("Не удалось восстановить состояние авторизации:", error);
+        window.localStorage.removeItem(AUTH_STORAGE_KEY);
+        if (!cancelled) {
+          setUserState(null);
+          setSessionExpiresAt(null);
+          setStatus("unauthenticated");
+        }
+      }
+    };
+
+    void restoreAuth();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

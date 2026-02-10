@@ -270,11 +270,34 @@ function injectPdfButton(html: string) {
   </div>
 </div>
 <div id="mg-doc-actions">
-  <button id="mg-doc-back" class="mg-doc-btn" type="button" onclick="try{sessionStorage.setItem('medgraf.skipBootSplash','1');}catch(e){}; try{window.close();}catch(e){}; if (window.history.length > 1) { window.history.back(); } else { window.location.href='/home'; }">&#1053;&#1072;&#1079;&#1072;&#1076;</button>
+  <button id="mg-doc-back" class="mg-doc-btn" type="button" onclick="window.__mgGoBack && window.__mgGoBack()">&#1053;&#1072;&#1079;&#1072;&#1076;</button>
   <button id="mg-doc-download" class="mg-doc-btn" type="button" onclick="window.__mgDownloadPdf && window.__mgDownloadPdf()">&#1057;&#1082;&#1072;&#1095;&#1072;&#1090;&#1100; PDF</button>
 </div>
 <script>
   (function () {
+    window.__mgGoBack = function () {
+      try { sessionStorage.setItem('medgraf.skipBootSplash', '1'); } catch (e) {}
+
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.close();
+          return;
+        }
+      } catch (e) {}
+
+      try {
+        if (document.referrer) {
+          var prev = new URL(document.referrer);
+          if (prev.origin === window.location.origin && window.history.length > 1) {
+            window.history.back();
+            return;
+          }
+        }
+      } catch (e) {}
+
+      window.location.replace('/home');
+    };
+
     function buildRawUrl() {
       try {
         var url = new URL(window.location.href);

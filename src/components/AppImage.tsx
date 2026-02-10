@@ -9,8 +9,7 @@ type AppImageProps = Omit<ImageProps, "src" | "alt"> & {
   fallbackSrc?: string;
 };
 
-const isRemoteSrc = (value: string) =>
-  /^https?:\/\//i.test(value) || value.startsWith("data:");
+const isDataSrc = (value: string) => value.startsWith("data:");
 
 export default function AppImage({
   src,
@@ -27,7 +26,9 @@ export default function AppImage({
     setCurrentSrc(src);
   }, [src]);
 
-  const shouldUnoptimize = unoptimized ?? isRemoteSrc(currentSrc);
+  // Let Next.js optimize and cache remote images by default.
+  // Keep unoptimized only for data URIs (or when explicitly requested).
+  const shouldUnoptimize = unoptimized ?? isDataSrc(currentSrc);
 
   const classNameValue = props.className ?? "";
   const hasSizeClass = /\bsize-/.test(classNameValue);

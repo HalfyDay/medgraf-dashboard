@@ -238,37 +238,10 @@ if [ "$PATCH_NGINX" -eq 1 ] && [ -f "$NGINX_SITE" ]; then
     sed -i 's#alias /var/www/medgraft/.next/static/#alias /var/www/medgraft/current/.next/static/#' "$NGINX_SITE"
     NEED_RELOAD=1
   fi
-  if ! grep -q 'Cache-Control "no-store"' "$NGINX_SITE"; then
+  if grep -q 'Cache-Control "no-store"' "$NGINX_SITE"; then
     cp --update=none "$NGINX_SITE" "$NGINX_SITE.bak.$(date +%s)" || true
-    if command -v python3 >/dev/null 2>&1; then
-      python3 - <<'PY'
-from pathlib import Path
-import re
-
-path = Path("/etc/nginx/sites-available/medgraft")
-text = path.read_text()
-
-if 'Cache-Control "no-store"' in text:
-    raise SystemExit(0)
-
-def repl(match: re.Match) -> str:
-    block = match.group(0)
-    if 'Cache-Control "no-store"' in block:
-        return block
-    lines = block.splitlines()
-    if len(lines) >= 2:
-        lines.insert(1, '    add_header Cache-Control "no-store";')
-        return "\n".join(lines)
-    return block
-
-new_text, n = re.subn(r'location / \{[^}]*\}', repl, text, count=1, flags=re.S)
-if n:
-    path.write_text(new_text)
-PY
-      NEED_RELOAD=1
-    else
-      echo "WARN: python3 not found; skipping Cache-Control patch"
-    fi
+    sed -i '/add_header Cache-Control \"no-store\";/d' "$NGINX_SITE"
+    NEED_RELOAD=1
   fi
   if [ "$NEED_RELOAD" -eq 1 ]; then
     nginx -t && systemctl reload nginx
