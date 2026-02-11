@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Script from "next/script";
 import AppShell from "@/components/AppShell";
@@ -8,8 +8,19 @@ import { AuthProvider } from "@/providers/AuthProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { cookies } from "next/headers";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const onest = localFont({
+  variable: "--font-onest",
+  display: "swap",
+  src: [
+    { path: "../../public/font/WOFF/OnestThin1602-hint.woff", weight: "100", style: "normal" },
+    { path: "../../public/font/WOFF/OnestLight1602-hint.woff", weight: "300", style: "normal" },
+    { path: "../../public/font/WOFF/OnestRegular1602-hint.woff", weight: "400", style: "normal" },
+    { path: "../../public/font/WOFF/OnestMedium1602-hint.woff", weight: "500", style: "normal" },
+    { path: "../../public/font/WOFF/OnestBold1602-hint.woff", weight: "700", style: "normal" },
+    { path: "../../public/font/WOFF/OnestExtraBold1602-hint.woff", weight: "800", style: "normal" },
+    { path: "../../public/font/WOFF/OnestBlack1602-hint.woff", weight: "900", style: "normal" },
+  ],
+});
 
 export const metadata: Metadata = {
   title: "МедГрафт — Личный кабинет",
@@ -59,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         colorScheme: isDark ? "dark" : "light",
       }}
     >
-      <body className={`${geistSans.variable} ${geistMono.variable} bg-background antialiased`}>
+      <body className={`${onest.variable} bg-background antialiased`}>
         <MediaProtection />
         {/* pwa-bip Script — оставить как есть */}
         <Script id="pwa-bip" strategy="beforeInteractive">

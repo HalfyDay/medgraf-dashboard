@@ -97,6 +97,28 @@ function injectPdfButton(html: string) {
   const layoutHtml = `
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>
+  @font-face {
+    font-family: 'Onest';
+    src: url('/font/WOFF/OnestRegular1602-hint.woff') format('woff');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Onest';
+    src: url('/font/WOFF/OnestMedium1602-hint.woff') format('woff');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Onest';
+    src: url('/font/WOFF/OnestBold1602-hint.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+
   :root {
     --mg-doc-bg: #f2f5f9;
     --mg-doc-paper: #ffffff;
@@ -112,6 +134,7 @@ function injectPdfButton(html: string) {
     height: 100%;
     background: var(--mg-doc-bg);
     color: var(--mg-doc-text);
+    font-family: 'Onest';
     margin: 0;
     overflow-x: hidden;
   }
@@ -161,6 +184,11 @@ function injectPdfButton(html: string) {
     max-width: 100%;
   }
 
+  #mg-doc-body,
+  #mg-doc-body * {
+    font-family: 'Onest' !important;
+  }
+
   #mg-doc-paper table {
     width: 100% !important;
     max-width: 100%;
@@ -185,7 +213,7 @@ function injectPdfButton(html: string) {
   .mg-doc-btn {
     border-radius: 14px;
     padding: 12px 18px;
-    font: 600 14px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    font: 600 14px/1.2 'Onest';
     cursor: pointer;
     min-width: 140px;
     text-align: center;

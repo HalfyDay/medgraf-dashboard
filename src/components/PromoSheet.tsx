@@ -143,13 +143,13 @@ export default function PromoSheet({
         <div className="px-4 pt-5 pb-16">
           <div className="space-y-2 text-slate-900">
             <h2 className="text-[22px] font-semibold leading-tight">{title}</h2>
-            {subtitle && <p className="text-[15px] leading-[1.55] text-slate-600">{subtitle}</p>}
-            {description && <p className="text-[15px] leading-[1.55] text-slate-600">{description}</p>}
+            {subtitle && <p className="text-[15px] leading-[1.55] text-slate-600 text-justify">{subtitle}</p>}
+            {description && <p className="text-[15px] leading-[1.55] text-slate-600 text-justify">{description}</p>}
             {period && <p className="text-[13px] text-slate-500">Срок действия: {period}</p>}
           </div>
 
           {bullets.length > 0 && (
-            <ul className="mt-5 space-y-2 text-[15px] leading-[1.55] text-slate-800">
+            <ul className="mt-5 space-y-2 text-[15px] leading-[1.55] text-slate-800 text-justify">
               {bullets.map((b, i) => (
                 <li key={i} className="flex gap-2">
                   <span className="mt-[7px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />
