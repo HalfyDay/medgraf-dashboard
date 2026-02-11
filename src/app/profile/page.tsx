@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { extractPhoneDigits, formatPhoneInput } from "@/utils/phone";
 import { useTheme } from "@/providers/ThemeProvider";
 import AppImage from "@/components/AppImage";
+import ContractsSheet from "@/components/ContractsSheet";
+import { fetchContracts, type ContractItem } from "@/utils/api";
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -18,11 +20,15 @@ function formatDate(value?: string | null) {
 }
 
 const POLICY_URL = "/files/politics.pdf";
+const CONTRACTS_CACHE_PREFIX = "medgraf.contracts.profile.v1";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
+  const [contractsOpen, setContractsOpen] = useState(false);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [contracts, setContracts] = useState<ContractItem[]>([]);
 
   const details = useMemo(
     () => [
@@ -53,6 +59,62 @@ export default function ProfilePage() {
     ],
     [user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.passportNumber, user?.phone],
   );
+
+  useEffect(() => {
+    if (!contractsOpen) return;
+    if (!user?.onecId) {
+      setContracts([]);
+      return;
+    }
+
+    const cacheKey = `${CONTRACTS_CACHE_PREFIX}:${user.onecId}`;
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.sessionStorage.getItem(cacheKey);
+        if (raw) {
+          const cached = JSON.parse(raw) as ContractItem[];
+          if (Array.isArray(cached)) {
+            setContracts(cached);
+            setContractsLoading(false);
+            return;
+          }
+        }
+      } catch {
+        // ignore parse/storage errors and fallback to network
+      }
+    }
+
+    let cancelled = false;
+    setContractsLoading(true);
+    fetchContracts(user.onecId)
+      .then((items) => {
+        if (!cancelled) {
+          setContracts(items);
+          if (typeof window !== "undefined") {
+            try {
+              window.sessionStorage.setItem(cacheKey, JSON.stringify(items));
+            } catch {
+              // ignore storage errors
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        console.warn("failed to load contracts:", error);
+        if (!cancelled) {
+          setContracts([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setContractsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contractsOpen, user?.onecId]);
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
@@ -113,18 +175,38 @@ export default function ProfilePage() {
                   aria-checked={isDark}
                   onClick={toggleTheme}
                   className={[
-                    "relative inline-flex h-8 w-14 items-center rounded-full transition",
+                    "relative inline-flex h-8 w-14 items-center overflow-hidden rounded-full transition",
                     isDark ? "bg-sky-500" : "bg-slate-200",
                   ].join(" ")}
                 >
                   <span
                     className={[
-                      "theme-switch-knob h-6 w-6 translate-x-1 rounded-full shadow transition",
-                      isDark ? "translate-x-7" : "",
+                      "theme-switch-knob h-6 w-6 rounded-full shadow transition-transform duration-200",
+                      isDark ? "translate-x-6" : "translate-x-1",
                     ].join(" ")}
                   />
                 </button>
               </div>
+            </section>
+
+            <section>
+              <button
+                type="button"
+                onClick={() => setContractsOpen(true)}
+                className="w-full rounded-[24px] bg-gradient-to-r from-[#0F86FF] to-[#1CA7FF] px-5 py-4 text-left text-white shadow-[0_18px_40px_rgba(15,134,255,0.25)] transition active:translate-y-[1px]"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-[14px] bg-white/15">
+                    <AppImage src="/list.svg" alt="" width={56} height={56} className="h-14 w-14" />
+                  </span>
+                  <span className="leading-tight">
+                    <span className="block text-[19px] font-semibold leading-none">Документы</span>
+                    <span className="mt-1 block text-[13px] leading-[1.15] text-[#7DCEFF]">
+                      тут хранятся все подписанные вами документы
+                    </span>
+                  </span>
+                </div>
+              </button>
             </section>
 
             <section className="rounded-[28px] bg-white p-6 shadow-[0_18px_50px_rgba(14,74,166,0.12)]">
@@ -139,6 +221,13 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      <ContractsSheet
+        open={contractsOpen}
+        onClose={() => setContractsOpen(false)}
+        contracts={contracts}
+        loading={contractsLoading}
+      />
 
       <div className="h-20 md:h-24" />
     </div>

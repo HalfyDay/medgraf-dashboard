@@ -205,7 +205,36 @@ export async function fetchDocuments(patientId?: string): Promise<DocumentItem[]
   return payload.documents;
 }
 
-type CheckupApiRecord = {
+
+export interface ContractItem {
+  uid: string;
+  date: string;
+  title: string;
+  downloadUrl: string;
+}
+
+export async function fetchContracts(patientId?: string): Promise<ContractItem[]> {
+  if (!patientId) {
+    return [];
+  }
+
+  const res = await fetch(`/api/contracts?patientId=${encodeURIComponent(patientId)}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const payload = (await res.json().catch(() => null)) as { contracts?: ContractItem[]; error?: string } | null;
+  if (!res.ok) {
+    const message = payload?.error || "Failed to load contracts";
+    throw new Error(message);
+  }
+
+  if (!payload || !Array.isArray(payload.contracts)) {
+    return [];
+  }
+
+  return payload.contracts;
+}type CheckupApiRecord = {
   id?: string | null;
   category?: string | null;
   subcategory?: string | null;

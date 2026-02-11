@@ -794,6 +794,12 @@ export type OnecDocumentRecord = {
   date?: string | null;
 };
 
+export type OnecContractRecord = {
+  UID?: string | null;
+  Type?: string | null;
+  Date?: string | null;
+};
+
 export async function fetchOnecDocuments(patientId: string): Promise<OnecDocumentRecord[]> {
   const safePatientId = patientId.toString().trim().replace(/[^\w-]/g, "");
   if (!safePatientId) {
@@ -813,6 +819,31 @@ export async function fetchOnecDocuments(patientId: string): Promise<OnecDocumen
   } catch (error) {
     if (error instanceof OnecLogicalError && error.code === "2") {
       console.warn("[onec] /umc_client_users/results logical error code=2", { patientId: safePatientId });
+      return [];
+    }
+    throw error;
+  }
+}
+
+export async function fetchOnecContracts(patientId: string): Promise<OnecContractRecord[]> {
+  const safePatientId = patientId.toString().trim().replace(/[^\w-]/g, "");
+  if (!safePatientId) {
+    throw new Error("Не указан id пациента для загрузки договоров");
+  }
+  try {
+    console.log("[onec] /umc_client_users/contracts request", { patientId: safePatientId });
+    const contracts = await requestOnec<OnecContractRecord[]>(
+      "/umc_client_users/contracts",
+      "contracts",
+      { patientId: safePatientId },
+    );
+    if (!Array.isArray(contracts)) {
+      return [];
+    }
+    return contracts;
+  } catch (error) {
+    if (error instanceof OnecLogicalError && error.code === "2") {
+      console.warn("[onec] /umc_client_users/contracts logical error code=2", { patientId: safePatientId });
       return [];
     }
     throw error;
@@ -1026,6 +1057,13 @@ export async function downloadOnecDocument(uid: string) {
     throw new Error("Не указан uid документа");
   }
   return requestOnecBinary("/umc_client_users/document", "document", { uid });
+}
+
+export async function downloadOnecContract(uid: string) {
+  if (!uid) {
+    throw new Error("Не указан uid договора");
+  }
+  return requestOnecBinary("/umc_client_users/contract", "contract", { uid });
 }
 
 export async function downloadOnecAppointmentHtml(uid: string) {
