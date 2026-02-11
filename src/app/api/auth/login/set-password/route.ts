@@ -1,18 +1,35 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
+import { deleteLoginSession, getLoginSession } from "@/server/loginSessionStore";
 import {
-  deleteLoginSession,
-  getLoginSession,
-} from "@/server/loginSessionStore";
+  buildLockMessage,
+  checkBlocked,
+  getClientIp,
+  registerFailure,
+  registerSuccess,
+  type GuardTarget,
+} from "@/server/authGuard";
 import {
   extractUserFields,
   fetchOnecUserProfile,
   OnecLogicalError,
 } from "@/server/onecAuthClient";
-import { getUserByPhone, insertUser, updateUserById } from "@/server/userStore";
 import { setAuthCookie } from "@/server/authCookie";
+import { getUserByPhone, insertUser, updateUserById } from "@/server/userStore";
 
 const MIN_PASSWORD_LENGTH = 8;
+
+function lockError(retryAfterMs: number) {
+  return NextResponse.json({ error: buildLockMessage(retryAfterMs) }, { status: 429 });
+}
+
+function buildTargets(ip: string, phone?: string | null): GuardTarget[] {
+  const targets: GuardTarget[] = [{ scope: "password_change_ip", key: ip }];
+  if (phone) {
+    targets.push({ scope: "password_change_phone", key: phone });
+  }
+  return targets;
+}
 
 export async function POST(req: Request) {
   const { sessionId, password } = (await req.json()) as {
@@ -20,12 +37,24 @@ export async function POST(req: Request) {
     password?: string;
   };
 
-  if (!sessionId || typeof sessionId !== "string") {
-    return NextResponse.json({ error: "Отсутствует идентификатор сессии" }, { status: 400 });
+  const clientIp = getClientIp(req);
+  const earlyTargets = buildTargets(clientIp);
+  const earlyBlock = await checkBlocked(earlyTargets);
+  if (earlyBlock.blocked) {
+    return lockError(earlyBlock.retryAfterMs);
   }
+
+  if (!sessionId || typeof sessionId !== "string") {
+    const failed = await registerFailure(earlyTargets);
+    if (failed.blocked) return lockError(failed.retryAfterMs);
+    return NextResponse.json({ error: "Session id is required" }, { status: 400 });
+  }
+
   if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    const failed = await registerFailure(earlyTargets);
+    if (failed.blocked) return lockError(failed.retryAfterMs);
     return NextResponse.json(
-      { error: `Пароль должен содержать не менее ${MIN_PASSWORD_LENGTH} символов` },
+      { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long` },
       { status: 400 },
     );
   }
@@ -34,20 +63,34 @@ export async function POST(req: Request) {
   try {
     session = await getLoginSession(sessionId);
   } catch (error) {
-    console.error("Не удалось получить сессию входа:", error);
-    return NextResponse.json({ error: "Не удалось завершить настройку пароля" }, { status: 500 });
+    console.error("Failed to read login session:", error);
+    return NextResponse.json({ error: "Failed to complete password setup" }, { status: 500 });
   }
 
+  const targets = buildTargets(clientIp, session?.phone ?? null);
+  const blocked = await checkBlocked(targets);
+  if (blocked.blocked) {
+    return lockError(blocked.retryAfterMs);
+  }
+
+  const fail = async (error: string, status: number) => {
+    const failureState = await registerFailure(targets);
+    if (failureState.blocked) {
+      return lockError(failureState.retryAfterMs);
+    }
+    return NextResponse.json({ error }, { status });
+  };
+
   if (!session) {
-    return NextResponse.json({ error: "Сессия не найдена" }, { status: 404 });
+    return fail("Session not found", 404);
   }
 
   if (session.expiresAt < Date.now()) {
-    return NextResponse.json({ error: "Сессия устарела, начните заново" }, { status: 410 });
+    return fail("Session expired, start again", 410);
   }
 
   if (!session.docVerified || !session.otpVerified) {
-    return NextResponse.json({ error: "Подтвердите документ и код из SMS" }, { status: 400 });
+    return fail("Confirm document and SMS code first", 400);
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -56,8 +99,8 @@ export async function POST(req: Request) {
   try {
     existingUser = await getUserByPhone(session.phone);
   } catch (error) {
-    console.error("Не удалось проверить локального пользователя:", error);
-    return NextResponse.json({ error: "Не удалось сохранить пароль" }, { status: 500 });
+    console.error("Failed to load existing user:", error);
+    return NextResponse.json({ error: "Failed to save password" }, { status: 500 });
   }
 
   let profileFields = {
@@ -81,9 +124,9 @@ export async function POST(req: Request) {
       };
     } catch (error) {
       if (error instanceof OnecLogicalError && error.code === "2") {
-        console.warn("Карта в 1С не найдена при сохранении пароля");
+        console.warn("1C medcard was not found while saving password");
       } else {
-        console.warn("Не удалось обновить данные из 1С при сохранении пароля:", error);
+        console.warn("Failed to enrich profile from 1C while saving password:", error);
       }
     }
   }
@@ -109,27 +152,29 @@ export async function POST(req: Request) {
       });
     }
   } catch (error) {
-    console.error("Не удалось сохранить данные пользователя:", error);
-    return NextResponse.json({ error: "Не удалось сохранить пароль" }, { status: 500 });
+    console.error("Failed to save user profile while setting password:", error);
+    return NextResponse.json({ error: "Failed to save password" }, { status: 500 });
   }
 
   let freshUser;
   try {
     freshUser = await getUserByPhone(session.phone);
   } catch (error) {
-    console.error("Не удалось перечитать данные пользователя:", error);
-    return NextResponse.json({ error: "Не удалось завершить настройку пароля" }, { status: 500 });
+    console.error("Failed to re-read user after save:", error);
+    return NextResponse.json({ error: "Failed to complete password setup" }, { status: 500 });
   }
 
   if (!freshUser) {
-    return NextResponse.json({ error: "Пользователь не найден после сохранения" }, { status: 500 });
+    return NextResponse.json({ error: "User not found after save" }, { status: 500 });
   }
 
   try {
     await deleteLoginSession(sessionId);
   } catch (error) {
-    console.warn("Не удалось удалить сессию входа:", error);
+    console.warn("Failed to delete login session:", error);
   }
+
+  await registerSuccess(targets);
 
   const response = NextResponse.json({
     success: true,

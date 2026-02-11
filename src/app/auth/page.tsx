@@ -22,6 +22,46 @@ const MIN_PASSWORD_LENGTH = 8;
 const LOGIN_OTP_LENGTH = 4;
 const POLICY_URL = "/files/politics.pdf";
 
+function toFriendlyAuthErrorMessage(input: string | null): string {
+  if (!input) {
+    return "";
+  }
+  const message = input.trim();
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("too many failed attempts") ||
+    lower.includes("try again in")
+  ) {
+    const minutesMatch = lower.match(/(\d+)\s*min/);
+    if (minutesMatch?.[1]) {
+      return `Слишком много попыток. Попробуйте снова через ${minutesMatch[1]} мин.`;
+    }
+    return "Слишком много попыток. Попробуйте позже.";
+  }
+
+  if (lower.includes("invalid credentials")) {
+    return "Неверный номер телефона или пароль.";
+  }
+  if (lower.includes("session")) {
+    return "Сессия истекла или недействительна. Начните заново.";
+  }
+  if (lower.includes("password must be at least")) {
+    return `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов.`;
+  }
+  if (lower.includes("confirm sms code")) {
+    return "Подтвердите код из SMS.";
+  }
+  if (lower.includes("user not found")) {
+    return "Пользователь не найден.";
+  }
+  if (lower.includes("failed to") || lower.includes("unable to")) {
+    return "Сервис временно недоступен. Попробуйте позже.";
+  }
+
+  return message;
+}
+
 const WAVE_LINE_COUNT = 20; // Increase to render more decorative wave lines.
 const WAVE_STROKE_WIDTH = 5; // Thickness of each SVG stroke.
 const WAVE_TOP_OFFSET = -50; // Vertical offset for the entire wave block.
@@ -734,7 +774,9 @@ export default function AuthPage() {
             <p className="text-center text-xs text-[#5A719B] mb-2">Вход доступен только клиентам клиники.</p>
             <div className="mb-3">
               {loginError && (
-                <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{loginError}</div>
+                <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">
+                  {toFriendlyAuthErrorMessage(loginError)}
+                </div>
               )}
             </div>
           </div>

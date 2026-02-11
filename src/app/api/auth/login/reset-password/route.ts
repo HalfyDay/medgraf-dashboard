@@ -1,21 +1,52 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { deleteLoginSession, getLoginSession } from "@/server/loginSessionStore";
-import { getUserByPhone, updateUserById } from "@/server/userStore";
+import {
+  buildLockMessage,
+  checkBlocked,
+  getClientIp,
+  registerFailure,
+  registerSuccess,
+  type GuardTarget,
+} from "@/server/authGuard";
 import { setAuthCookie } from "@/server/authCookie";
+import { getUserByPhone, updateUserById } from "@/server/userStore";
 
 const MIN_PASSWORD_LENGTH = 8;
+
+function lockError(retryAfterMs: number) {
+  return NextResponse.json({ error: buildLockMessage(retryAfterMs) }, { status: 429 });
+}
+
+function buildTargets(ip: string, phone?: string | null): GuardTarget[] {
+  const targets: GuardTarget[] = [{ scope: "password_change_ip", key: ip }];
+  if (phone) {
+    targets.push({ scope: "password_change_phone", key: phone });
+  }
+  return targets;
+}
 
 export async function POST(req: Request) {
   const { sessionId, password } = (await req.json()) as { sessionId?: string; password?: string };
 
+  const clientIp = getClientIp(req);
+  const earlyTargets = buildTargets(clientIp);
+  const earlyBlock = await checkBlocked(earlyTargets);
+  if (earlyBlock.blocked) {
+    return lockError(earlyBlock.retryAfterMs);
+  }
+
   if (!sessionId || typeof sessionId !== "string") {
-    return NextResponse.json({ error: "Не указан идентификатор сессии" }, { status: 400 });
+    const failed = await registerFailure(earlyTargets);
+    if (failed.blocked) return lockError(failed.retryAfterMs);
+    return NextResponse.json({ error: "Session id is required" }, { status: 400 });
   }
 
   if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    const failed = await registerFailure(earlyTargets);
+    if (failed.blocked) return lockError(failed.retryAfterMs);
     return NextResponse.json(
-      { error: `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов` },
+      { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters long` },
       { status: 400 },
     );
   }
@@ -24,36 +55,50 @@ export async function POST(req: Request) {
   try {
     session = await getLoginSession(sessionId);
   } catch (error) {
-    console.error("Ошибка получения сессии сброса пароля:", error);
-    return NextResponse.json({ error: "Не удалось проверить сессию сброса пароля" }, { status: 500 });
+    console.error("Failed to read reset session:", error);
+    return NextResponse.json({ error: "Failed to verify reset session" }, { status: 500 });
   }
 
+  const targets = buildTargets(clientIp, session?.phone ?? null);
+  const blocked = await checkBlocked(targets);
+  if (blocked.blocked) {
+    return lockError(blocked.retryAfterMs);
+  }
+
+  const fail = async (error: string, status: number) => {
+    const failureState = await registerFailure(targets);
+    if (failureState.blocked) {
+      return lockError(failureState.retryAfterMs);
+    }
+    return NextResponse.json({ error }, { status });
+  };
+
   if (!session) {
-    return NextResponse.json({ error: "Сессия не найдена" }, { status: 404 });
+    return fail("Session not found", 404);
   }
 
   if (session.expiresAt < Date.now()) {
-    return NextResponse.json({ error: "Сессия истекла, запросите новый код" }, { status: 410 });
+    return fail("Session expired, request a new code", 410);
   }
 
   if (session.purpose !== "reset") {
-    return NextResponse.json({ error: "Сессия не подходит для сброса пароля" }, { status: 400 });
+    return fail("Session is not valid for password reset", 400);
   }
 
   if (!session.otpVerified) {
-    return NextResponse.json({ error: "Подтвердите код из SMS" }, { status: 400 });
+    return fail("Confirm SMS code first", 400);
   }
 
   let user;
   try {
     user = await getUserByPhone(session.phone);
   } catch (error) {
-    console.error("Ошибка поиска пользователя по телефону:", error);
-    return NextResponse.json({ error: "Не удалось получить данные пользователя" }, { status: 500 });
+    console.error("Failed to find user by phone:", error);
+    return NextResponse.json({ error: "Failed to load user" }, { status: 500 });
   }
 
   if (!user) {
-    return NextResponse.json({ error: "Пользователь не найден" }, { status: 404 });
+    return fail("User not found", 404);
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -61,15 +106,17 @@ export async function POST(req: Request) {
   try {
     await updateUserById(user.id, { password: passwordHash });
   } catch (error) {
-    console.error("Ошибка сохранения нового пароля:", error);
-    return NextResponse.json({ error: "Не удалось сохранить пароль" }, { status: 500 });
+    console.error("Failed to save new password:", error);
+    return NextResponse.json({ error: "Failed to save password" }, { status: 500 });
   }
 
   try {
     await deleteLoginSession(sessionId);
   } catch (error) {
-    console.warn("Не удалось удалить сессию сброса:", error);
+    console.warn("Failed to delete reset session:", error);
   }
+
+  await registerSuccess(targets);
 
   const updatedUser = { ...user, password: passwordHash };
 

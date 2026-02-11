@@ -6,9 +6,17 @@ import {
   OnecLogicalError,
   type OnecUserProfile,
 } from "@/server/onecAuthClient";
+import {
+  buildLockMessage,
+  checkBlocked,
+  getClientIp,
+  registerFailure,
+  registerSuccess,
+  type GuardTarget,
+} from "@/server/authGuard";
+import { setAuthCookie } from "@/server/authCookie";
 import { getUserByPhone, updateUserById, type DbUserRow } from "@/server/userStore";
 import { normalizePhone } from "@/utils/phone";
-import { setAuthCookie } from "@/server/authCookie";
 
 function buildError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -18,29 +26,47 @@ export async function POST(req: Request) {
   const { phone, password } = (await req.json()) as { phone?: string; password?: string };
 
   if (!phone || !password) {
-    return buildError("Укажите телефон и пароль", 400);
+    return buildError("Specify phone and password", 400);
   }
 
   const normalizedPhone = normalizePhone(phone);
   if (!normalizedPhone) {
-    return buildError("Введите номер телефона полностью", 401);
+    return buildError("Enter full phone number", 401);
   }
+
+  const guardTargets: GuardTarget[] = [
+    { scope: "login_password_phone", key: normalizedPhone },
+    { scope: "login_password_ip", key: getClientIp(req) },
+  ];
+
+  const blocked = await checkBlocked(guardTargets);
+  if (blocked.blocked) {
+    return buildError(buildLockMessage(blocked.retryAfterMs), 429);
+  }
+
+  const failAuth = async () => {
+    const failureState = await registerFailure(guardTargets);
+    if (failureState.blocked) {
+      return buildError(buildLockMessage(failureState.retryAfterMs), 429);
+    }
+    return buildError("Invalid credentials", 401);
+  };
 
   let userRow: DbUserRow | null = null;
   try {
     userRow = await getUserByPhone(normalizedPhone);
   } catch (error) {
-    console.error("Не удалось выполнить поиск пользователя:", error);
-    return buildError("Не удалось выполнить поиск пользователя", 500);
+    console.error("Failed to find user by phone:", error);
+    return buildError("Failed to find user", 500);
   }
 
   if (!userRow) {
-    return buildError("Неверные данные для входа", 401);
+    return failAuth();
   }
 
   const match = await bcrypt.compare(password, userRow.password);
   if (!match) {
-    return buildError("Неверные данные для входа", 401);
+    return failAuth();
   }
 
   let profile: OnecUserProfile;
@@ -48,9 +74,9 @@ export async function POST(req: Request) {
     profile = await fetchOnecUserProfile(normalizedPhone, userRow.passportNumber ?? undefined);
   } catch (error) {
     if (error instanceof OnecLogicalError && error.code === "2") {
-      return buildError("Карта в 1С не найдена. Проверьте номер и паспортные данные.", 404);
+      return buildError("Medcard in 1C was not found. Check phone and passport data.", 404);
     }
-    const message = error instanceof Error ? error.message : "1С временно недоступна";
+    const message = error instanceof Error ? error.message : "1C is temporarily unavailable";
     return buildError(message, 502);
   }
 
@@ -77,7 +103,7 @@ export async function POST(req: Request) {
       email: remoteEmail ?? undefined,
     });
   } catch (error) {
-    console.error("Не удалось обновить локальные данные пользователя:", error);
+    console.error("Failed to update local user profile:", error);
   }
 
   const user = {
@@ -94,6 +120,8 @@ export async function POST(req: Request) {
     medcardNumber: remoteMedcard,
     gender: remoteGender,
   };
+
+  await registerSuccess(guardTargets);
 
   const response = NextResponse.json({
     success: true,

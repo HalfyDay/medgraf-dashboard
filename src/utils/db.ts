@@ -104,6 +104,37 @@ db.serialize(() => {
 
   db.run(
     `
+      CREATE TABLE IF NOT EXISTS auth_guard (
+        scope TEXT NOT NULL,
+        key TEXT NOT NULL,
+        failures INTEGER NOT NULL DEFAULT 0,
+        lockUntil INTEGER NOT NULL DEFAULT 0,
+        lockLevel INTEGER NOT NULL DEFAULT 0,
+        updatedAt INTEGER NOT NULL,
+        PRIMARY KEY (scope, key)
+      )
+    `,
+    (err) => {
+      if (err) {
+        console.error("Failed to create auth_guard table:", err);
+      }
+    },
+  );
+
+  db.run(
+    `
+      CREATE INDEX IF NOT EXISTS idx_auth_guard_scope_lock
+      ON auth_guard (scope, lockUntil)
+    `,
+    (err) => {
+      if (err) {
+        console.error("Failed to create idx_auth_guard_scope_lock index:", err);
+      }
+    },
+  );
+
+  db.run(
+    `
       CREATE INDEX IF NOT EXISTS idx_login_sessions_phone ON login_sessions (phone)
     `,
     (err) => {
