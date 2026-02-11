@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { extractPhoneDigits, formatPhoneInput } from "@/utils/phone";
 import { useTheme } from "@/providers/ThemeProvider";
+import AppImage from "@/components/AppImage";
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -61,20 +62,13 @@ export default function ProfilePage() {
             <div className="rounded-[32px] bg-gradient-to-r from-[#0D7BFF] via-[#20C269] to-[#28D07C] px-6 pt-7 pb-14 text-white">
               <div className="flex -translate-y-2 items-center gap-4">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="text-white"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M12 12C9.23858 12 7 9.76142 7 7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7C17 9.76142 14.7614 12 12 12ZM12 14C16.4183 14 20 15.7909 20 18V19.5C20 20.3284 19.3284 21 18.5 21H5.5C4.67157 21 4 20.3284 4 19.5V18C4 15.7909 7.58172 14 12 14Z"
-                      fill="currentColor"
-                    />
-                  </svg>
+                  <AppImage
+                    src="/profile_man.svg"
+                    alt=""
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 object-contain"
+                  />
                 </div>
                 <div className="-mt-1">
                   <h1 className="text-2xl font-semibold leading-tight">Профиль</h1>

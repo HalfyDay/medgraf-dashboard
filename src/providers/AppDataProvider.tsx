@@ -68,7 +68,8 @@ const PUBLIC_ASSET_URLS: string[] = [
 
 const PROMOS_CACHE_KEY = "medgraf.promos.v1";
 const PROMOS_CACHE_TTL_MS = 15 * 60 * 1000;
-const CHECKUPS_CACHE_KEY = "medgraf.checkups.v2";
+const CHECKUPS_CACHE_KEY = "medgraf.checkups.v3";
+const LEGACY_CHECKUPS_CACHE_KEY = "medgraf.checkups.v2";
 const CONTACTS_CACHE_KEY = "medgraf.contacts.v1";
 const PENDING_APPOINTMENTS_KEY = "medgraf.pendingAppointments.v1";
 const PENDING_APPOINTMENTS_TTL_MS = 15 * 60 * 1000;
@@ -124,6 +125,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") {
       return;
     }
+    window.sessionStorage.removeItem(LEGACY_CHECKUPS_CACHE_KEY);
     const flag = window.sessionStorage.getItem("medgraf.skipBootSplash");
     if (flag) {
       window.sessionStorage.removeItem("medgraf.skipBootSplash");
@@ -345,7 +347,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const checkupsPromise = (async () => {
           const cached = readSessionCache<CheckupData[]>(CHECKUPS_CACHE_KEY);
           if (cached !== null) {
-            return cached;
+            const hasIconField = cached.some((item) =>
+              Object.prototype.hasOwnProperty.call(item, "icon"),
+            );
+            if (hasIconField) {
+              return cached;
+            }
           }
           try {
             const list = await fetchCheckups();

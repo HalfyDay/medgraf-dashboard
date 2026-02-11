@@ -224,13 +224,14 @@ export default function HomePage() {
     const cache = mediaImageCache.current;
 
     checkups.forEach((checkup) => {
-      const src = checkup.image;
-      if (!src) return;
-      if (cache.has(src)) return;
-      const img = new Image();
-      img.decoding = "async";
-      img.src = src;
-      cache.add(src);
+      [checkup.icon, checkup.image].forEach((src) => {
+        if (!src) return;
+        if (cache.has(src)) return;
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+        cache.add(src);
+      });
     });
   }, [checkups]);
 
@@ -550,9 +551,9 @@ export default function HomePage() {
                         "radial-gradient(110% 55% at 0% 0%, rgba(255,255,255,.15) 0%, rgba(255,255,255,0) 60%)"
                       }}
                     />
-                    {c.image && (
+                    {(c.icon || c.image) && (
                       <AppImage
-                        src={c.image}
+                        src={c.icon || c.image || "/clinic.svg"}
                         alt=""
                         width={36}
                         height={36}

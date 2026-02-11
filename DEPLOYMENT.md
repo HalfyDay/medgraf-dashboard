@@ -210,7 +210,7 @@ chmod +x /var/www/medgraft/deploy-medgraft
 3. Переключает `current` атомарно.
 4. Перезапускает systemd.
 5. Делает health-check и rollback при ошибке.
-6. ������ nginx (alias ��� `/_next/static`), ���� ��������.
+6. Патчит nginx (alias для `/_next/static`), если включено.
 
 ######################################################
 

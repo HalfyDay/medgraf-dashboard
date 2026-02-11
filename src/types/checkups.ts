@@ -7,6 +7,7 @@ export type CheckupData = {
   price?: number | string;
   oldPrice?: number | string;
   currency?: string;
+  icon?: string;
   image?: string;
   bg: string;
   ctaHref?: string;

@@ -865,6 +865,7 @@ export type OnecCheckupRecord = {
   description?: string | null;
   brief?: string | null;
   oldprice?: number | string | null;
+  icon?: string | null;
   img?: string | null;
 };
 

@@ -215,6 +215,7 @@ type CheckupApiRecord = {
   description?: string | null;
   brief?: string | null;
   oldprice?: number | string | null;
+  icon?: string | null;
   img?: string | null;
 };
 
@@ -283,6 +284,7 @@ export async function fetchCheckups(): Promise<CheckupData[]> {
       price: item?.price ?? undefined,
       oldPrice: item?.oldprice ?? undefined,
       currency: item?.currency ?? undefined,
+      icon: item?.icon?.toString().trim() || undefined,
       image: item?.img?.toString().trim() || "/clinic.svg",
       bg: CHECKUP_GRADIENTS[index % CHECKUP_GRADIENTS.length],
       ctaText: "Оставить заявку",

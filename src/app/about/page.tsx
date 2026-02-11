@@ -50,16 +50,14 @@ export default function AboutPage() {
                   .
                 </p>
 
-                <div className="w-[105px] shrink-0 text-center">
-                  <div className="text-[18px] font-extrabold leading-[0.95] tracking-wide text-[#0F86FF] dark:text-sky-400 sm:text-[23px]">
-                    БОЛЕЕ
-                  </div>
-                  <div className="mt-[2px] text-[36px] font-extrabold leading-[0.95] tracking-tight text-[#0F86FF] dark:text-sky-400 sm:text-[50px]">
-                    150
-                  </div>
-                  <div className="mt-[1px] text-[11px] font-semibold leading-[0.95] text-[#0F86FF] dark:text-sky-400 sm:text-[13px]">
-                    сотрудников
-                  </div>
+                <div className="w-[72px] shrink-0 sm:w-[90px]">
+                  <AppImage
+                    src="/150.svg"
+                    alt="Более 150 сотрудников"
+                    width={90}
+                    height={75}
+                    className="h-auto w-full object-contain"
+                  />
                 </div>
               </div>
 

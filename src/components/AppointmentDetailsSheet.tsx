@@ -150,7 +150,7 @@ export default function AppointmentDetailsSheet({
             <div className="text-[13px] text-slate-600">{appointment.specialty}</div>
           </div>
         </div>
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500/10 text-sky-600" title="Проверенный специалист">
+        <span className="inline-flex h-7 w-7 shrink-0 basis-7 items-center justify-center rounded-full bg-sky-500/10 text-sky-600" title="Проверенный специалист">
           <AppImage src="/verified.svg" alt="" width={18} height={18} className="h-4.5 w-4.5" />
         </span>
       </div>
