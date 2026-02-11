@@ -552,8 +552,8 @@ export default function SheetFrame({
           </button>
           {headerContent ?? (
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-14 w-14 items-center justify-center rounded-[12px] bg-white/15 ring-1 ring-white/20">
-                <AppImage src={iconSrc} alt="" width={60} height={60} className="h-15 w-15" />
+              <span className="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[12px] bg-white/15">
+                <AppImage src={iconSrc} alt="" width={60} height={60} className="h-15 w-15 shrink-0" />
               </span>
               <div className="leading-tight">
                 <div className={clsx("font-bold leading-none", subtitle ? "text-[22px]" : "text-[20px]")}>

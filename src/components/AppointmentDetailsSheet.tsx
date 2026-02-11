@@ -12,7 +12,6 @@ type AppointmentDetailsSheetProps = {
   cancelLoading?: boolean;
 };
 
-const CLINIC_NAME = "МедГрафт";
 const CLINIC_CITY = "г.Братск";
 const CLINIC_ADDRESS = "улица Крупской, 58";
 const DOWNLOAD_LABEL = "Скачать";
@@ -50,7 +49,7 @@ export default function AppointmentDetailsSheet({
   const canCancel = isPlanned && !isCancelling;
   const dateLabel = formatDate(appointment.date);
   const timeLabel = formatTime(appointment.date);
-  const clinicName = appointment.clinic?.name || CLINIC_NAME;
+  const clinicAddress = [CLINIC_CITY, CLINIC_ADDRESS].join(", ");
   const clinicRoom = appointment.clinic?.room;
   const downloadUrl =
     appointment.id
@@ -97,11 +96,9 @@ export default function AppointmentDetailsSheet({
           <li className="px-4 py-2.5">
             <div className="flex items-center justify-between gap-4">
               <div className="leading-tight">
-                <div className="text-[17px] font-semibold text-slate-900">
-                  {clinicName}
-                </div>
-                <div className="mt-1 text-[15px] font-medium text-slate-600">
-                  {[CLINIC_CITY, CLINIC_ADDRESS].filter(Boolean).join(", ")}
+                <div className="text-[14px] text-slate-600">Адрес</div>
+                <div className="mt-1 text-[17px] font-semibold text-slate-900">
+                  {clinicAddress}
                 </div>
                 {clinicRoom && (
                   <div className="mt-1 text-[13px] font-medium text-slate-500">

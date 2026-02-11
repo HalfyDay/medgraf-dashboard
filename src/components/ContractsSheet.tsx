@@ -42,6 +42,7 @@ export default function ContractsSheet({
       open={open}
       onClose={onClose}
       title="Документы"
+      subtitle="Подписанные вами документы"
       iconSrc="/list.svg"
       innerClassName="space-y-4"
     >

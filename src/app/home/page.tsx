@@ -382,7 +382,7 @@ export default function HomePage() {
               <SkeletonBlock className="h-[18px] w-[120px] rounded-[8px] bg-white/30 dark:bg-white/10" />
               <SkeletonBlock className="h-[18px] w-[18px] rounded-full bg-white/30 dark:bg-white/10" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 max-[390px]:[grid-template-columns:minmax(0,1.25fr)_minmax(0,0.95fr)]">
               <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20">
                 <SkeletonBlock className="h-[12px] w-[60px] rounded-[6px] bg-white/30 dark:bg-white/10" />
                 <SkeletonBlock className="mt-2 h-[16px] w-[90px] rounded-[6px] bg-white/30 dark:bg-white/10" />
@@ -423,7 +423,7 @@ export default function HomePage() {
               </svg>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 max-[390px]:[grid-template-columns:minmax(0,1.25fr)_minmax(0,0.95fr)]">
               <div className="rounded-[18px] bg-white/18 p-3 ring-1 ring-white/20 backdrop-blur-[2px]">
                 <div className="mb-1 flex items-center gap-2 text-[13px] opacity-90">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">

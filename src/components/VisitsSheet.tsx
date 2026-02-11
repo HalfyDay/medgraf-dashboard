@@ -158,7 +158,9 @@ export default function VisitsSheet({
     const sortedCancelled = [...cancelledAppointments].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-    const historyItems = [...appointments].sort(
+    const historyItems = appointments
+      .filter((item) => item.status === "completed")
+      .sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
