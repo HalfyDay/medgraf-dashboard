@@ -75,7 +75,7 @@ export default function Header({
           <div className="relative z-10 flex h-10 w-10 items-center justify-end">
             <button
               aria-label="Уведомления"
-              aria-pressed={notificationsOpen ? "true" : "false"}
+              aria-pressed={notificationsOpen}
               onClick={onNotificationsClick}
               className="inline-flex h-10 w-10 items-center justify-center focus:outline-none focus-visible:outline-none"
             >

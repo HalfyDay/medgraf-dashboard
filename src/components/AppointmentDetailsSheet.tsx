@@ -12,7 +12,7 @@ type AppointmentDetailsSheetProps = {
   cancelLoading?: boolean;
 };
 
-const CLINIC_CITY = "г.Братск";
+const CLINIC_CITY = "г. Братск";
 const CLINIC_ADDRESS = "улица Крупской, 58";
 const DOWNLOAD_LABEL = "Скачать";
 

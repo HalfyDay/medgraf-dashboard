@@ -172,7 +172,9 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   role="switch"
+                  aria-label="Темная тема"
                   aria-checked={isDark}
+                  title="Темная тема"
                   onClick={toggleTheme}
                   className={[
                     "relative inline-flex h-8 w-14 items-center overflow-hidden rounded-full transition",

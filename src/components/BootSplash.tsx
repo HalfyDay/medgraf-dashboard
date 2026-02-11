@@ -26,7 +26,7 @@ export default function BootSplash({ visible }: BootSplashProps) {
 
   return (
     <div
-      aria-hidden={!visible ? "true" : "false"}
+      aria-hidden={!visible}
       className={`fixed inset-0 z-[2000] transition-opacity duration-400 ${
         visible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
       }`}
