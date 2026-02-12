@@ -56,6 +56,7 @@ export default function HomePage() {
     documents,
     documentsLoading,
     addPendingAppointment,
+    removePendingAppointment,
   } = useAppData();
 
   // ✅ хук теперь внутри компонента
@@ -137,9 +138,14 @@ export default function HomePage() {
 
   const handleCancelAppointment = async (appointment: Appointment) => {
     if (appointment.status !== "planned" || cancelLoading) return;
+    const isLocalPending = appointment.id.startsWith("new-");
     setCancelLoading(true);
     try {
-      await cancelScheduleAppointment(appointment.id);
+      if (!isLocalPending) {
+        await cancelScheduleAppointment(appointment.id);
+      } else {
+        removePendingAppointment(appointment);
+      }
       setAppointments((prev) =>
         prev.map((item) => (item.id === appointment.id ? { ...item, status: "cancelled" } : item)),
       );

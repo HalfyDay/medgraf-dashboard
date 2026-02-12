@@ -594,6 +594,8 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
     }
   }
 
+  let requestId: string | null = null;
+
   if (slotStart) {
     const startDate = slotStart.replace("T", " ").slice(0, 16);
     const endDate = slotEnd
@@ -614,6 +616,7 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
     if (!res.ok) {
       throw new Error(response?.error || "Failed to book appointment");
     }
+    requestId = response?.requestId?.toString().trim() || null;
   }
 
   const resolvedDoctorName = payload.doctorName || payload.doctorId;
@@ -621,7 +624,7 @@ export async function bookAppointment(payload: BookAppointmentPayload): Promise<
   const resolvedServiceName = payload.serviceName || `Service: ${resolvedSpecialty}`;
 
   const appointment: Appointment = {
-    id: `new-${Date.now()}`,
+    id: requestId || `new-${Date.now()}`,
     date: slotStart,
     serviceName: resolvedServiceName,
     doctorName: resolvedDoctorName,

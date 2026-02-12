@@ -100,6 +100,7 @@ type AppDataContextValue = {
   setDocuments: React.Dispatch<React.SetStateAction<DocumentItem[]>>;
   documentsLoading: boolean;
   addPendingAppointment: (appointment: Appointment) => void;
+  removePendingAppointment: (appointment: Appointment) => void;
   refreshAll: () => Promise<void>;
 };
 
@@ -210,6 +211,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const filtered = cached.filter((entry) => normalizeAppointmentKey(entry.appointment) !== key);
       const next = [{ appointment, createdAt: Date.now() }, ...filtered];
       writeSessionCache(PENDING_APPOINTMENTS_KEY, next);
+    },
+    [normalizeAppointmentKey, readSessionCache, writeSessionCache],
+  );
+
+  const removePendingAppointment = useCallback(
+    (appointment: Appointment) => {
+      const cached = readSessionCache<Array<{ appointment: Appointment; createdAt: number }>>(
+        PENDING_APPOINTMENTS_KEY,
+      ) ?? [];
+      if (!cached.length) {
+        return;
+      }
+      const key = normalizeAppointmentKey(appointment);
+      const filtered = cached.filter((entry) => {
+        const sameId = entry.appointment.id === appointment.id;
+        const sameKey = normalizeAppointmentKey(entry.appointment) === key;
+        return !(sameId || sameKey);
+      });
+      if (filtered.length !== cached.length) {
+        writeSessionCache(PENDING_APPOINTMENTS_KEY, filtered);
+      }
     },
     [normalizeAppointmentKey, readSessionCache, writeSessionCache],
   );
@@ -607,6 +629,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setDocuments,
       documentsLoading,
       addPendingAppointment,
+      removePendingAppointment,
       refreshAll: loadData,
     }),
     [
@@ -622,6 +645,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       documents,
       documentsLoading,
       addPendingAppointment,
+      removePendingAppointment,
       loadData,
       promos,
     ],
