@@ -34,7 +34,6 @@ export async function POST(req: Request) {
       gender: match.gender ?? null,
       medcardNumber: match.medcardNumber ?? null,
       email: match.email ?? null,
-      passportNumber: match.docNum ? match.docNum.slice(-3) : null,
       onecId: match.id ?? match.code ?? null,
     };
 

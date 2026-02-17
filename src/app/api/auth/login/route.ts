@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import {
-  extractUserFields,
-  fetchOnecUserProfile,
+  fetchOnecAuthUserMatches,
   OnecLogicalError,
-  type OnecUserProfile,
+  type OnecPerson,
 } from "@/server/onecAuthClient";
 import {
   buildLockMessage,
@@ -20,6 +19,15 @@ import { normalizePhone } from "@/utils/phone";
 
 function buildError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
+}
+
+function normalizeOnecId(value?: string | null) {
+  const trimmed = value?.toString().trim();
+  return trimmed ? trimmed : null;
+}
+
+function resolveMatchOnecId(match: OnecPerson | undefined) {
+  return normalizeOnecId(match?.id ?? match?.code ?? null);
 }
 
 export async function POST(req: Request) {
@@ -69,41 +77,51 @@ export async function POST(req: Request) {
     return failAuth();
   }
 
-  let profile: OnecUserProfile;
-  const storedPassportDigits = userRow.passportNumber?.toString().trim() || undefined;
+  let matches: OnecPerson[];
   try {
-    profile = await fetchOnecUserProfile(normalizedPhone, storedPassportDigits);
+    matches = await fetchOnecAuthUserMatches(normalizedPhone);
   } catch (error) {
-    if (storedPassportDigits && error instanceof OnecLogicalError && error.code === "2") {
-      try {
-        profile = await fetchOnecUserProfile(normalizedPhone);
-      } catch (retryError) {
-        if (retryError instanceof OnecLogicalError && retryError.code === "2") {
-          return buildError("Medcard in 1C was not found. Check phone data.", 404);
-        }
-        const message =
-          retryError instanceof Error ? retryError.message : "1C is temporarily unavailable";
-        return buildError(message, 502);
-      }
-    } else if (error instanceof OnecLogicalError && error.code === "2") {
+    if (error instanceof OnecLogicalError && error.code === "2") {
       return buildError("Medcard in 1C was not found. Check phone data.", 404);
     }
     const message = error instanceof Error ? error.message : "1C is temporarily unavailable";
     return buildError(message, 502);
   }
 
-  const profileFields = extractUserFields(profile);
-  const remoteFullName = profileFields.fullName ?? userRow.fullName ?? null;
-  const remoteBirthDate = profileFields.birthDate ?? userRow.birthDate ?? null;
-  const remoteGender = profileFields.gender ?? userRow.gender ?? null;
-  const remoteMedcard = profileFields.medcardNumber ?? userRow.medcardNumber ?? null;
-  const remoteEmail = profileFields.email ?? userRow.email ?? null;
-  const remoteOnecId =
-    profile.patient?.id ??
-    profile.summary.id ??
-    profile.summary.code ??
-    userRow.onecId ??
-    null;
+  if (matches.length === 0) {
+    return buildError("Medcard in 1C was not found. Check phone data.", 404);
+  }
+
+  const localOnecId = normalizeOnecId(userRow.onecId);
+  let matchedProfile: OnecPerson | undefined;
+
+  if (localOnecId) {
+    matchedProfile = matches.find((entry) => {
+      const entryId = normalizeOnecId(entry.id);
+      const entryCode = normalizeOnecId(entry.code);
+      return entryId === localOnecId || entryCode === localOnecId;
+    });
+
+    // Regular password login must validate phone + onecId pair.
+    if (!matchedProfile) {
+      return failAuth();
+    }
+  } else if (matches.length === 1) {
+    matchedProfile = matches[0];
+  } else {
+    return buildError("Account is not linked to a unique 1C profile", 409);
+  }
+
+  const remoteOnecId = resolveMatchOnecId(matchedProfile) ?? localOnecId;
+  if (!remoteOnecId) {
+    return buildError("1C profile id is missing", 502);
+  }
+
+  const remoteFullName = matchedProfile?.fullName ?? userRow.fullName ?? null;
+  const remoteBirthDate = matchedProfile?.birthDate ?? userRow.birthDate ?? null;
+  const remoteGender = matchedProfile?.gender ?? userRow.gender ?? null;
+  const remoteMedcard = matchedProfile?.medcardNumber ?? userRow.medcardNumber ?? null;
+  const remoteEmail = matchedProfile?.email ?? userRow.email ?? null;
 
   try {
     await updateUserById(userRow.id, {
@@ -113,10 +131,6 @@ export async function POST(req: Request) {
       medcardNumber: remoteMedcard ?? undefined,
       onecId: remoteOnecId ?? undefined,
       email: remoteEmail ?? undefined,
-      passportSeries: null,
-      passportNumber: null,
-      passportIssueDate: null,
-      passportIssuedBy: null,
     });
   } catch (error) {
     console.error("Failed to update local user profile:", error);

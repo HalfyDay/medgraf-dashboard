@@ -9,11 +9,7 @@ import {
   registerSuccess,
   type GuardTarget,
 } from "@/server/authGuard";
-import {
-  extractUserFields,
-  fetchOnecUserProfile,
-  OnecLogicalError,
-} from "@/server/onecAuthClient";
+import { type OnecUserFields } from "@/server/onecAuthClient";
 import { setAuthCookie } from "@/server/authCookie";
 import { getUserByPhone, insertUser, updateUserById } from "@/server/userStore";
 
@@ -103,43 +99,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Failed to save password" }, { status: 500 });
   }
 
-  let profileFields = {
+  const profileFields: OnecUserFields = {
     fullName: session.remoteFullName ?? null,
     birthDate: session.remoteBirthDate ?? null,
     gender: session.remoteGender ?? null,
     medcardNumber: session.remoteMedcard ?? null,
-    email: null as string | null,
+    email: existingUser?.email ?? null,
   };
-
-  if (session.docLastDigits) {
-    try {
-      const profile = await fetchOnecUserProfile(session.phone, session.docLastDigits);
-      const fields = extractUserFields(profile);
-      profileFields = {
-        fullName: fields.fullName ?? profileFields.fullName,
-        birthDate: fields.birthDate ?? profileFields.birthDate,
-        gender: fields.gender ?? profileFields.gender,
-        medcardNumber: fields.medcardNumber ?? profileFields.medcardNumber,
-        email: fields.email ?? profileFields.email,
-      };
-    } catch (error) {
-      if (error instanceof OnecLogicalError && error.code === "2") {
-        console.warn("1C medcard was not found while saving password");
-      } else {
-        console.warn("Failed to enrich profile from 1C while saving password:", error);
-      }
-    }
-  }
 
   const profileUpdates = {
     password: passwordHash,
-    fullName: profileFields.fullName ?? null,
-    birthDate: profileFields.birthDate ?? null,
-    gender: profileFields.gender ?? null,
-    medcardNumber: profileFields.medcardNumber ?? null,
-    onecId: session.remoteCode ?? null,
-    passportNumber: null,
-    email: profileFields.email ?? null,
+    fullName: profileFields.fullName ?? existingUser?.fullName ?? null,
+    birthDate: profileFields.birthDate ?? existingUser?.birthDate ?? null,
+    gender: profileFields.gender ?? existingUser?.gender ?? null,
+    medcardNumber: profileFields.medcardNumber ?? existingUser?.medcardNumber ?? null,
+    onecId: session.remoteCode ?? existingUser?.onecId ?? null,
+    email: profileFields.email ?? existingUser?.email ?? null,
   };
 
   try {

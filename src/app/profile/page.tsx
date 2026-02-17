@@ -52,12 +52,8 @@ export default function ProfilePage() {
         label: "Номер медкарты",
         value: user?.medcardNumber || "-",
       },
-      {
-        label: "Последние 3 цифры номера паспорта",
-        value: user?.passportNumber ? `*** ${user.passportNumber}` : "-",
-      },
     ],
-    [user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.passportNumber, user?.phone],
+    [user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.phone],
   );
 
   useEffect(() => {
@@ -235,3 +231,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

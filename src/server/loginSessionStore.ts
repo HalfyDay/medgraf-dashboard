@@ -27,7 +27,6 @@ export type LoginSession = {
   remoteBirthDate?: string | null;
   remoteGender?: string | null;
   remoteMedcard?: string | null;
-  docLastDigits?: string | null;
   purpose: LoginSessionPurpose;
 };
 
@@ -46,7 +45,6 @@ type LoginSessionRow = {
   remoteBirthDate?: string | null;
   remoteGender?: string | null;
   remoteMedcard?: string | null;
-  docLastDigits?: string | null;
   purpose?: LoginSessionPurpose | null;
 };
 
@@ -71,7 +69,6 @@ function mapRow(row: LoginSessionRow): LoginSession {
     remoteBirthDate: row.remoteBirthDate ?? null,
     remoteGender: row.remoteGender ?? null,
     remoteMedcard: row.remoteMedcard ?? null,
-    docLastDigits: row.docLastDigits ?? null,
     purpose: row.purpose ?? "register",
   };
 }
@@ -138,7 +135,6 @@ export function createLoginSession(
             remoteBirthDate: remote.birthDate ?? null,
             remoteGender: remote.gender ?? null,
             remoteMedcard: remote.medcardNumber ?? null,
-            docLastDigits: null,
             purpose,
           });
         },
@@ -166,7 +162,6 @@ export function getLoginSession(sessionId: string) {
           remoteBirthDate,
           remoteGender,
           remoteMedcard,
-          docLastDigits,
           purpose
         FROM login_sessions
         WHERE sessionId = ?
@@ -185,7 +180,7 @@ export function getLoginSession(sessionId: string) {
 
 export function updateSessionDocData(
   sessionId: string,
-  remote: RemoteProfileSnapshot & { docDigits: string },
+  remote: RemoteProfileSnapshot,
 ) {
   return new Promise<void>((resolve, reject) => {
     db.run(
@@ -193,7 +188,6 @@ export function updateSessionDocData(
         UPDATE login_sessions
         SET
           docVerified = 1,
-          docLastDigits = ?,
           remoteCode = COALESCE(?, remoteCode),
           remoteFullName = COALESCE(?, remoteFullName),
           remoteBirthDate = COALESCE(?, remoteBirthDate),
@@ -202,7 +196,6 @@ export function updateSessionDocData(
         WHERE sessionId = ?
       `,
       [
-        remote.docDigits,
         remote.code ?? null,
         remote.fullName ?? null,
         remote.birthDate ?? null,

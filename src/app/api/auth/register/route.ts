@@ -8,23 +8,15 @@ import type { AuthUser } from "@/providers/AuthProvider";
 type RegisterPayload = {
   phone: string;
   password: string;
-  passportLastDigits: string;
+  passportLastDigits?: string;
 };
 
 export async function POST(req: Request): Promise<Response> {
   const body = (await req.json()) as RegisterPayload;
-  const { phone, password, passportLastDigits } = body;
+  const { phone, password } = body;
 
-  if (!phone || !password || !passportLastDigits) {
-    return NextResponse.json(
-      { error: "Укажите телефон, пароль и последние 3 цифры паспорта" },
-      { status: 400 },
-    );
-  }
-
-  const digits = passportLastDigits.replace(/\D/g, "").slice(-3);
-  if (digits.length !== 3) {
-    return NextResponse.json({ error: "Введите последние 3 цифры паспорта" }, { status: 400 });
+  if (!phone || !password) {
+    return NextResponse.json({ error: "Укажите телефон и пароль" }, { status: 400 });
   }
 
   const normalizedPhone = normalizePhone(phone);
@@ -60,7 +52,7 @@ export async function POST(req: Request): Promise<Response> {
         null,
         null,
         null,
-        digits,
+        null,
         null,
         null,
         null,
@@ -71,12 +63,7 @@ export async function POST(req: Request): Promise<Response> {
         if (err) {
           const message = err.message ?? "";
           if (message.includes("UNIQUE constraint failed") || message.includes("UNIQUE constraint")) {
-            resolve(
-              NextResponse.json(
-                { error: "Пользователь с таким телефоном уже зарегистрирован" },
-                { status: 409 },
-              ),
-            );
+            resolve(NextResponse.json({ error: "Пользователь с таким телефоном уже зарегистрирован" }, { status: 409 }));
             return;
           }
           resolve(NextResponse.json({ error: "Не удалось создать пользователя" }, { status: 500 }));

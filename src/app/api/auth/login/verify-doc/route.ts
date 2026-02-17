@@ -56,7 +56,6 @@ export async function POST(req: Request) {
     birthDate: fields.birthDate ?? null,
     gender: fields.gender ?? null,
     medcardNumber: fields.medcardNumber ?? null,
-    docDigits: digits,
   };
 
   try {

@@ -72,6 +72,29 @@ db.serialize(() => {
         });
       }
     });
+
+    if (
+      existingColumns.has("passportSeries") &&
+      existingColumns.has("passportNumber") &&
+      existingColumns.has("passportIssueDate") &&
+      existingColumns.has("passportIssuedBy")
+    ) {
+      db.run(
+        `
+          UPDATE users
+          SET
+            passportSeries = NULL,
+            passportNumber = NULL,
+            passportIssueDate = NULL,
+            passportIssuedBy = NULL
+          WHERE
+            passportSeries IS NOT NULL
+            OR passportNumber IS NOT NULL
+            OR passportIssueDate IS NOT NULL
+            OR passportIssuedBy IS NOT NULL
+        `,
+      );
+    }
   });
 
   db.run(
@@ -91,7 +114,6 @@ db.serialize(() => {
         remoteBirthDate TEXT,
         remoteGender TEXT,
         remoteMedcard TEXT,
-        docLastDigits TEXT,
         purpose TEXT DEFAULT 'register'
       )
     `,
@@ -168,6 +190,10 @@ db.serialize(() => {
         });
       }
     });
+
+    if (existingColumns.has("docLastDigits")) {
+      db.run(`UPDATE login_sessions SET docLastDigits = NULL WHERE docLastDigits IS NOT NULL`);
+    }
   });
 });
 
