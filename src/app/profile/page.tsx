@@ -29,6 +29,8 @@ export default function ProfilePage() {
   const [contractsOpen, setContractsOpen] = useState(false);
   const [contractsLoading, setContractsLoading] = useState(false);
   const [contracts, setContracts] = useState<ContractItem[]>([]);
+  const [passportLastDigits, setPassportLastDigits] = useState<string | null>(null);
+  const [passportDigitsLoading, setPassportDigitsLoading] = useState(false);
 
   const details = useMemo(
     () => [
@@ -52,9 +54,49 @@ export default function ProfilePage() {
         label: "Номер медкарты",
         value: user?.medcardNumber || "-",
       },
+      {
+        label: "Последние 3 цифры номера паспорта",
+        value: passportDigitsLoading ? "..." : passportLastDigits ? `*** ${passportLastDigits}` : "-",
+      },
     ],
-    [user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.phone],
+    [passportDigitsLoading, passportLastDigits, user?.birthDate, user?.email, user?.fullName, user?.medcardNumber, user?.phone],
   );
+
+  useEffect(() => {
+    if (!user?.phone) {
+      setPassportLastDigits(null);
+      setPassportDigitsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setPassportDigitsLoading(true);
+
+    fetch("/api/auth/passport-last-digits", {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const payload = (await res.json().catch(() => null)) as { passportLastDigits?: string | null } | null;
+        if (!res.ok) {
+          throw new Error("Failed to fetch passport digits");
+        }
+        setPassportLastDigits(payload?.passportLastDigits ?? null);
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") {
+          return;
+        }
+        console.warn("failed to load passport last digits:", error);
+        setPassportLastDigits(null);
+      })
+      .finally(() => {
+        setPassportDigitsLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [user?.onecId, user?.phone]);
 
   useEffect(() => {
     if (!contractsOpen) return;
