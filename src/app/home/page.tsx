@@ -104,7 +104,7 @@ export default function HomePage() {
   const showCheckupsSkeleton = checkups.length === 0;
   const showPromosSkeleton = promos.length === 0;
   const bookingSuccessSubtitle = useMemo(() => {
-    return `За 24 часа до записи, мы с вами свяжемся для подтверждения приема`;
+    return `За\u00A024\u00A0часа\u00A0до\u00A0записи,\u00A0мы с\u00A0вами\u00A0свяжемся\u00A0для подтверждения\u00A0приема`;
   }, [recentBooking]);
 
   const handleOpenMyRecord = () => {
@@ -737,7 +737,7 @@ export default function HomePage() {
       <PromoSuccessOverlay
         open={bookingSuccessOpen}
         onClose={handleCloseBookingSuccess}
-        titleLines={["Спасибо,", "вы записались"]}
+        titleLines={["Спасибо,", "вы\u00A0записались"]}
         subtitle={bookingSuccessSubtitle}
         variant="appointment"
         appointmentKind="booked"
