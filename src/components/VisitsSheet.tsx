@@ -10,14 +10,12 @@ type VisitsSheetProps = {
   onClose: () => void;
   appointments: Appointment[];
   activeAppointments: Appointment[];
-  cancelledAppointments: Appointment[];
   onSelect?: (appointment: Appointment) => void;
 };
 
 const TITLE = "История посещений";
 const SUBTITLE = "Ваши приемы";
 const EMPTY_ACTIVE = "Нет действующих приемов.";
-const EMPTY_CANCELLED = "Нет отмененных приемов.";
 const EMPTY_HISTORY = "Пока нет записей в истории.";
 const PAGE_SIZE = 5;
 
@@ -144,19 +142,14 @@ export default function VisitsSheet({
   onClose,
   appointments,
   activeAppointments,
-  cancelledAppointments,
   onSelect,
 }: VisitsSheetProps) {
   const [activePage, setActivePage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
-  const [cancelledPage, setCancelledPage] = useState(1);
 
-  const { active, cancelled, history } = useMemo(() => {
+  const { active, history } = useMemo(() => {
     const sortedActive = [...activeAppointments].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-    );
-    const sortedCancelled = [...cancelledAppointments].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
     const historyItems = appointments
       .filter((item) => item.status === "completed")
@@ -164,12 +157,11 @@ export default function VisitsSheet({
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
-    return { active: sortedActive, cancelled: sortedCancelled, history: historyItems };
-  }, [activeAppointments, cancelledAppointments, appointments]);
+    return { active: sortedActive, history: historyItems };
+  }, [activeAppointments, appointments]);
 
   const activePaged = usePagedList(active, activePage, setActivePage);
   const historyPaged = usePagedList(history, historyPage, setHistoryPage);
-  const cancelledPaged = usePagedList(cancelled, cancelledPage, setCancelledPage);
 
   const handleSelect = (appointment: Appointment) => {
     if (!onSelect) return;
@@ -331,25 +323,6 @@ export default function VisitsSheet({
         )}
       </section>
 
-      <section className="space-y-3">
-        <h3 className="px-1 text-[15px] font-semibold uppercase tracking-wide text-slate-500">
-          {"Отмененные"}
-        </h3>
-        {cancelled.length === 0 ? (
-          <div className="rounded-[18px] bg-slate-50 px-5 py-6 text-center text-[15px] text-slate-500">
-            {EMPTY_CANCELLED}
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3">{cancelledPaged.items.map(renderHistoryCard)}</div>
-            <Pagination
-              page={cancelledPaged.page}
-              totalPages={cancelledPaged.totalPages}
-              onPageChange={setCancelledPage}
-            />
-          </>
-        )}
-      </section>
     </SheetFrame>
   );
 }

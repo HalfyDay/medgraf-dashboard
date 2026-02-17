@@ -49,7 +49,6 @@ export default function HomePage() {
     appointments,
     setAppointments,
     activeAppointments,
-    cancelledAppointments,
     setActiveAppointments,
     setCancelledAppointments,
     appointmentsLoading,
@@ -564,7 +563,7 @@ export default function HomePage() {
                         width={36}
                         height={36}
                         unoptimized
-                        className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm ring-1 ring-white/40"
+                        className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm"
                       />
                     )}
 
@@ -718,7 +717,6 @@ export default function HomePage() {
         onClose={() => setVisitsOpen(false)}
         appointments={appointments}
         activeAppointments={activeAppointments}
-        cancelledAppointments={cancelledAppointments}
         onSelect={handleSelectAppointment}
       />
       <MyAppointmentsSheet

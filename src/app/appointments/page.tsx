@@ -8,7 +8,6 @@ import { useAuth } from "@/providers/AuthProvider";
 export default function AppointmentsPage() {
   const { user } = useAuth();
   const [activeAppointments, setActiveAppointments] = useState<Appointment[]>([]);
-  const [cancelledAppointments, setCancelledAppointments] = useState<Appointment[]>([]);
   const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"planned" | "past">("planned");
@@ -17,7 +16,6 @@ export default function AppointmentsPage() {
     const patientId = user?.onecId?.toString().trim();
     if (!patientId) {
       setActiveAppointments([]);
-      setCancelledAppointments([]);
       setHistoryAppointments([]);
       setLoading(false);
       return;
@@ -27,19 +25,16 @@ export default function AppointmentsPage() {
     setLoading(true);
     Promise.all([
       fetchScheduleAppointments({ patientId, status: "1" }),
-      fetchScheduleAppointments({ patientId, status: "3" }),
       fetchAppointments(patientId),
     ])
-      .then(([active, cancelled, history]) => {
+      .then(([active, history]) => {
         if (!alive) return;
         setActiveAppointments(active);
-        setCancelledAppointments(cancelled);
         setHistoryAppointments(history);
       })
       .catch(() => {
         if (!alive) return;
         setActiveAppointments([]);
-        setCancelledAppointments([]);
         setHistoryAppointments([]);
       })
       .finally(() => {
@@ -53,16 +48,7 @@ export default function AppointmentsPage() {
   }, [user?.onecId]);
 
   const handleCancel = (id: string) => {
-    setActiveAppointments((prev) => {
-      const cancelled = prev.find((app) => app.id === id);
-      if (cancelled) {
-        setCancelledAppointments((prevCancelled) => [
-          { ...cancelled, status: "cancelled" },
-          ...prevCancelled,
-        ]);
-      }
-      return prev.filter((app) => app.id !== id);
-    });
+    setActiveAppointments((prev) => prev.filter((app) => app.id !== id));
   };
 
   return (
@@ -111,20 +97,6 @@ export default function AppointmentsPage() {
             )}
           </div>
 
-          <div>
-            <h2 className="mb-3 text-lg font-semibold text-slate-700">Отмененные</h2>
-            {cancelledAppointments.length === 0 ? (
-              <p className="text-gray-600">Нет отмененных приемов.</p>
-            ) : (
-              cancelledAppointments.map((app) => (
-                <AppointmentCard
-                  key={app.id}
-                  appointment={app}
-                  onCancel={undefined}
-                />
-              ))
-            )}
-          </div>
         </>
       )}
 

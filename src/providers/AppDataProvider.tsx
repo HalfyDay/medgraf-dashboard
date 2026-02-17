@@ -407,12 +407,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
               return [] as Appointment[];
             })
           : Promise.resolve([] as Appointment[]);
-        const cancelledAppointmentsPromise = patientId
-          ? fetchScheduleAppointments({ patientId, status: "3" }).catch((error) => {
-              console.warn("cancelled appointments fallback:", error);
-              return [] as Appointment[];
-            })
-          : Promise.resolve([] as Appointment[]);
         const documentsPromise = patientId
           ? fetchDocuments(patientId).catch((error) => {
               console.warn("documents fallback:", error);
@@ -467,7 +461,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           contactsData,
           appointmentItems,
           activeItems,
-          cancelledItems,
           documentItems,
           doctors,
           services,
@@ -478,7 +471,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           contactsPromise,
           appointmentsPromise,
           activeAppointmentsPromise,
-          cancelledAppointmentsPromise,
           documentsPromise,
           doctorsPromise,
           servicesPromise,
@@ -493,7 +485,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         setContacts({ ...DEFAULT_CONTACTS, ...contactsData });
         setAppointments(appointmentItems);
         setActiveAppointments(mergedActiveItems);
-        setCancelledAppointments(cancelledItems);
+        setCancelledAppointments([]);
         setDocuments(documentItems);
 
         void services;

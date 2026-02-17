@@ -82,7 +82,7 @@ const writeSessionCache = (key: string, value: unknown) => {
 
 export async function fetchScheduleAppointments(params: {
   patientId: string;
-  status: "1" | "2" | "3";
+  status: "1" | "2";
 }): Promise<Appointment[]> {
   const { patientId, status } = params;
   const res = await fetch(
