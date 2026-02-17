@@ -70,11 +70,23 @@ export async function POST(req: Request) {
   }
 
   let profile: OnecUserProfile;
+  const storedPassportDigits = userRow.passportNumber?.toString().trim() || undefined;
   try {
-    profile = await fetchOnecUserProfile(normalizedPhone, userRow.passportNumber ?? undefined);
+    profile = await fetchOnecUserProfile(normalizedPhone, storedPassportDigits);
   } catch (error) {
-    if (error instanceof OnecLogicalError && error.code === "2") {
-      return buildError("Medcard in 1C was not found. Check phone and passport data.", 404);
+    if (storedPassportDigits && error instanceof OnecLogicalError && error.code === "2") {
+      try {
+        profile = await fetchOnecUserProfile(normalizedPhone);
+      } catch (retryError) {
+        if (retryError instanceof OnecLogicalError && retryError.code === "2") {
+          return buildError("Medcard in 1C was not found. Check phone data.", 404);
+        }
+        const message =
+          retryError instanceof Error ? retryError.message : "1C is temporarily unavailable";
+        return buildError(message, 502);
+      }
+    } else if (error instanceof OnecLogicalError && error.code === "2") {
+      return buildError("Medcard in 1C was not found. Check phone data.", 404);
     }
     const message = error instanceof Error ? error.message : "1C is temporarily unavailable";
     return buildError(message, 502);
@@ -101,6 +113,10 @@ export async function POST(req: Request) {
       medcardNumber: remoteMedcard ?? undefined,
       onecId: remoteOnecId ?? undefined,
       email: remoteEmail ?? undefined,
+      passportSeries: null,
+      passportNumber: null,
+      passportIssueDate: null,
+      passportIssuedBy: null,
     });
   } catch (error) {
     console.error("Failed to update local user profile:", error);
@@ -112,10 +128,10 @@ export async function POST(req: Request) {
     fullName: remoteFullName,
     birthDate: remoteBirthDate,
     email: remoteEmail,
-    passportSeries: userRow.passportSeries,
-    passportNumber: userRow.passportNumber,
-    passportIssueDate: userRow.passportIssueDate,
-    passportIssuedBy: userRow.passportIssuedBy,
+    passportSeries: null,
+    passportNumber: null,
+    passportIssueDate: null,
+    passportIssuedBy: null,
     onecId: remoteOnecId,
     medcardNumber: remoteMedcard,
     gender: remoteGender,

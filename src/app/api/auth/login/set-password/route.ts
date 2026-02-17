@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     gender: profileFields.gender ?? null,
     medcardNumber: profileFields.medcardNumber ?? null,
     onecId: session.remoteCode ?? null,
-    passportNumber: session.docLastDigits ?? null,
+    passportNumber: null,
     email: profileFields.email ?? null,
   };
 

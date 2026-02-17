@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import DocumentsSheet from "@/components/DocumentsSheet";
 import DocumentDetailsSheet from "@/components/DocumentDetailsSheet";
@@ -104,20 +104,7 @@ export default function HomePage() {
   const showCheckupsSkeleton = checkups.length === 0;
   const showPromosSkeleton = promos.length === 0;
   const bookingSuccessSubtitle = useMemo(() => {
-    if (!recentBooking) {
-      return "За 24 часа до записи мы свяжемся с вами для подтверждения приёма.";
-    }
-    const bookingDate = new Date(recentBooking.date);
-    const dateLabel = bookingDate.toLocaleDateString("ru-RU", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-    const timeLabel = bookingDate.toLocaleTimeString("ru-RU", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `Вы записаны на ${dateLabel} в ${timeLabel}. За 24 часа до приёма мы свяжемся с вами для подтверждения.`;
+    return `За 24 часа до записи, мы с вами свяжемся для подтверждения приема`;
   }, [recentBooking]);
 
   const handleOpenMyRecord = () => {
@@ -750,17 +737,25 @@ export default function HomePage() {
       <PromoSuccessOverlay
         open={bookingSuccessOpen}
         onClose={handleCloseBookingSuccess}
-        titleLines={["Спасибо!", "Вы записались"]}
+        titleLines={["Спасибо,", "вы записались"]}
         subtitle={bookingSuccessSubtitle}
+        variant="appointment"
+        appointmentKind="booked"
+        iconSrc="/appointment.svg"
+        iconFallbackSrc="/verified.svg"
       />
       <PromoSuccessOverlay
         open={cancelOverlayOpen}
         onClose={() => setCancelOverlayOpen(false)}
-        titleLines={["Спасибо!", "Ваша запись отменена"]}
-        subtitle="Будем ждать вас снова."
-        icon="sad"
+        titleLines={["Спасибо,", "ваша запись отменена"]}
+        subtitle="Будем ждать вас снова"
+        variant="appointment"
+        appointmentKind="cancelled"
+        iconSrc="/cancellation.svg"
+        iconFallbackSrc="/sadness.svg"
       />
       {/* <BottomNav /> */}
     </main>
   );
 }
+
