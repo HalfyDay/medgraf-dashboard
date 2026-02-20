@@ -142,17 +142,30 @@ const formatLongDate = (isoDate: string) => {
   });
 };
 
-const formatDoctorShortName = (fullName: string) => {
+const formatDoctorNameWithoutPatronymic = (fullName: string) => {
   const parts = fullName
     .split(/\s+/)
     .map((item) => item.trim())
     .filter(Boolean);
-  if (parts.length === 0) {
-    return fullName;
+
+  if (parts.length <= 2) {
+    return parts.join(" ") || fullName;
   }
-  const [surname, firstName] = parts;
-  const initial = firstName?.[0];
-  return initial ? `${surname} ${initial}.` : surname;
+
+  return `${parts[0]} ${parts[1]}`;
+};
+
+const getDoctorDisplayPrice = (doctor: Doctor) => {
+  const primaryServicePrices = doctor.services
+    .filter((service) => service.name.toLowerCase().includes("первич"))
+    .map((service) => service.price)
+    .filter((price): price is number => typeof price === "number" && price > 0);
+
+  if (primaryServicePrices.length > 0) {
+    return Math.min(...primaryServicePrices);
+  }
+
+  return doctor.price;
 };
 
 type HorizontalHandlers = {
@@ -345,12 +358,7 @@ export default function BookingFlowSheet({
     }
 
     const firstService = selectedDoctor.services?.[0] ?? null;
-    setSelectedServiceId((prev) => {
-      if (prev && selectedDoctor.services?.some((service) => service.id === prev)) {
-        return prev;
-      }
-      return firstService?.id ?? null;
-    });
+    setSelectedServiceId(firstService?.id ?? null);
   }, [selectedDoctor]);
 
 
@@ -675,6 +683,7 @@ export default function BookingFlowSheet({
         <div className="-mx-2 flex w-max gap-3 px-2 pb-2 pr-4">
             {filteredDoctors.map((doctor) => {
               const selected = doctor.id === selectedDoctorId;
+              const displayPrice = getDoctorDisplayPrice(doctor);
               const photoSrc =
                 doctor.photoUrl && doctor.photoUrl.length > 0 ? doctor.photoUrl : "/doctor.svg";
               return (
@@ -710,7 +719,7 @@ export default function BookingFlowSheet({
                     <div className="space-y-1.5">
                       <div className="flex items-baseline justify-between gap-1.5">
                         <p className="text-[17px] font-semibold leading-tight text-slate-900 truncate whitespace-nowrap dark:text-slate-100">
-                          {formatDoctorShortName(doctor.fullName)}
+                          {formatDoctorNameWithoutPatronymic(doctor.fullName)}
                         </p>
                       </div>
                       <p
@@ -727,7 +736,7 @@ export default function BookingFlowSheet({
                     </div>
 
                     <div className="text-[14px] font-semibold text-rose-500 dark:text-rose-400">
-                      {formatMoney(doctor.price)}
+                      {formatMoney(displayPrice)}
                     </div>
 
                     <div className="mt-auto rounded-[16px] bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-2 text-center text-[15px] font-semibold text-white shadow">
@@ -767,7 +776,7 @@ export default function BookingFlowSheet({
                   className={clsx(
                     "flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-[15px] font-semibold text-slate-700 transition-colors",
                     selected
-                      ? "bg-sky-50 ring-1 ring-sky-200 dark:bg-slate-800 dark:ring-sky-400/60"
+                      ? "bg-sky-50 dark:bg-slate-800"
                       : "bg-white hover:bg-slate-50",
                   )}
                 >

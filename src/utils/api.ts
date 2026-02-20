@@ -261,9 +261,16 @@ const CHECKUP_GRADIENTS = [
   "from-rose-400 to-pink-500",
 ];
 
+const normalizeCheckupLineBreaks = (value: string) =>
+  value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\/n/g, "\n");
+
 const splitCheckupDescription = (description?: string | null) => {
   if (!description) return { intro: undefined, bullets: [] as string[] };
-  const normalized = description.replace(/\r\n/g, "\n").trim();
+  const normalized = normalizeCheckupLineBreaks(description).trim();
   if (!normalized) return { intro: undefined, bullets: [] as string[] };
   const lines = normalized
     .split("\n")

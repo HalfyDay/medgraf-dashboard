@@ -24,6 +24,9 @@ type PatientDetails = {
   relatives?: Relative[] | null;
 };
 
+const MEDCARD_CACHE_PREFIX = "medcard.v2:";
+const MEDCARD_LOADED_PREFIX = "medcard-loaded.v2:";
+
 function formatDate(value?: string | null) {
   if (!value) {
     return "-";
@@ -50,16 +53,23 @@ export default function CardPage() {
       return;
     }
 
+    const cacheKey = `${MEDCARD_CACHE_PREFIX}${patientId}`;
+    const loadedKey = `${MEDCARD_LOADED_PREFIX}${patientId}`;
+
     if (typeof window !== "undefined") {
-      const cached = window.sessionStorage.getItem(`medcard:${patientId}`);
-      if (cached) {
+      const cached = window.sessionStorage.getItem(cacheKey);
+      if (cached !== null) {
         try {
           const parsed = JSON.parse(cached) as PatientDetails;
           setPatient(parsed);
-          return;
         } catch {
-          window.sessionStorage.removeItem(`medcard:${patientId}`);
+          window.sessionStorage.removeItem(cacheKey);
         }
+      }
+
+      if (window.sessionStorage.getItem(loadedKey)) {
+        setLoading(false);
+        return;
       }
     }
 
@@ -79,8 +89,17 @@ export default function CardPage() {
       })
       .then((data) => {
         setPatient(data);
-        if (typeof window !== "undefined" && data) {
-          window.sessionStorage.setItem(`medcard:${patientId}`, JSON.stringify(data));
+        if (typeof window !== "undefined") {
+          try {
+            if (data) {
+              window.sessionStorage.setItem(cacheKey, JSON.stringify(data));
+            } else {
+              window.sessionStorage.removeItem(cacheKey);
+            }
+            window.sessionStorage.setItem(loadedKey, "1");
+          } catch {
+            // ignore storage errors
+          }
         }
       })
       .catch((error) => {
@@ -89,6 +108,14 @@ export default function CardPage() {
         }
         console.warn("Ошибка загрузки медкарты:", error);
         setPatient(null);
+        if (typeof window !== "undefined") {
+          try {
+            window.sessionStorage.removeItem(cacheKey);
+            window.sessionStorage.setItem(loadedKey, "1");
+          } catch {
+            // ignore storage errors
+          }
+        }
       })
       .finally(() => setLoading(false));
 

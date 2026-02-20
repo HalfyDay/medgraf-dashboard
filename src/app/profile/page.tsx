@@ -21,6 +21,7 @@ function formatDate(value?: string | null) {
 
 const POLICY_URL = "/files/politics.pdf";
 const CONTRACTS_CACHE_PREFIX = "medgraf.contracts.profile.v1";
+const PASSPORT_LAST_DIGITS_CACHE_PREFIX = "medgraf.passportLastDigits.profile.v1";
 
 export default function ProfilePage() {
   const { user, logout } = useAuth();
@@ -69,6 +70,20 @@ export default function ProfilePage() {
       return;
     }
 
+    const cacheKey = `${PASSPORT_LAST_DIGITS_CACHE_PREFIX}:${user?.onecId ?? "self"}`;
+    if (typeof window !== "undefined") {
+      try {
+        const cachedValue = window.sessionStorage.getItem(cacheKey);
+        if (cachedValue !== null) {
+          setPassportLastDigits(cachedValue || null);
+          setPassportDigitsLoading(false);
+          return;
+        }
+      } catch {
+        // ignore storage errors and fallback to network
+      }
+    }
+
     const controller = new AbortController();
     setPassportDigitsLoading(true);
 
@@ -82,7 +97,15 @@ export default function ProfilePage() {
         if (!res.ok) {
           throw new Error("Failed to fetch passport digits");
         }
-        setPassportLastDigits(payload?.passportLastDigits ?? null);
+        const digits = payload?.passportLastDigits ?? null;
+        setPassportLastDigits(digits);
+        if (typeof window !== "undefined") {
+          try {
+            window.sessionStorage.setItem(cacheKey, digits ?? "");
+          } catch {
+            // ignore storage errors
+          }
+        }
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") {

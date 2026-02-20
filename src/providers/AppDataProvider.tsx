@@ -66,15 +66,15 @@ const PUBLIC_ASSET_URLS: string[] = [
   "/icons/icon-512.png",
 ];
 
-const PROMOS_CACHE_KEY = "medgraf.promos.v1";
+const PROMOS_CACHE_KEY = "medgraf.promos.v2";
 const PROMOS_CACHE_TTL_MS = 15 * 60 * 1000;
-const CHECKUPS_CACHE_KEY = "medgraf.checkups.v3";
-const LEGACY_CHECKUPS_CACHE_KEY = "medgraf.checkups.v2";
+const CHECKUPS_CACHE_KEY = "medgraf.checkups.v4";
+const LEGACY_CHECKUPS_CACHE_KEY = "medgraf.checkups.v3";
 const CONTACTS_CACHE_KEY = "medgraf.contacts.v1";
 const PENDING_APPOINTMENTS_KEY = "medgraf.pendingAppointments.v1";
 const PENDING_APPOINTMENTS_TTL_MS = 15 * 60 * 1000;
-const MEDCARD_CACHE_PREFIX = "medcard:";
-const MEDCARD_LOADED_PREFIX = "medcard-loaded:";
+const MEDCARD_CACHE_PREFIX = "medcard.v2:";
+const MEDCARD_LOADED_PREFIX = "medcard-loaded.v2:";
 
 type TimedSessionCache<T> = {
   value: T;

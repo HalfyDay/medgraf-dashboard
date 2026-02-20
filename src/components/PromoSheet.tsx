@@ -133,7 +133,6 @@ export default function PromoSheet({
               alt={title}
               fill
               sizes="100vw"
-              unoptimized
               className="pointer-events-none absolute inset-0 -z-10 object-cover"
             />
           </div>
@@ -143,8 +142,8 @@ export default function PromoSheet({
         <div className="px-4 pt-5 pb-16">
           <div className="space-y-2 text-slate-900">
             <h2 className="text-[22px] font-semibold leading-tight">{title}</h2>
-            {subtitle && <p className="text-[15px] leading-[1.55] text-slate-600 text-justify">{subtitle}</p>}
-            {description && <p className="text-[15px] leading-[1.55] text-slate-600 text-justify">{description}</p>}
+            {subtitle && <p className="text-[15px] leading-[1.55] text-slate-600 text-justify whitespace-pre-line">{subtitle}</p>}
+            {description && <p className="text-[15px] leading-[1.55] text-slate-600 text-justify whitespace-pre-line">{description}</p>}
             {period && <p className="text-[13px] text-slate-500">Срок действия: {period}</p>}
           </div>
 

@@ -140,6 +140,16 @@ function pickField(obj: Record<string, unknown>, candidates: string[]): string |
   return undefined;
 }
 
+function normalizePromoLineBreaks(value?: string) {
+  if (!value) return undefined;
+  return value
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\\n/g, "\n")
+    .replace(/\/n/g, "\n")
+    .trim();
+}
+
 function mapActionToPromotion(action: OneCAction): Promotion | null {
   const safeAction = action as Record<string, unknown>;
   const title = pickField(safeAction, ["title", "name", "header"]);
@@ -178,8 +188,8 @@ function mapActionToPromotion(action: OneCAction): Promotion | null {
     return null;
   }
 
-  const subtitle = pickField(safeAction, ["subtitle", "caption"]);
-  const description = pickField(safeAction, ["description", "text", "body"]);
+  const subtitle = normalizePromoLineBreaks(pickField(safeAction, ["subtitle", "caption"]));
+  const description = normalizePromoLineBreaks(pickField(safeAction, ["description", "text", "body"]));
   const start = pickField(safeAction, ["start", "dateStart", "date_from"]);
   const end = pickField(safeAction, ["end", "dateEnd", "date_to"]);
   return {
@@ -228,8 +238,8 @@ async function fetchActionsFromOneC(): Promise<Promotion[]> {
       mapped = items.map((action, index) => ({
         id: (action.id ?? index).toString(),
         title: (action as Record<string, unknown>).title?.toString() || "Акция",
-        subtitle: (action as Record<string, unknown>).subtitle?.toString(),
-        description: (action as Record<string, unknown>).description?.toString(),
+        subtitle: normalizePromoLineBreaks((action as Record<string, unknown>).subtitle?.toString()),
+        description: normalizePromoLineBreaks((action as Record<string, unknown>).description?.toString()),
         start: (action as Record<string, unknown>).start?.toString(),
         end: (action as Record<string, unknown>).end?.toString(),
         cardImage:

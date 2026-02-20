@@ -127,7 +127,6 @@ export default function CheckupsSheet({
                 width={1200}
                 height={600}
                 sizes="100vw"
-                unoptimized
                 className="block h-auto w-full object-contain"
               />
             ) : (

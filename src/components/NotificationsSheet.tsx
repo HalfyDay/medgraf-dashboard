@@ -10,10 +10,7 @@ type DeferredPromptWindow = Window & {
   __deferredPrompt?: DeferredPromptEvent | null;
 };
 
-const DEMO: Notification[] = [
-  { id: "n1", kind: "appointment", title: "Напоминание о приёме", text: "Завтра в 10:00 у вас офтальмолог.", time: "09:10", unread: true },
-  { id: "n2", kind: "document",   title: "Готов результат",        text: "Доступно новое исследование: МРТ.", time: "08:22" },
-];
+const DEMO: Notification[] = [];
 
 export default function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [mounted, setMounted] = useState(false);

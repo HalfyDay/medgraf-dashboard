@@ -53,6 +53,39 @@ function buildInlineDisposition(filename: string) {
   return `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodedUtf8}`;
 }
 
+function hasFileExtension(filename: string) {
+  return /\.[a-z0-9]{1,8}$/i.test(filename);
+}
+
+function extensionFromContentType(contentType?: string | null) {
+  const type = contentType?.split(";")[0]?.trim().toLowerCase();
+  if (!type) return null;
+  if (type === "application/pdf") return ".pdf";
+  if (type === "application/msword") return ".doc";
+  if (type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return ".docx";
+  if (type === "application/rtf") return ".rtf";
+  if (type === "text/plain") return ".txt";
+  if (type === "image/jpeg") return ".jpg";
+  if (type === "image/png") return ".png";
+  return null;
+}
+
+function extensionFromBuffer(buffer: Buffer) {
+  if (buffer.length >= 4 && buffer.slice(0, 4).toString("ascii") === "%PDF") return ".pdf";
+  if (buffer.length >= 2 && buffer[0] === 0x50 && buffer[1] === 0x4b) return ".docx";
+  if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) return ".png";
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return ".jpg";
+  return null;
+}
+
+function ensureFilenameExtension(filename: string, contentType: string | null | undefined, buffer: Buffer) {
+  if (hasFileExtension(filename)) {
+    return filename;
+  }
+  const ext = extensionFromContentType(contentType) ?? extensionFromBuffer(buffer);
+  return ext ? `${filename}${ext}` : filename;
+}
+
 function decodeHtml(buffer: Buffer) {
   const utfText = buffer.toString("utf-8");
   if (!utfText.includes("\uFFFD")) {
@@ -306,6 +339,17 @@ function injectPdfButton(html: string) {
     window.__mgGoBack = function () {
       try { sessionStorage.setItem('medgraf.skipBootSplash', '1'); } catch (e) {}
 
+      var ua = '';
+      try { ua = String(navigator.userAgent || ''); } catch (e) {}
+      var isTelegramBrowser = /Telegram/i.test(ua);
+
+      if (!isTelegramBrowser) {
+        try {
+          window.close();
+          return;
+        } catch (e) {}
+      }
+
       try {
         if (window.opener && !window.opener.closed) {
           window.close();
@@ -501,11 +545,21 @@ export async function GET(
       });
     }
 
+    const resolvedFilename = ensureFilenameExtension(filename, contentType, buffer);
+    const inferredExt = extensionFromBuffer(buffer);
+    const normalizedContentType = contentType?.split(";")[0]?.trim().toLowerCase();
+    const shouldForcePdfContentType =
+      normalizedContentType === "application/octet-stream" && inferredExt === ".pdf";
+    const responseContentType =
+      shouldForcePdfContentType
+        ? "application/pdf"
+        : contentType || (inferredExt === ".pdf" ? "application/pdf" : "application/octet-stream");
+
     return new NextResponse(buffer, {
       status: 200,
       headers: {
-        "Content-Type": contentType || "application/octet-stream",
-        "Content-Disposition": buildContentDisposition(filename),
+        "Content-Type": responseContentType,
+        "Content-Disposition": buildContentDisposition(resolvedFilename),
       },
     });
   } catch (error) {

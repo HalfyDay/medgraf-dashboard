@@ -100,7 +100,7 @@ export default function HomePage() {
   const upcomingDoctorAvatar = upcomingAppointment?.doctorAvatar || DOCTOR_AVATAR_PLACEHOLDER;
   const hasActiveAppointments = activeAppointments.some((item) => item.status === "planned");
   const showMyRecordCard = !appointmentsLoading && hasActiveAppointments;
-  const showMyRecordSkeleton = (booting || appointmentsLoading) && !hasActiveAppointments;
+  const showMyRecordSkeleton = appointmentsLoading && !hasActiveAppointments;
   const showCheckupsSkeleton = checkups.length === 0;
   const showPromosSkeleton = promos.length === 0;
   const bookingSuccessSubtitle = useMemo(() => {
@@ -337,7 +337,6 @@ export default function HomePage() {
                     alt={p.title}
                     width={195}
                     height={183}
-                    unoptimized
                     className="h-full w-full object-cover"
                   />
                 </button>
@@ -517,6 +516,7 @@ export default function HomePage() {
             ) : (
               checkups.map((c, i) => {
                 const hiddenWhileCollapsed = i >= 4 && !showAllCheckups;
+                const hideBeforeMeasure = hiddenWhileCollapsed && heights.collapsed === 0;
                 return (
                   <button
                     data-checkup-card
@@ -532,6 +532,7 @@ export default function HomePage() {
                       "transition-transform duration-300 will-change-transform",
                       "hover:-translate-y-[2px] active:translate-y-0 active:scale-[.99]",
                       c.bg,
+                      hideBeforeMeasure ? "hidden" : "",
                       hiddenWhileCollapsed ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100 translate-y-0",
                       "transition-opacity duration-300",
                     ].join(" ")}
@@ -549,8 +550,7 @@ export default function HomePage() {
                         alt=""
                         width={36}
                         height={36}
-                        unoptimized
-                        className="mb-2 h-9 w-9 rounded-lg object-cover shadow-sm"
+                        className="mb-2 h-9 w-9 rounded-lg object-cover"
                       />
                     )}
 
