@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { cancelOnecScheduleAppointment, OnecLogicalError, OnecRequestError } from "@/server/onecAuthClient";
 
 function buildError(message: string, status: number) {
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   } catch (error) {
     let message = "Failed to cancel appointment";
     if (error instanceof OnecRequestError) {
-      message = `РћС€РёР±РєР° 1РЎ: ${error.status} ${error.body || error.message}`;
+      message = `Ошибка 1С: ${error.status} ${error.body || error.message}`;
     } else if (error instanceof OnecLogicalError) {
       message = error.message;
     } else if (error instanceof Error) {

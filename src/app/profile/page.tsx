@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/providers/AuthProvider";
@@ -232,9 +232,7 @@ export default function ProfilePage() {
                 </div>
                 <button
                   type="button"
-                  role="switch"
                   aria-label="Темная тема"
-                  aria-checked={isDark}
                   title="Темная тема"
                   onClick={toggleTheme}
                   className={[
@@ -296,4 +294,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
 

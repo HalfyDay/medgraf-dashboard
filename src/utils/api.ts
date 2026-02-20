@@ -1,11 +1,11 @@
-// src/utils/api.ts
+﻿// src/utils/api.ts
 import type { DoctorDirectoryEntry, ServiceDirectoryEntry } from "@/types/clinic";
 import type { CheckupData } from "@/types/checkups";
 
 export const DOCTOR_AVATAR_PLACEHOLDER = "/doctor.svg";
 export interface Appointment {
   id: string;
-  date: string;       // ISO 8601, РЅР°РїСЂРёРјРµСЂ "2025-07-20T14:30:00+03:00"
+  date: string;       // ISO 8601, например "2025-07-20T14:30:00+03:00"
   serviceName: string;
   doctorName: string;
   specialty: string;
@@ -129,59 +129,18 @@ export async function cancelScheduleAppointment(uid: string): Promise<string> {
   return payload?.result ?? "Success";
 }
 
-export interface Profile {
-  fullName: string;
-  birthDate: string;        // "YYYY-MM-DD"
-  email: string;
-  phone: string;
-  medCard: string;
-  city: string;
-  notifySms: boolean;
-  notifyEmail: boolean;
-}
-
-// РџРѕР»СѓС‡РёС‚СЊ РїСЂРѕС„РёР»СЊ
-export async function fetchProfile(): Promise<Profile> {
-  await new Promise(res => setTimeout(res, 300));
-  return {
-    fullName: "РРІР°РЅРѕРІ РРІР°РЅ РРІР°РЅРѕРІРёС‡",
-    birthDate: "1985-04-12",
-    email: "ivanov@example.com",
-    phone: "+7 900 123вЂ‘45вЂ‘67",
-    medCard: "1234567890",
-    city: "Bratsk",
-    notifySms: true,
-    notifyEmail: false,
-  };
-}
-
-// РћР±РЅРѕРІРёС‚СЊ РїСЂРѕС„РёР»СЊ
-export async function updateProfile(data: Profile): Promise<Profile> {
-  await new Promise(res => setTimeout(res, 300));
-  // вЂ” Р·РґРµСЃСЊ РІ СЂРµР°Р»Рµ РѕС‚РїСЂР°РІРєР° РІ API
-  return data;
-}
-
-// РЎРјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ
-export async function changePassword(_oldPwd: string, _newPwd: string): Promise<void> {
-  void _oldPwd;
-  void _newPwd;
-  await new Promise(res => setTimeout(res, 300));
-  // РЅР° РїСЂРѕРґРµ РїСЂРѕРІРµСЂРєР° СЃС‚Р°СЂРѕРіРѕ Рё СЃРѕС…СЂР°РЅРµРЅРёРµ РЅРѕРІРѕРіРѕ
-}
-
 // src/utils/api.ts
 
 export interface DocumentItem {
   id: string;
   date: string;       // YYYY-MM-DD
-  title: string;      // РќР°Р·РІР°РЅРёРµ С„Р°Р№Р»Р°
-  downloadUrl: string; // API-СЃСЃС‹Р»РєР° РЅР° СЃРєР°С‡РёРІР°РЅРёРµ
+  title: string;      // Название файла
+  downloadUrl: string; // API-ссылка на скачивание
   patientId?: string | null;
   description?: string | null;
 }
 
-// РџРѕР»СѓС‡РµРЅРёРµ СЃРїРёСЃРєР° РґРѕРєСѓРјРµРЅС‚РѕРІ РїР°С†РёРµРЅС‚Р°
+// Получение списка документов пациента
 export async function fetchDocuments(patientId?: string): Promise<DocumentItem[]> {
   if (!patientId) {
     return [];
@@ -386,7 +345,7 @@ const APPOINTMENT_CLINIC = {
 };
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const DOCTOR_FALLBACK_SPECIALTY = "Р’СЂР°С‡ РєР»РёРЅРёРєРё";
+const DOCTOR_FALLBACK_SPECIALTY = "Врач клиники";
 const mapDirectoryDoctor = (entry: DoctorDirectoryEntry): Doctor => {
   const specialties = entry.specialties?.length ? entry.specialties : [DOCTOR_FALLBACK_SPECIALTY];
   const primarySpecialty = specialties[0] ?? DOCTOR_FALLBACK_SPECIALTY;

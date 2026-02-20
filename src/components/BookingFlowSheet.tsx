@@ -1,4 +1,4 @@
-"use client";
+﻿﻿"use client";
 
 import {
   useCallback,
@@ -609,7 +609,6 @@ export default function BookingFlowSheet({
                         ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200",
                     )}
-                    aria-pressed={active}
                   >
                     {item}
                   </button>
@@ -697,7 +696,6 @@ export default function BookingFlowSheet({
                       ? "shadow-xl ring-2 ring-sky-400 dark:ring-sky-300 dark:shadow-[0_16px_36px_rgba(56,189,248,0.25)]"
                       : "shadow-sm ring-1 ring-slate-200 hover:ring-sky-200 dark:ring-slate-800 dark:hover:ring-sky-400/60",
                   )}
-                  aria-pressed={selected}
                 >
                   <div className="relative h-[200px] w-full overflow-hidden rounded-[22px] bg-slate-100 dark:bg-slate-800">
                     <AppImage
@@ -772,7 +770,6 @@ export default function BookingFlowSheet({
                   key={service.id}
                   type="button"
                   onClick={() => setSelectedServiceId(service.id)}
-                  aria-pressed={selected}
                   className={clsx(
                     "flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-[15px] font-semibold text-slate-700 transition-colors",
                     selected
@@ -836,7 +833,7 @@ export default function BookingFlowSheet({
                 disabled={!canGoPrev}
                 aria-label="Предыдущий месяц"
               >
-                ‹
+                &lsaquo;
               </button>
               <span className="text-[16px] capitalize">
                 {monthTitle(monthCursor)}
@@ -848,7 +845,7 @@ export default function BookingFlowSheet({
                 disabled={!canGoNext}
                 aria-label="Следующий месяц"
               >
-                ›
+                &rsaquo;
               </button>
             </div>
 
@@ -911,7 +908,7 @@ export default function BookingFlowSheet({
             disabled={availableDates.indexOf(selectedDate) <= 0}
             aria-label="Предыдущий день"
           >
-            ‹
+            &lsaquo;
           </button>
           <span>{formatLongDate(selectedDate)}</span>
           <button
@@ -924,7 +921,7 @@ export default function BookingFlowSheet({
             }
             aria-label="Следующий день"
           >
-            ›
+            &rsaquo;
           </button>
         </div>
       )}
@@ -1036,3 +1033,4 @@ export default function BookingFlowSheet({
     </SheetFrame>
   );
 }
+

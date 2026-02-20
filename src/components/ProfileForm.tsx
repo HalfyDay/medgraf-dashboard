@@ -1,10 +1,9 @@
-// src/components/ProfileForm.tsx
+﻿// src/components/ProfileForm.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FormInput } from "./FormInput";
 import { Button } from "./Button";
-import { fetchProfile, updateProfile } from "@/utils/api";
 
 export function ProfileForm() {
   const [profile, setProfile] = useState<{
@@ -26,7 +25,6 @@ export function ProfileForm() {
     notifySms: false,
     notifyEmail: false,
   });
-  const [loading, setLoading] = useState(true);
 
   const [editingPassword, setEditingPassword] = useState(false);
   const [passwords, setPasswords] = useState({
@@ -35,64 +33,53 @@ export function ProfileForm() {
     confirm: "",
   });
 
-  const CITIES = ["Братск", "Усть-Илимск", "Усть-Кут"];
-
-  useEffect(() => {
-    fetchProfile().then((data) => {
-      setProfile(data);
-      setLoading(false);
-    });
-  }, []);
+  const CITIES = ["Р‘СЂР°С‚СЃРє", "РЈСЃС‚СЊ-РР»РёРјСЃРє", "РЈСЃС‚СЊ-РљСѓС‚"];
 
   const handleChange = (field: string, value: string) => {
     setProfile((p) => ({ ...p, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile(profile);
-    // можно уведомить об успехе
+    void profile;
+    // РјРѕР¶РЅРѕ СѓРІРµРґРѕРјРёС‚СЊ РѕР± СѓСЃРїРµС…Рµ
   };
 
   const handlePasswordSave = () => {
-    // здесь логика смены пароля...
+    // Р·РґРµСЃСЊ Р»РѕРіРёРєР° СЃРјРµРЅС‹ РїР°СЂРѕР»СЏ...
     setPasswords({ old: "", new: "", confirm: "" });
     setEditingPassword(false);
   };
 
-  if (loading) {
-    return <p>Загрузка...</p>;
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Двухколоночная сетка */}
+      {/* Р”РІСѓС…РєРѕР»РѕРЅРѕС‡РЅР°СЏ СЃРµС‚РєР° */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormInput
-          label="ФИО"
+          label="Р¤РРћ"
           value={profile.fullName}
           onChange={(e) => handleChange("fullName", e.target.value)}
         />
         <FormInput
-          label="Дата рождения"
+          label="Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ"
           type="date"
           value={profile.birthDate}
           onChange={(e) => handleChange("birthDate", e.target.value)}
         />
         <FormInput
-          label="E‑mail"
+          label="EвЂ‘mail"
           type="email"
           value={profile.email}
           onChange={(e) => handleChange("email", e.target.value)}
         />
 
-        {/* Город — теперь с таким же pl-4 */}
+        {/* Р“РѕСЂРѕРґ вЂ” С‚РµРїРµСЂСЊ СЃ С‚Р°РєРёРј Р¶Рµ pl-4 */}
         <div className="mb-4">
           <label
             htmlFor="profile-city"
             className="block text-sm font-medium mb-1 text-text pl-4"
           >
-            Город
+            Р“РѕСЂРѕРґ
           </label>
           <select
             id="profile-city"
@@ -114,22 +101,22 @@ export function ProfileForm() {
         </div>
 
         <FormInput
-          label="Телефон"
+          label="РўРµР»РµС„РѕРЅ"
           type="tel"
           value={profile.phone}
           onChange={(e) => handleChange("phone", e.target.value)}
         />
         <FormInput
-          label="Номер медкарты"
+          label="РќРѕРјРµСЂ РјРµРґРєР°СЂС‚С‹"
           value={profile.medCard}
           readOnly
         />
       </div>
 
-      {/* Сохранить и Сменить пароль */}
+      {/* РЎРѕС…СЂР°РЅРёС‚СЊ Рё РЎРјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ */}
       <div className="flex items-center gap-4">
         <Button type="submit" variant="primary">
-          Сохранить изменения
+          РЎРѕС…СЂР°РЅРёС‚СЊ РёР·РјРµРЅРµРЅРёСЏ
         </Button>
         {!editingPassword && (
           <button
@@ -137,16 +124,16 @@ export function ProfileForm() {
             onClick={() => setEditingPassword(true)}
             className="text-primary underline"
           >
-            Сменить пароль
+            РЎРјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ
           </button>
         )}
       </div>
 
-      {/* Блок смены пароля */}
+      {/* Р‘Р»РѕРє СЃРјРµРЅС‹ РїР°СЂРѕР»СЏ */}
       {editingPassword && (
         <div className="space-y-4 bg-gray-50 p-4 rounded-2xl shadow-soft">
           <FormInput
-            label="Старый пароль"
+            label="РЎС‚Р°СЂС‹Р№ РїР°СЂРѕР»СЊ"
             type="password"
             value={passwords.old}
             onChange={(e) =>
@@ -154,7 +141,7 @@ export function ProfileForm() {
             }
           />
           <FormInput
-            label="Новый пароль"
+            label="РќРѕРІС‹Р№ РїР°СЂРѕР»СЊ"
             type="password"
             value={passwords.new}
             onChange={(e) =>
@@ -162,7 +149,7 @@ export function ProfileForm() {
             }
           />
           <FormInput
-            label="Подтвердите пароль"
+            label="РџРѕРґС‚РІРµСЂРґРёС‚Рµ РїР°СЂРѕР»СЊ"
             type="password"
             value={passwords.confirm}
             onChange={(e) =>
@@ -175,10 +162,10 @@ export function ProfileForm() {
               onClick={() => setEditingPassword(false)}
               className="px-4 py-2 bg-gray-200 rounded-2xl shadow-soft hover:shadow-md transition"
             >
-              Отмена
+              РћС‚РјРµРЅР°
             </button>
             <Button variant="primary" onClick={handlePasswordSave}>
-              Сохранить пароль
+              РЎРѕС…СЂР°РЅРёС‚СЊ РїР°СЂРѕР»СЊ
             </Button>
           </div>
         </div>
@@ -186,3 +173,5 @@ export function ProfileForm() {
     </form>
   );
 }
+
+

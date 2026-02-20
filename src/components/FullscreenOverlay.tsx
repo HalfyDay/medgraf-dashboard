@@ -151,7 +151,6 @@ export default function FullscreenOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-hidden={!open}
       className={clsx(
         "fixed inset-0 z-[1600] flex h-full w-full items-center justify-center",
         visible ? "pointer-events-auto" : "pointer-events-none"

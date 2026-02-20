@@ -465,7 +465,6 @@ export default function HomePage() {
 
             <button
               type="button"
-              aria-expanded={showAllCheckups}
               onClick={() => setShowAllCheckups((v) => !v)}
               disabled={showCheckupsSkeleton}
               className={`group inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[14.5px] font-medium text-slate-700 transition ${
@@ -522,7 +521,6 @@ export default function HomePage() {
                     data-checkup-card
                     key={c.id}
                     type="button"
-                    aria-hidden={hiddenWhileCollapsed}
                     tabIndex={hiddenWhileCollapsed ? -1 : 0}
                     onClick={() => { setActiveCheckup(c); setCheckupOpen(true); }}
                     className={[
