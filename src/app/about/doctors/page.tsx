@@ -93,8 +93,6 @@ export default function DoctorsPage() {
                     doctor.photoUrl && doctor.photoUrl.length > 0
                       ? doctor.photoUrl
                       : DOCTOR_AVATAR_PLACEHOLDER;
-                  const reviews =
-                    typeof doctor.numberComments === "number" ? doctor.numberComments : 0;
                   const education = doctor.institution || "—";
                   const experience =
                     typeof doctor.experience === "number" && doctor.experience > 0
@@ -144,15 +142,8 @@ export default function DoctorsPage() {
                         </div>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-[1fr_1.2fr_1fr] overflow-hidden rounded-[18px] border border-slate-100 bg-white text-center text-[13px] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                        <div className="px-3 py-3 max-[360px]:px-2">
-                          <div className="flex items-center justify-center gap-1 text-slate-900 dark:text-slate-100">
-                            <AppImage src="/star.svg" alt="" width={16} height={16} className="h-4 w-4 max-[360px]:h-3.5 max-[360px]:w-3.5" />
-                            <span className="font-bold truncate max-[360px]:max-w-[50px] max-[360px]:text-[12px]">Отзывы</span>
-                          </div>
-                          <div className="mt-1 font-semibold text-[#0F86FF]">{reviews}</div>
-                        </div>
-                        <div className="border-x border-slate-100 px-3 py-3 max-[360px]:px-2 dark:border-slate-800">
+                      <div className="mt-4 grid grid-cols-2 overflow-hidden rounded-[18px] border border-slate-100 bg-white text-center text-[13px] text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                        <div className="border-r border-slate-100 px-3 py-3 max-[360px]:px-2 dark:border-slate-800">
                           <div className="flex items-center justify-center gap-1 text-slate-900 dark:text-slate-100">
                             <AppImage src="/verified.svg" alt="" width={16} height={16} className="h-4 w-4 max-[360px]:h-3.5 max-[360px]:w-3.5" />
                             <span className="font-bold truncate max-[360px]:max-w-[58px] max-[360px]:text-[12px]">Образование</span>
