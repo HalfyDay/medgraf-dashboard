@@ -9,6 +9,7 @@ type DocumentDetailsSheetProps = {
   open: boolean;
   onClose: () => void;
   document: DocumentItem | null;
+  onBack?: () => void;
 };
 
 function formatDate(dateIso: string) {
@@ -23,9 +24,9 @@ function formatDate(dateIso: string) {
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }
 
-const DEFAULT_DESCRIPTION = "\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0434\u043b\u044f \u0441\u043a\u0430\u0447\u0438\u0432\u0430\u043d\u0438\u044f";
-const DOWNLOAD_LABEL = "\u0421\u043a\u0430\u0447\u0430\u0442\u044c";
-const DOWNLOAD_LOADING_LABEL = "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430...";
+const DEFAULT_DESCRIPTION = "Документ доступен для скачивания";
+const DOWNLOAD_LABEL = "Скачать";
+const DOWNLOAD_LOADING_LABEL = "Загрузка...";
 
 function parseFilenameFromDisposition(disposition: string | null) {
   if (!disposition) return null;
@@ -45,6 +46,7 @@ export default function DocumentDetailsSheet({
   open,
   onClose,
   document,
+  onBack,
 }: DocumentDetailsSheetProps) {
   const [downloadLoading, setDownloadLoading] = useState(false);
 
@@ -53,6 +55,9 @@ export default function DocumentDetailsSheet({
   const dateLabel = formatDate(document.date);
   const description = document.description ?? DEFAULT_DESCRIPTION;
   const downloadLink = document.downloadUrl;
+  const cleanTitle = document.title
+    ? document.title.replace(/_/g, " ").replace(/\s+/g, " ").trim()
+    : "";
 
   const handleDownload = async () => {
     if (downloadLoading) return;
@@ -93,28 +98,52 @@ export default function DocumentDetailsSheet({
     <SheetFrame
       open={open}
       onClose={onClose}
-      title={document.title}
+      title={cleanTitle}
       subtitle={dateLabel}
       iconSrc="/list.svg"
       innerClassName="space-y-4"
     >
-      <div className="mx-1 rounded-[18px] bg-white px-4 py-4 shadow-md ring-1 ring-slate-100">
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={downloadLoading}
+        className="w-[calc(100%-8px)] mx-1 text-left rounded-[18px] bg-white px-4 py-4 shadow-md ring-1 ring-slate-100 transition hover:bg-slate-50 active:scale-[0.99] block cursor-pointer"
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="leading-tight">
             <div className="text-[18px] font-semibold text-slate-900">{dateLabel}</div>
             <div className="mt-1 text-[15px] font-medium text-slate-700">{description}</div>
           </div>
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloadLoading}
+          <div
             className="inline-flex h-11 w-11 items-center justify-center text-sky-600 transition hover:scale-[1.05]"
             aria-label={downloadLoading ? DOWNLOAD_LOADING_LABEL : DOWNLOAD_LABEL}
           >
             <AppImage src="/download.svg" alt="" width={24} height={24} className="h-6 w-6" />
-          </button>
+          </div>
         </div>
-      </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={onBack || onClose}
+        className="relative w-[calc(100%-8px)] mx-1 flex items-center justify-center rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 text-white py-3.5 text-[16px] font-semibold shadow-md transition active:scale-[0.98] cursor-pointer hover:opacity-95"
+      >
+        <span className="absolute left-6 flex items-center">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </span>
+        <span>Назад</span>
+      </button>
     </SheetFrame>
   );
 }

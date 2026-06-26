@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import DocumentsSheet from "@/components/DocumentsSheet";
 import DocumentDetailsSheet from "@/components/DocumentDetailsSheet";
@@ -72,6 +72,7 @@ export default function HomePage() {
   const [visitsOpen, setVisitsOpen] = useState(false);
   const [appointmentDetailsOpen, setAppointmentDetailsOpen] = useState(false);
   const [activeAppointment, setActiveAppointment] = useState<Appointment | null>(null);
+  const [appointmentSource, setAppointmentSource] = useState<"visits" | "myAppointments" | null>(null);
   const [documentDetailsOpen, setDocumentDetailsOpen] = useState(false);
   const [activeDocument, setActiveDocument] = useState<DocumentItem | null>(null);
   const [cancelOverlayOpen, setCancelOverlayOpen] = useState(false);
@@ -118,6 +119,11 @@ export default function HomePage() {
   const handleSelectAppointment = (appointment: Appointment) => {
     setActiveAppointment(appointment);
     setAppointmentDetailsOpen(true);
+    if (myAppointmentsOpen) {
+      setAppointmentSource("myAppointments");
+    } else if (visitsOpen) {
+      setAppointmentSource("visits");
+    }
     setMyAppointmentsOpen(false);
     setVisitsOpen(false);
   };
@@ -159,6 +165,18 @@ export default function HomePage() {
   const handleCloseAppointmentDetails = () => {
     setAppointmentDetailsOpen(false);
     setActiveAppointment(null);
+    setAppointmentSource(null);
+  };
+
+  const handleBackFromAppointmentDetails = () => {
+    setAppointmentDetailsOpen(false);
+    setActiveAppointment(null);
+    if (appointmentSource === "visits") {
+      setVisitsOpen(true);
+    } else if (appointmentSource === "myAppointments") {
+      setMyAppointmentsOpen(true);
+    }
+    setAppointmentSource(null);
   };
 
   const handleSelectDocument = (document: DocumentItem) => {
@@ -170,6 +188,12 @@ export default function HomePage() {
   const handleCloseDocumentDetails = () => {
     setDocumentDetailsOpen(false);
     setActiveDocument(null);
+  };
+
+  const handleBackFromDocumentDetails = () => {
+    setDocumentDetailsOpen(false);
+    setActiveDocument(null);
+    setDocsOpen(true);
   };
 
   const handleOpenBooking = () => {
@@ -713,6 +737,7 @@ export default function HomePage() {
       <AppointmentDetailsSheet
         open={appointmentDetailsOpen}
         onClose={handleCloseAppointmentDetails}
+        onBack={handleBackFromAppointmentDetails}
         appointment={activeAppointment}
         onCancel={handleCancelAppointment}
         cancelLoading={cancelLoading}
@@ -730,6 +755,7 @@ export default function HomePage() {
       <DocumentDetailsSheet
         open={documentDetailsOpen}
         onClose={handleCloseDocumentDetails}
+        onBack={handleBackFromDocumentDetails}
         document={activeDocument}
       />
       <PromoSuccessOverlay

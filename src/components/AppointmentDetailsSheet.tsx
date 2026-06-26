@@ -10,6 +10,7 @@ type AppointmentDetailsSheetProps = {
   appointment: Appointment | null;
   onCancel?: (appointment: Appointment) => void;
   cancelLoading?: boolean;
+  onBack?: () => void;
 };
 
 const CLINIC_CITY = "г. Братск";
@@ -39,6 +40,7 @@ export default function AppointmentDetailsSheet({
   appointment,
   onCancel,
   cancelLoading = false,
+  onBack,
 }: AppointmentDetailsSheetProps) {
   if (!appointment) {
     return null;
@@ -173,6 +175,28 @@ export default function AppointmentDetailsSheet({
           {isPlanned ? "Отменить запись" : "Запись уже закрыта"}
         </button>
       )}
+
+      <button
+        type="button"
+        onClick={onBack || onClose}
+        className="relative mt-4 w-[calc(100%-8px)] mx-1 flex items-center justify-center rounded-[18px] bg-gradient-to-r from-sky-500 to-blue-600 text-white py-3.5 text-[16px] font-semibold shadow-md transition active:scale-[0.98] cursor-pointer hover:opacity-95"
+      >
+        <span className="absolute left-6 flex items-center">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </span>
+        <span>Назад</span>
+      </button>
     </SheetFrame>
   );
 }

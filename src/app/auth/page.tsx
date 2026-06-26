@@ -595,7 +595,7 @@ export default function AuthPage() {
                 </div>
                 <div className="flex items-center">
                   <Button type="submit" className="w-full" disabled={actionPending}>
-                    Войти
+                    {actionPending ? "Входим..." : "Войти"}
                   </Button>
                 </div>
               </form>
